@@ -1,3 +1,2 @@
-export default function Home() {
-  return <main className="p-8 text-2xl font-semibold">Makoya web — foundation OK</main>;
-}
+import { redirect } from "next/navigation";
+export default function Home() { redirect("/dashboard"); }
