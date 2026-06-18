@@ -1,25 +1,19 @@
--- infra/schema.sql
--- Makoya database (Supabase / Postgres).
--- Multi-tenant model: every row is owned by an auth user. Row Level Security
--- (RLS) makes it physically impossible for one client to read another's data.
--- Run this in the Supabase SQL editor.
+-- Makoya schema (Supabase / Postgres). Multi-tenant via RLS.
+-- Apply in Supabase → SQL Editor.
 
--- ── SITES ────────────────────────────────────────────────────────────────
--- One row per website a client installs the widget on.
 create table if not exists sites (
-  id          uuid primary key default gen_random_uuid(),  -- this is the public site_id in the snippet
+  id          uuid primary key default gen_random_uuid(),
   owner_id    uuid not null references auth.users(id) on delete cascade,
   domain      text not null,
-  plan        text not null default 'free',                -- free | pro | managed
+  plan        text not null default 'free',          -- free | pro | managed
   created_at  timestamptz not null default now()
 );
 
--- ── SITE CONFIG ──────────────────────────────────────────────────────────
--- Widget appearance + features. This is what becomes the public config JSON.
 create table if not exists site_config (
   site_id          uuid primary key references sites(id) on delete cascade,
   primary_color    text   not null default '#2563eb',
   position         text   not null default 'bottom-right',
+  launcher_icon    text   not null default 'accessibility',
   features_enabled text[] not null default array[
     'textSize','lineSpacing','contrast','stopMotion',
     'readingRuler','highlightLinks','bigCursor'
@@ -28,58 +22,41 @@ create table if not exists site_config (
   updated_at       timestamptz not null default now()
 );
 
--- ── SCANS ────────────────────────────────────────────────────────────────
--- Results from the scanner. THIS is your lead/sales data, not widget usage.
 create table if not exists scans (
-  id            uuid primary key default gen_random_uuid(),
-  site_id       uuid references sites(id) on delete set null,
-  url           text not null,
-  score         int  not null,
-  totals        jsonb not null,        -- {critical, serious, moderate, minor}
-  issues        jsonb not null,        -- full axe results
-  scanned_at    timestamptz not null default now()
-);
-
--- ── LEADS ────────────────────────────────────────────────────────────────
--- Captured from the public scanner (email-for-report gate). The funnel.
-create table if not exists leads (
   id          uuid primary key default gen_random_uuid(),
-  email       text not null,
+  site_id     uuid references sites(id) on delete cascade,
   url         text not null,
-  scan_id     uuid references scans(id) on delete set null,
-  status      text not null default 'new',   -- new | contacted | audit | won | lost
+  score       int  not null,
+  totals      jsonb not null,        -- {critical, serious, moderate, minor, total}
+  issues      jsonb not null,        -- grouped AccessibilityReport.issues
   created_at  timestamptz not null default now()
 );
 
--- ── ROW LEVEL SECURITY ───────────────────────────────────────────────────
-alter table sites       enable row level security;
-alter table site_config enable row level security;
-alter table scans       enable row level security;
+create table if not exists consultation_requests (
+  id          uuid primary key default gen_random_uuid(),
+  site_id     uuid references sites(id) on delete cascade,
+  scan_id     uuid references scans(id) on delete set null,
+  type        text not null default 'full_report',   -- full_report | book_call
+  note        text,
+  status      text not null default 'new',           -- new | contacted | won | lost
+  created_at  timestamptz not null default now()
+);
 
--- Owners can only touch their own sites.
+alter table sites                 enable row level security;
+alter table site_config           enable row level security;
+alter table scans                 enable row level security;
+alter table consultation_requests enable row level security;
+
 create policy "owner reads own sites" on sites
   for select using (owner_id = auth.uid());
 create policy "owner writes own sites" on sites
   for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());
 
--- Config is reachable only through a site the user owns.
 create policy "owner manages own config" on site_config
-  for all using (
-    exists (select 1 from sites s where s.id = site_config.site_id and s.owner_id = auth.uid())
-  ) with check (
-    exists (select 1 from sites s where s.id = site_config.site_id and s.owner_id = auth.uid())
-  );
+  for all using (exists (select 1 from sites s where s.id = site_config.site_id and s.owner_id = auth.uid()))
+  with check (exists (select 1 from sites s where s.id = site_config.site_id and s.owner_id = auth.uid()));
 
 create policy "owner reads own scans" on scans
-  for select using (
-    exists (select 1 from sites s where s.id = scans.site_id and s.owner_id = auth.uid())
-  );
+  for select using (exists (select 1 from sites s where s.id = scans.site_id and s.owner_id = auth.uid()));
 
--- NOTE: `leads` has NO RLS policy and stays locked to the service role only.
--- The public scanner writes leads via a server route using the service key,
--- never from the browser. Owners never see other people's leads.
-alter table leads enable row level security;
-
--- The public config JSON the widget fetches is generated by a SERVER route
--- (service role) that reads sites + site_config and writes a cached JSON to
--- the CDN. The widget itself never queries the database directly.
+-- consultation_requests: RLS on, NO client policy → service role only.
