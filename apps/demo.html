@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Makoya Widget — Demo</title>
+    <style>
+      body { font: 16px/1.5 system-ui, sans-serif; max-width: 700px; margin: 40px auto; padding: 0 16px; color: #111; }
+      h1 { font-size: 28px; }
+      a { color: #2563eb; }
+      .box { background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0; }
+      img { max-width: 100%; }
+    </style>
+  </head>
+  <body>
+    <h1>Makoya widget demo page</h1>
+    <p>
+      This page exists to test the widget. Click the accessibility button
+      (bottom-right) and try the toggles. Your settings should persist on
+      reload and survive navigation.
+    </p>
+    <div class="box">
+      <p>Some sample content with a <a href="#test">test link</a> to check the
+      "highlight links" feature, and enough text to see spacing and text-size
+      changes take effect across paragraphs.</p>
+    </div>
+    <p>Reduce-motion, contrast, dark mode, reading ruler, big cursor — all here.</p>
+
+    <!-- LOCAL TEST: load the built core directly and init with a config.
+         In production you'd instead paste ONE loader snippet:
+         <script src="https://cdn.makoya.example/loader.js" data-site="SITE_ID" defer></script> -->
+    <script src="../packages/widget/dist/core.js"></script>
+    <script>
+      window.MakoyaWidget.init({
+        siteId: "demo-site",
+        primaryColor: "#2563eb",
+        position: "bottom-right",
+        featuresEnabled: [
+          "textSize", "lineSpacing", "contrast", "stopMotion",
+          "readingRuler", "highlightLinks", "bigCursor"
+        ],
+        hideBranding: false,
+        brandingUrl: "https://makoya.example/scan"
+      });
+    </script>
+  </body>
+</html>

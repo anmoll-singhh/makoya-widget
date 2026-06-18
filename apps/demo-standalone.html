@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Makoya Widget — Standalone Demo (just open this file)</title>
+<style>
+body{font:16px/1.6 system-ui,sans-serif;max-width:680px;margin:40px auto;padding:0 16px;color:#111}
+h1{font-size:26px}.box{background:#f3f4f6;padding:16px;border-radius:8px;margin:16px 0}
+a{color:#2563eb}
+</style>
+</head>
+<body>
+<h1>Makoya widget — it works</h1>
+<p>This file has the widget built in. Just open it (double-click). Look bottom-right for the accessibility button, click it, try the toggles.</p>
+<div class="box"><p>Sample paragraph with a <a href="#x">test link</a> so you can see "highlight links", text-size, spacing, contrast and dark mode take effect on real content.</p></div>
+<p>If you can see the round button bottom-right, the widget is working.</p>
+
+<!-- The entire widget, inlined. No build, no server, no config needed. -->
+<script>
+var MakoyaCore=function(f){"use strict";const z={siteId:"unknown",primaryColor:"#2563eb",position:"bottom-right",featuresEnabled:["textSize","lineSpacing","contrast","stopMotion","readingRuler","highlightLinks","bigCursor"],hideBranding:!1,brandingUrl:"https://makoya.example/scan"};function I(t,e){return{...z,...e!=null?e:{},siteId:t}}const x="makoya-effects",B=`
+html[data-mky-text="1"] body { font-size: 112% !important; }
+html[data-mky-text="2"] body { font-size: 125% !important; }
+html[data-mky-text="3"] body { font-size: 140% !important; }
+
+html[data-mky-spacing="on"] body,
+html[data-mky-spacing="on"] body * {
+  line-height: 1.8 !important;
+  letter-spacing: 0.04em !important;
+  word-spacing: 0.1em !important;
+}
+
+html[data-mky-contrast="on"] {
+  filter: contrast(1.15);
+}
+html[data-mky-contrast="dark"] {
+  filter: invert(1) hue-rotate(180deg);
+}
+html[data-mky-contrast="dark"] img,
+html[data-mky-contrast="dark"] video,
+html[data-mky-contrast="dark"] picture,
+html[data-mky-contrast="dark"] [style*="background-image"] {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+html[data-mky-motion="off"] *,
+html[data-mky-motion="off"] *::before,
+html[data-mky-motion="off"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+html[data-mky-links="on"] a {
+  text-decoration: underline !important;
+  outline: 2px solid currentColor !important;
+  outline-offset: 2px;
+}
+
+html[data-mky-cursor="on"] * {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Cpath d='M6 2 L6 38 L16 28 L22 42 L28 39 L22 26 L36 26 Z' fill='black' stroke='white' stroke-width='2'/%3E%3C/svg%3E") 4 2, auto !important;
+}
+`;function O(){if(document.getElementById(x))return;const t=document.createElement("style");t.id=x,t.textContent=B,document.head.appendChild(t)}function c(t,e){const n=document.documentElement;e===null?n.removeAttribute(t):n.setAttribute(t,e)}const E="makoya_prefs",g={text:0,spacing:!1,contrast:"off",stopMotion:!1,ruler:!1,links:!1,cursor:!1};function v(){try{const t=localStorage.getItem(E);return t?{...g,...JSON.parse(t)}:{...g}}catch{return{...g}}}function R(t){try{localStorage.setItem(E,JSON.stringify(t))}catch{}}function w(t){O(),c("data-mky-text",t.text===0?null:String(t.text)),c("data-mky-spacing",t.spacing?"on":null),c("data-mky-contrast",t.contrast==="off"?null:t.contrast),c("data-mky-motion",t.stopMotion?"off":null),c("data-mky-links",t.links?"on":null),c("data-mky-cursor",t.cursor?"on":null)}function p(t,e,n,i){const o=document.createElement("button");return o.className="mky-toggle",o.type="button",o.textContent=t,o.setAttribute("aria-pressed",String(e())),o.addEventListener("click",()=>{n(!e()),o.setAttribute("aria-pressed",String(e())),i()}),o}const C={textSize:{key:"textSize",label:"Text size",render:(t,e)=>{const n=document.createElement("div");n.className="mky-row";const i=document.createElement("span");i.textContent="Text size";const o=document.createElement("button");o.className="mky-step",o.type="button",o.textContent="A−",o.setAttribute("aria-label","Decrease text size");const s=document.createElement("button");return s.className="mky-step",s.type="button",s.textContent="A+",s.setAttribute("aria-label","Increase text size"),o.addEventListener("click",()=>{t.text=Math.max(0,t.text-1),e()}),s.addEventListener("click",()=>{t.text=Math.min(3,t.text+1),e()}),n.append(i,o,s),n}},lineSpacing:{key:"lineSpacing",label:"More spacing",render:(t,e)=>p("More spacing",()=>t.spacing,n=>t.spacing=n,e)},contrast:{key:"contrast",label:"Contrast",render:(t,e)=>{const n=document.createElement("div");n.className="mky-row";const i=document.createElement("span");i.textContent="Contrast";const o=document.createElement("button");o.className="mky-toggle",o.type="button";const s={off:"Off",on:"Boost",dark:"Dark"},l=()=>o.textContent=s[t.contrast];return l(),o.addEventListener("click",()=>{t.contrast=t.contrast==="off"?"on":t.contrast==="on"?"dark":"off",l(),e()}),n.append(i,o),n}},stopMotion:{key:"stopMotion",label:"Stop motion",render:(t,e)=>p("Stop animations",()=>t.stopMotion,n=>t.stopMotion=n,e)},readingRuler:{key:"readingRuler",label:"Reading ruler",render:(t,e)=>p("Reading ruler",()=>t.ruler,n=>t.ruler=n,e)},highlightLinks:{key:"highlightLinks",label:"Highlight links",render:(t,e)=>p("Highlight links",()=>t.links,n=>t.links=n,e)},bigCursor:{key:"bigCursor",label:"Big cursor",render:(t,e)=>p("Big cursor",()=>t.cursor,n=>t.cursor=n,e)}},_=t=>`
+:host { all: initial; }
+.mky-btn {
+  position: fixed; z-index: 2147483647;
+  width: 52px; height: 52px; border-radius: 50%;
+  background: ${t}; color: #fff; border: none; cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0,0,0,.25);
+  font: 600 13px system-ui, sans-serif; display: grid; place-items: center;
+}
+.mky-btn:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.mky-btn svg { width: 28px; height: 28px; }
+.mky-panel {
+  position: fixed; z-index: 2147483647;
+  width: 280px; max-width: calc(100vw - 24px);
+  background: #fff; color: #111; border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.25);
+  font: 14px system-ui, sans-serif; padding: 14px; display: none;
+}
+.mky-panel.open { display: block; }
+.mky-panel h2 { font-size: 14px; margin: 0 0 10px; }
+.mky-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0; }
+.mky-toggle, .mky-step {
+  border: 1px solid #d1d5db; background: #f9fafb; color: #111;
+  border-radius: 8px; padding: 6px 10px; cursor: pointer; font: inherit;
+}
+.mky-toggle[aria-pressed="true"] { background: ${t}; color: #fff; border-color: ${t}; }
+.mky-toggle:focus-visible, .mky-step:focus-visible { outline: 2px solid ${t}; outline-offset: 2px; }
+.mky-reset { width: 100%; margin-top: 10px; padding: 8px; border: none; border-radius: 8px; background: #111; color: #fff; cursor: pointer; font: inherit; }
+.mky-brand { margin-top: 10px; font-size: 11px; color: #6b7280; text-align: center; }
+.mky-brand a { color: #6b7280; }
+.mky-note { font-size: 11px; color: #6b7280; margin: 8px 0 0; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+`,u={"bottom-right":"bottom:16px; right:16px;","bottom-left":"bottom:16px; left:16px;","top-right":"top:16px; right:16px;","top-left":"top:16px; left:16px;"},P='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="4" r="2"/><path d="M21 9c0 .55-.45 1-1 1h-4v11a1 1 0 0 1-2 0v-5h-4v5a1 1 0 0 1-2 0V10H4a1 1 0 0 1 0-2h16c.55 0 1 .45 1 1z"/></svg>';function H(){let t=null;const e=n=>{t&&(t.style.top=`${n.clientY}px`)};return{on(){t||(t=document.createElement("div"),t.setAttribute("aria-hidden","true"),t.style.cssText="position:fixed;left:0;width:100vw;height:28px;background:rgba(0,0,0,.08);border-top:2px solid rgba(0,0,0,.4);border-bottom:2px solid rgba(0,0,0,.4);pointer-events:none;z-index:2147483646;transform:translateY(-14px);",document.body.appendChild(t),window.addEventListener("mousemove",e))},off(){window.removeEventListener("mousemove",e),t==null||t.remove(),t=null}}}function F(t){var M,N;const e=document.createElement("div");e.id="makoya-widget-root";const n=e.attachShadow({mode:"open"});document.body.appendChild(e);const i=document.createElement("style");i.textContent=_(t.primaryColor),n.appendChild(i);const o=v(),s=H(),l=document.createElement("button");l.className="mky-btn",l.style.cssText=(M=u[t.position])!=null?M:u["bottom-right"],l.setAttribute("aria-label","Accessibility options"),l.setAttribute("aria-expanded","false"),l.innerHTML=P;const a=document.createElement("div");a.className="mky-panel",a.setAttribute("role","dialog"),a.setAttribute("aria-label","Accessibility options"),a.style.cssText=(N=u[t.position])!=null?N:u["bottom-right"],a.style.bottom=t.position.startsWith("bottom")?"80px":"",a.style.top=t.position.startsWith("top")?"80px":"";const L=document.createElement("h2");L.textContent="Accessibility options",a.appendChild(L);const y=()=>{w(o),o.ruler?s.on():s.off(),R(o)};for(const r of t.featuresEnabled){const d=C[r];d&&a.appendChild(d.render(o,y))}const m=document.createElement("button");m.className="mky-reset",m.type="button",m.textContent="Reset all",m.addEventListener("click",()=>{Object.assign(o,{text:0,spacing:!1,contrast:"off",stopMotion:!1,ruler:!1,links:!1,cursor:!1}),y(),$()}),a.appendChild(m);const b=document.createElement("p");if(b.className="mky-note",b.textContent="Adjusts your view only. It does not change the website's code.",a.appendChild(b),!t.hideBranding){const r=document.createElement("p");r.className="mky-brand",r.innerHTML=`Powered by <a href="${t.brandingUrl}" target="_blank" rel="noopener">Makoya</a>`,a.appendChild(r)}let k=!1;const A=r=>{var d;k=r,a.classList.toggle("open",r),l.setAttribute("aria-expanded",String(r)),r?(d=a.querySelector("button"))==null||d.focus():l.focus()};l.addEventListener("click",()=>A(!k)),n.addEventListener("keydown",r=>{r.key==="Escape"&&k&&A(!1)});function $(){const r=a.querySelector("h2");a.innerHTML="",r&&a.appendChild(r);for(const d of t.featuresEnabled){const T=C[d];T&&a.appendChild(T.render(o,y))}if(a.appendChild(m),a.appendChild(b),!t.hideBranding){const d=document.createElement("p");d.className="mky-brand",d.innerHTML=`Powered by <a href="${t.brandingUrl}" target="_blank" rel="noopener">Makoya</a>`,a.appendChild(d)}}n.append(l,a),y()}let S=!1;function U(){const t=()=>w(v()),e=n=>{const i=history[n];history[n]=function(...o){const s=i.apply(this,o);return setTimeout(t,50),s}};e("pushState"),e("replaceState"),window.addEventListener("popstate",()=>setTimeout(t,50))}function h(t){if(S||document.getElementById("makoya-widget-root"))return;S=!0;const e=I(t.siteId,t),n=()=>{F(e),U()};document.readyState==="loading"?document.addEventListener("DOMContentLoaded",n,{once:!0}):n()}return window.MakoyaWidget={init:h},function(){var e;try{const n=(e=document.currentScript)!=null?e:document.querySelector("script[data-site]");if(!n||n.hasAttribute("data-no-auto"))return;const i=n.dataset.site||"auto",o=n.dataset.color;h({siteId:i,...o?{primaryColor:o}:{}})}catch{}}(),f.init=h,Object.defineProperty(f,Symbol.toStringTag,{value:"Module"}),f}({});
+</script>
+<script>window.MakoyaWidget.init({siteId:"standalone-demo",primaryColor:"#2563eb"});</script>
+</body>
+</html>

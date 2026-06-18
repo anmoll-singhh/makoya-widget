@@ -1,0 +1,9 @@
+{
+  "name": "makoya",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": ["packages/*", "apps/dashboard"],
+  "scripts": {
+    "build:widget": "npm run build -w @makoya/widget"
+  }
+}
