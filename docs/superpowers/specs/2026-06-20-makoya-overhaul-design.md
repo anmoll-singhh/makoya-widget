@@ -60,7 +60,7 @@ Existing keys retained: `textSize`, `lineSpacing`, `contrast`, `stopMotion`, `re
 > `bigCursor` stays a single key; its *pref value* becomes a 3-way choice (`off | black | white`) handled in widget `state.ts`/`effects.ts` — no key churn.
 > `saturation` pref = `off | grayscale | low | high`. `readingMask` pref = `off | dim | tint` (dim band vs color-tint overlay) — covers both market "reading mask" and "screen color mask".
 
-**New scalar config fields** (stored in the existing config JSON → **no DB migration**):
+**New scalar config fields** (`site_config` uses dedicated columns, so this **requires a DB migration** — new columns + `rowToConfig`/`configToRow` + the public-config-API allowlist + the `PATCH /api/sites/[id]/config` route):
 - `launcherSize`: `"sm" | "md" | "lg"` (default `md`)
 - `defaultProfile`: profile id (`vision | low-vision | dyslexia | adhd | seizure | senior | cognitive`) or `"none"` (default `none`) — applied on first widget open for that visitor.
 - `accessibilityStatementUrl`: `string` (default `""` → link hidden when empty)
@@ -127,7 +127,7 @@ Existing keys retained: `textSize`, `lineSpacing`, `contrast`, `stopMotion`, `re
   - Features: toggle which of the 15 `featuresEnabled` show, reorderable list (display order).
   - Behavior: `defaultProfile`, `defaultLanguage`.
   - Branding (**paid-gated**: disabled with an upsell when plan = free): `hideBranding`, `panelTitle`, `accessibilityStatementUrl`.
-  - Save → `PUT /api/sites/[id]/config` (existing). Instant preview updates on every change (debounced save).
+  - Save → `PATCH /api/sites/[id]/config` (existing; extend its allowlist for new fields). Instant preview updates on every change (debounced save).
 - **Separate "Scanner & report" tab/page:** latest score + issue breakdown + "Get full report / book a call" CTA (existing consultation flow). Re-scan button.
 - Keep the **account/profile** page.
 
