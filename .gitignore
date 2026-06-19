@@ -17,3 +17,6 @@ apps/web/_*.mjs
 apps/web/_*.txt
 
 .vercel
+
+# subagent-driven-development scratch
+.superpowers/
