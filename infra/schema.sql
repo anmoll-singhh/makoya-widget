@@ -10,16 +10,22 @@ create table if not exists sites (
 );
 
 create table if not exists site_config (
-  site_id          uuid primary key references sites(id) on delete cascade,
-  primary_color    text   not null default '#2563eb',
-  position         text   not null default 'bottom-right',
-  launcher_icon    text   not null default 'accessibility',
-  features_enabled text[] not null default array[
-    'textSize','lineSpacing','contrast','stopMotion',
-    'readingRuler','highlightLinks','bigCursor','readableFont','hideImages'
+  site_id                    uuid primary key references sites(id) on delete cascade,
+  primary_color              text    not null default '#2563eb',
+  position                   text    not null default 'bottom-right',
+  launcher_icon              text    not null default 'accessibility',
+  features_enabled           text[]  not null default array[
+    'textSize','lineSpacing','contrast','stopMotion','readingRuler',
+    'highlightLinks','bigCursor','readableFont','hideImages',
+    'saturation','readingMask','highlightTitles','textAlign','muteSounds','readAloud'
   ],
-  hide_branding    boolean not null default false,
-  updated_at       timestamptz not null default now()
+  hide_branding              boolean not null default false,
+  launcher_size              text    not null default 'md',
+  default_profile            text    not null default 'none',
+  accessibility_statement_url text   not null default '',
+  default_language           text    not null default 'en',
+  panel_title                text    not null default '',
+  updated_at                 timestamptz not null default now()
 );
 
 create table if not exists scans (

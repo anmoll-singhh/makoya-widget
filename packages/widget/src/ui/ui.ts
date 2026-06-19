@@ -10,7 +10,7 @@
 import { LAUNCHER_ICONS, type WidgetConfig, type FeatureKey } from "@makoya/shared";
 import { Prefs, loadPrefs, savePrefs, applyPrefs, DEFAULT_PREFS } from "../core/state";
 
-const ICON: Record<FeatureKey, string> = {
+const ICON: Partial<Record<FeatureKey, string>> = {
   textSize: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>`,
   lineSpacing: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>`,
   contrast: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg>`,
@@ -22,7 +22,7 @@ const ICON: Record<FeatureKey, string> = {
   hideImages: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 16l5-5 3 3M3 3l18 18"/></svg>`,
 };
 
-const LABELS: Record<FeatureKey, string> = {
+const LABELS: Partial<Record<FeatureKey, string>> = {
   textSize: "Text size",
   lineSpacing: "More spacing",
   contrast: "Contrast",
@@ -79,7 +79,7 @@ function row(key: FeatureKey, control: HTMLElement): HTMLElement {
   r.className = "mky-row";
   const lab = document.createElement("span");
   lab.className = "mky-label";
-  lab.innerHTML = `${ICON[key]}<span>${LABELS[key]}</span>`;
+  lab.innerHTML = `${ICON[key] ?? ""}<span>${LABELS[key] ?? ""}</span>`;
   r.append(lab, control);
   return r;
 }
@@ -126,7 +126,7 @@ function makeSeg(
   return seg;
 }
 
-const FEATURES: Record<FeatureKey, (prefs: Prefs, onChange: () => void) => HTMLElement> = {
+const FEATURES: Partial<Record<FeatureKey, (prefs: Prefs, onChange: () => void) => HTMLElement>> = {
   textSize: (prefs, onChange) => {
     const stepper = document.createElement("div");
     stepper.className = "mky-stepper";

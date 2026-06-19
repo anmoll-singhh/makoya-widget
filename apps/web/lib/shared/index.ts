@@ -36,7 +36,19 @@ export type FeatureKey =
   | "highlightLinks"
   | "bigCursor"
   | "readableFont"
-  | "hideImages";
+  | "hideImages"
+  | "saturation"
+  | "readingMask"
+  | "highlightTitles"
+  | "textAlign"
+  | "muteSounds"
+  | "readAloud";
+
+export type WidgetLauncherSize = "sm" | "md" | "lg";
+export type WidgetLanguage = "en" | "es" | "fr" | "de";
+export type WidgetProfileKey =
+  | "none" | "vision" | "low-vision" | "dyslexia"
+  | "adhd" | "seizure" | "senior" | "cognitive";
 
 export interface WidgetConfig {
   /** Public site id (lives in the <script> snippet — NOT a secret). */
@@ -53,6 +65,16 @@ export interface WidgetConfig {
   hideBranding: boolean;
   /** URL the "Powered by Makoya" link points to (your scanner = free leads). */
   brandingUrl: string;
+  /** Launcher button size. */
+  launcherSize: WidgetLauncherSize;
+  /** Profile auto-applied on a visitor's first open ("none" = no auto-apply). */
+  defaultProfile: WidgetProfileKey;
+  /** URL for the "Accessibility statement" link (empty = link hidden). */
+  accessibilityStatementUrl: string;
+  /** Default language for the widget's OWN labels. */
+  defaultLanguage: WidgetLanguage;
+  /** Optional custom panel title (paid). Empty = built-in localized title. */
+  panelTitle: string;
 }
 
 /** Safe defaults. The widget MUST render even if config never loads. */
@@ -62,18 +84,17 @@ export const DEFAULT_CONFIG: WidgetConfig = {
   position: "bottom-right",
   launcherIcon: "accessibility",
   featuresEnabled: [
-    "textSize",
-    "lineSpacing",
-    "contrast",
-    "stopMotion",
-    "readingRuler",
-    "highlightLinks",
-    "bigCursor",
-    "readableFont",
-    "hideImages",
+    "textSize","lineSpacing","contrast","stopMotion","readingRuler",
+    "highlightLinks","bigCursor","readableFont","hideImages",
+    "saturation","readingMask","highlightTitles","textAlign","muteSounds","readAloud",
   ],
   hideBranding: false,
   brandingUrl: "https://makoya.example/scan",
+  launcherSize: "md",
+  defaultProfile: "none",
+  accessibilityStatementUrl: "",
+  defaultLanguage: "en",
+  panelTitle: "",
 };
 
 /** Merge a partial config (from the network) over safe defaults. */

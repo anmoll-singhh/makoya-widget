@@ -1,6 +1,8 @@
 import "server-only";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import type { Plan, RequestStatus } from "@/lib/admin-constants";
+import { createSite } from "@/lib/sites";
+import { issueCountFromTotals } from "@/lib/issue-count-utils";
 
 /** id -> email for all auth users (paged). */
 async function emailMap(): Promise<Map<string, string>> {
@@ -17,9 +19,56 @@ async function emailMap(): Promise<Map<string, string>> {
   return map;
 }
 
+// Re-export for testing; defined in issue-count-utils to avoid server-only import issues.
+export { issueCountFromTotals };
+
+function generateTempPassword(): string {
+  // 16 url-safe chars; not security-critical (operator hands it over, user can reset).
+  const bytes = crypto.getRandomValues(new Uint8Array(12));
+  return "Mk-" + Buffer.from(bytes).toString("base64url");
+}
+
+/**
+ * Operator-led onboarding: ensure a Supabase auth user exists for `email`
+ * (idempotent), then create a site owned by them. Returns a handover payload
+ * the operator can give the client. No email vendor required.
+ */
+export async function createCustomer(args: { email: string; domain: string; plan?: Plan }): Promise<{
+  email: string; tempPassword: string; siteId: string; created: boolean;
+}> {
+  const admin = getAdminSupabase();
+  const email = args.email.trim().toLowerCase();
+  const tempPassword = generateTempPassword();
+
+  // Try to create; if the user already exists, find their id instead.
+  let userId: string | null = null;
+  let created = false;
+  const { data: createdData, error: createErr } = await admin.auth.admin.createUser({
+    email, password: tempPassword, email_confirm: true,
+  });
+  if (createdData?.user) { userId = createdData.user.id; created = true; }
+  else if (createErr) {
+    // Already registered → look the user up by paging the user list.
+    for (let page = 1; !userId; page++) {
+      const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+      if (error || !data?.users?.length) break;
+      const hit = data.users.find((u) => u.email?.toLowerCase() === email);
+      if (hit) userId = hit.id;
+      if (data.users.length < 1000) break;
+    }
+    if (!userId) throw createErr;
+  }
+  if (!userId) throw new Error("could not resolve user id for customer");
+
+  const site = await createSite(admin, userId, args.domain.trim());
+  if (args.plan && args.plan !== "free") await updateSitePlan(site.id, args.plan);
+  return { email, tempPassword: created ? tempPassword : "(existing user — unchanged)", siteId: site.id, created };
+}
+
 export interface AdminSiteRow {
   id: string; domain: string; plan: string; createdAt: string;
   ownerEmail: string; lastScanScore: number | null; openRequests: number;
+  latestScore: number | null; issueCount: number | null;
 }
 
 export async function listAdminSites(): Promise<AdminSiteRow[]> {
@@ -32,13 +81,16 @@ export async function listAdminSites(): Promise<AdminSiteRow[]> {
   // Per-site scan + open-count run in parallel across all sites (not serial).
   return Promise.all((sites ?? []).map(async (s) => {
     const [{ data: latest }, { count }] = await Promise.all([
-      admin.from("scans").select("score").eq("site_id", s.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      admin.from("scans").select("score, totals").eq("site_id", s.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
       admin.from("consultation_requests").select("id", { count: "exact", head: true }).eq("site_id", s.id).eq("status", "new"),
     ]);
     return {
       id: s.id, domain: s.domain, plan: s.plan, createdAt: s.created_at,
       ownerEmail: emails.get(s.owner_id) ?? "(unknown)",
-      lastScanScore: latest?.score ?? null, openRequests: count ?? 0,
+      lastScanScore: latest?.score ?? null,
+      latestScore: latest?.score ?? null,
+      issueCount: issueCountFromTotals(latest?.totals ?? null),
+      openRequests: count ?? 0,
     };
   }));
 }
