@@ -17,9 +17,10 @@
 - ✅ **Phase 2 Widget Customizer** — MERGED. shared launcher icons, sites/config data layer, config API (plan-gated), customize UI + live preview. E2E verified. Fast-follows pending (Phase 5): atomic site-create trigger, save-error UX, clipboard guard.
 - ✅ **Phase 3 Scanner** — MERGED. engine port, plain-language, /api/scan (auto+cached), cron, consultation funnel, report UI. E2E verified. **Critical SSRF found+fixed** (validateScanUrl wired in; 8 internal targets blocked). Minor hardening pending: octal/hex IP encodings.
 - ✅ **Phase 4 Admin CRM** — MERGED `main`. admin guard, cross-tenant data layer, plan + status mutation routes, customers list + site detail + requests inbox. E2E verified (admin reads/mutates, non-admin 403+redirect). Minors deferred to Phase 5.
-- 🔄 **Phase 5 Polish + Deploy prep** — IN PROGRESS on branch `phase-5-polish`. Plan: `docs/superpowers/plans/2026-06-19-makoya-phase5-polish.md`.
-  - Scope: env fail-fast in prod; admin perf+error fixes (getUserById, batch N+1, surface read errors); client res.ok feedback (PlanSelect/StatusSelect/ConfigEditor save); atomic site-create (DB trigger) ; SnippetBox clipboard guard; login loading state; REMOVE legacy `apps/dashboard`; `vercel.json` cron schedule; SETUP.md/README deploy doc; final whole-product QA + production build; frontend-design cohesion pass.
-  - On completion: final review → merge to main → write completion summary for the user. DEFERRED to user: email (Resend), Stripe, Supabase Auth redirect URLs, actual deploy logins (Vercel/Cloudflare).
+- ✅ **Phase 5 Polish + Deploy prep** — MERGED `main`. env fail-fast, atomic site-create trigger (applied), admin perf+errors, client error feedback, removed legacy `apps/dashboard`, `vercel.json` cron, deploy docs. FULL-PRODUCT E2E QA passed on the production build.
+
+## ✅ ALL 5 PHASES COMPLETE & MERGED TO main.
+Remaining = user-only deferred items (documented in SETUP.md): email vendor (Resend), Stripe billing, Supabase Auth redirect-URL config, actual deploy logins (Vercel app + Cloudflare widget CDN). Optional hardening backlog is in `.git/sdd/progress.md` (octal/hex IP encodings; getAdminSiteDetail parallelization; admin list error surfacing).
 
 ## Resume protocol
 1. `git branch --show-current` and `git log --oneline -15`.
