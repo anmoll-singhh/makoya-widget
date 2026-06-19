@@ -75,6 +75,7 @@ export function makeRuler(): { on(): void; off(): void } {
     },
 
     off() {
+      if (!el) return;
       window.removeEventListener("mousemove", move);
       el?.remove();
       el = null;
@@ -102,8 +103,8 @@ type MaskMode = "off" | "dim" | "tint";
  * set("tint") — uniform soft amber wash over the whole viewport; no moving
  *               band.  Useful for light-sensitivity / reading comfort.
  *
- * Both modes: pointer-events:none, aria-hidden, z-index 2147483646
- * (just below the widget host at 2147483647).
+ * Both modes: pointer-events:none, aria-hidden, z-index strictly below
+ * the widget host at 2147483647 — sheet at 2147483645, band/tint at 2147483646.
  *
  * Switching modes tears down the previous mode first — no leaks.
  */
@@ -143,7 +144,7 @@ export function makeMask(): { set(mode: MaskMode): void } {
       "width:100%",
       "height:100%",
       "pointer-events:none",
-      "z-index:2147483646",
+      "z-index:2147483645",
       extraCss,
     ].join(";");
     return el;
@@ -172,7 +173,7 @@ export function makeMask(): { set(mode: MaskMode): void } {
             "top:0", // overridden immediately by onMove
             "width:100%",
             "background:transparent",
-            `z-index:2147483647`, // above the sheet; still below widget root (same z, widget wins via DOM order on <html>)
+            `z-index:2147483646`, // above the sheet (2147483645); strictly below widget root (2147483647)
           ].join(";")
         );
         // Reset 100% height set by makeOverlayEl for the band
@@ -187,7 +188,12 @@ export function makeMask(): { set(mode: MaskMode): void } {
       }
 
       if (mode === "tint") {
-        tintEl = makeOverlayEl("background:rgba(255,250,200,.18)");
+        tintEl = makeOverlayEl(
+          [
+            "background:rgba(255,250,200,.18)",
+            "z-index:2147483646", // override default sheet z-index to match band level
+          ].join(";")
+        );
         document.documentElement.appendChild(tintEl);
         return;
       }
