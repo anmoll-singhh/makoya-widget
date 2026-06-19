@@ -2,165 +2,224 @@
  * ui.ts
  *
  * Builds the launcher button + settings panel inside a Shadow DOM root.
- * Shadow DOM = an isolated mini-document: the host site's CSS can't leak in
- * and break our panel, and our CSS can't leak out and break their site.
+ * Shadow DOM isolates our CSS from the host page (and vice versa).
  *
- * Accessibility of the widget itself matters (a lot of widgets fail here):
- * the button is a real <button>, the panel toggles are real controls with
- * aria-pressed, Esc closes, focus moves into the panel on open and back to
- * the button on close.
+ * Accessibility is first-class: real <button>s, role="switch" + aria-pressed,
+ * Esc closes, focus moves into the panel on open and back to the button on close,
+ * and prefers-reduced-motion is respected.
  */
 
 import { LAUNCHER_ICONS, type WidgetConfig, type FeatureKey } from "@makoya/shared";
 import { Prefs, loadPrefs, savePrefs, applyPrefs } from "../core/state";
 
-interface FeatureMeta {
-  key: FeatureKey;
-  label: string;
-  /** Renders the control for this feature and wires it to prefs. */
-  render: (prefs: Prefs, onChange: () => void) => HTMLElement;
+/** Small inline icons (stroke, currentColor) shown beside each control. */
+const ICON: Record<FeatureKey, string> = {
+  textSize: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>`,
+  lineSpacing: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>`,
+  contrast: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg>`,
+  stopMotion: `<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>`,
+  readingRuler: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="9" width="18" height="6" rx="1.5"/><path d="M7.5 9v3M12 9v3M16.5 9v3"/></svg>`,
+  highlightLinks: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.07 0l2-2a5 5 0 0 0-7.07-7.07l-1 1"/><path d="M14 11a5 5 0 0 0-7.07 0l-2 2A5 5 0 0 0 12 20.07l1-1"/></svg>`,
+  bigCursor: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M5 3l6.5 17 2.2-7.3L21 10.5 5 3z"/></svg>`,
+};
+
+const LABELS: Record<FeatureKey, string> = {
+  textSize: "Text size",
+  lineSpacing: "More spacing",
+  contrast: "Contrast",
+  stopMotion: "Pause animations",
+  readingRuler: "Reading ruler",
+  highlightLinks: "Highlight links",
+  bigCursor: "Big cursor",
+};
+
+const TEXT_LEVELS = ["100%", "112%", "125%", "140%"];
+
+/** A row wrapper: icon + label on the left, control on the right. */
+function row(key: FeatureKey, control: HTMLElement): HTMLElement {
+  const r = document.createElement("div");
+  r.className = "mky-row";
+  const lab = document.createElement("span");
+  lab.className = "mky-label";
+  lab.innerHTML = `${ICON[key]}<span>${LABELS[key]}</span>`;
+  r.append(lab, control);
+  return r;
 }
 
-/** Builds a simple on/off toggle button with aria-pressed. */
-function toggle(
-  label: string,
-  isOn: () => boolean,
-  set: (v: boolean) => void,
-  onChange: () => void
-): HTMLElement {
-  const btn = document.createElement("button");
-  btn.className = "mky-toggle";
-  btn.type = "button";
-  btn.textContent = label;
-  btn.setAttribute("aria-pressed", String(isOn()));
-  btn.addEventListener("click", () => {
+/** Modern on/off switch (role=switch, aria-pressed). */
+function makeSwitch(label: string, isOn: () => boolean, set: (v: boolean) => void, onChange: () => void): HTMLElement {
+  const b = document.createElement("button");
+  b.className = "mky-switch";
+  b.type = "button";
+  b.setAttribute("role", "switch");
+  b.setAttribute("aria-label", label);
+  b.setAttribute("aria-pressed", String(isOn()));
+  b.addEventListener("click", () => {
     set(!isOn());
-    btn.setAttribute("aria-pressed", String(isOn()));
+    b.setAttribute("aria-pressed", String(isOn()));
     onChange();
   });
-  return btn;
+  return b;
 }
 
-const FEATURES: Record<FeatureKey, FeatureMeta> = {
-  textSize: {
-    key: "textSize",
-    label: "Text size",
-    render: (prefs, onChange) => {
-      const wrap = document.createElement("div");
-      wrap.className = "mky-row";
-      const lbl = document.createElement("span");
-      lbl.textContent = "Text size";
-      const dec = document.createElement("button");
-      dec.className = "mky-step";
-      dec.type = "button";
-      dec.textContent = "A−";
-      dec.setAttribute("aria-label", "Decrease text size");
-      const inc = document.createElement("button");
-      inc.className = "mky-step";
-      inc.type = "button";
-      inc.textContent = "A+";
-      inc.setAttribute("aria-label", "Increase text size");
-      dec.addEventListener("click", () => {
-        prefs.text = Math.max(0, prefs.text - 1) as Prefs["text"];
-        onChange();
-      });
-      inc.addEventListener("click", () => {
-        prefs.text = Math.min(3, prefs.text + 1) as Prefs["text"];
-        onChange();
-      });
-      wrap.append(lbl, dec, inc);
-      return wrap;
-    },
-  },
-  lineSpacing: {
-    key: "lineSpacing",
-    label: "More spacing",
-    render: (prefs, onChange) =>
-      toggle("More spacing", () => prefs.spacing, (v) => (prefs.spacing = v), onChange),
-  },
-  contrast: {
-    key: "contrast",
-    label: "Contrast",
-    render: (prefs, onChange) => {
-      const wrap = document.createElement("div");
-      wrap.className = "mky-row";
-      const lbl = document.createElement("span");
-      lbl.textContent = "Contrast";
-      const cycle = document.createElement("button");
-      cycle.className = "mky-toggle";
-      cycle.type = "button";
-      const labels = { off: "Off", on: "Boost", dark: "Dark" } as const;
-      const paint = () => (cycle.textContent = labels[prefs.contrast]);
+/** Segmented control (one active option). */
+function makeSeg(
+  opts: { label: string; isActive: () => boolean; set: () => void }[],
+  onChange: () => void
+): HTMLElement {
+  const seg = document.createElement("div");
+  seg.className = "mky-seg";
+  const btns: HTMLButtonElement[] = [];
+  const paint = () => btns.forEach((b, i) => b.setAttribute("aria-pressed", String(opts[i].isActive())));
+  opts.forEach((o) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = o.label;
+    b.setAttribute("aria-pressed", String(o.isActive()));
+    b.addEventListener("click", () => {
+      o.set();
       paint();
-      cycle.addEventListener("click", () => {
-        prefs.contrast =
-          prefs.contrast === "off" ? "on" : prefs.contrast === "on" ? "dark" : "off";
-        paint();
-        onChange();
-      });
-      wrap.append(lbl, cycle);
-      return wrap;
-    },
+      onChange();
+    });
+    btns.push(b);
+    seg.appendChild(b);
+  });
+  return seg;
+}
+
+const FEATURES: Record<FeatureKey, (prefs: Prefs, onChange: () => void) => HTMLElement> = {
+  textSize: (prefs, onChange) => {
+    const stepper = document.createElement("div");
+    stepper.className = "mky-stepper";
+    const dec = document.createElement("button");
+    dec.className = "mky-step";
+    dec.type = "button";
+    dec.textContent = "A";
+    dec.style.fontSize = "12px";
+    dec.setAttribute("aria-label", "Decrease text size");
+    const val = document.createElement("span");
+    val.className = "mky-stepval";
+    const inc = document.createElement("button");
+    inc.className = "mky-step";
+    inc.type = "button";
+    inc.textContent = "A";
+    inc.style.fontSize = "17px";
+    inc.setAttribute("aria-label", "Increase text size");
+    const paint = () => (val.textContent = TEXT_LEVELS[prefs.text]);
+    paint();
+    dec.addEventListener("click", () => {
+      prefs.text = Math.max(0, prefs.text - 1) as Prefs["text"];
+      paint();
+      onChange();
+    });
+    inc.addEventListener("click", () => {
+      prefs.text = Math.min(3, prefs.text + 1) as Prefs["text"];
+      paint();
+      onChange();
+    });
+    stepper.append(dec, val, inc);
+    return row("textSize", stepper);
   },
-  stopMotion: {
-    key: "stopMotion",
-    label: "Stop motion",
-    render: (prefs, onChange) =>
-      toggle("Stop animations", () => prefs.stopMotion, (v) => (prefs.stopMotion = v), onChange),
-  },
-  readingRuler: {
-    key: "readingRuler",
-    label: "Reading ruler",
-    render: (prefs, onChange) =>
-      toggle("Reading ruler", () => prefs.ruler, (v) => (prefs.ruler = v), onChange),
-  },
-  highlightLinks: {
-    key: "highlightLinks",
-    label: "Highlight links",
-    render: (prefs, onChange) =>
-      toggle("Highlight links", () => prefs.links, (v) => (prefs.links = v), onChange),
-  },
-  bigCursor: {
-    key: "bigCursor",
-    label: "Big cursor",
-    render: (prefs, onChange) =>
-      toggle("Big cursor", () => prefs.cursor, (v) => (prefs.cursor = v), onChange),
-  },
+  lineSpacing: (prefs, onChange) =>
+    row("lineSpacing", makeSwitch("More spacing", () => prefs.spacing, (v) => (prefs.spacing = v), onChange)),
+  contrast: (prefs, onChange) =>
+    row(
+      "contrast",
+      makeSeg(
+        [
+          { label: "Off", isActive: () => prefs.contrast === "off", set: () => (prefs.contrast = "off") },
+          { label: "Boost", isActive: () => prefs.contrast === "on", set: () => (prefs.contrast = "on") },
+          { label: "Dark", isActive: () => prefs.contrast === "dark", set: () => (prefs.contrast = "dark") },
+        ],
+        onChange
+      )
+    ),
+  stopMotion: (prefs, onChange) =>
+    row("stopMotion", makeSwitch("Pause animations", () => prefs.stopMotion, (v) => (prefs.stopMotion = v), onChange)),
+  readingRuler: (prefs, onChange) =>
+    row("readingRuler", makeSwitch("Reading ruler", () => prefs.ruler, (v) => (prefs.ruler = v), onChange)),
+  highlightLinks: (prefs, onChange) =>
+    row("highlightLinks", makeSwitch("Highlight links", () => prefs.links, (v) => (prefs.links = v), onChange)),
+  bigCursor: (prefs, onChange) =>
+    row("bigCursor", makeSwitch("Big cursor", () => prefs.cursor, (v) => (prefs.cursor = v), onChange)),
 };
 
 const PANEL_CSS = (color: string) => `
 :host { all: initial; }
+*, *::before, *::after { box-sizing: border-box; }
 .mky-btn {
   position: fixed; z-index: 2147483647;
-  width: 52px; height: 52px; border-radius: 50%;
+  width: 56px; height: 56px; border-radius: 50%;
   background: ${color}; color: #fff; border: none; cursor: pointer;
-  box-shadow: 0 2px 10px rgba(0,0,0,.25);
-  font: 600 13px system-ui, sans-serif; display: grid; place-items: center;
+  display: grid; place-items: center;
+  box-shadow: 0 10px 26px -8px rgba(0,0,0,.45), 0 2px 6px rgba(0,0,0,.18);
+  transition: transform .18s cubic-bezier(.2,.8,.2,1), box-shadow .18s ease;
+  -webkit-tap-highlight-color: transparent;
 }
-.mky-btn:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.mky-btn:hover { transform: scale(1.06); }
+.mky-btn:active { transform: scale(.95); }
+.mky-btn:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 .mky-btn svg { width: 28px; height: 28px; }
+
 .mky-panel {
   position: fixed; z-index: 2147483647;
-  width: 280px; max-width: calc(100vw - 24px);
-  background: #fff; color: #111; border-radius: 12px;
-  box-shadow: 0 8px 30px rgba(0,0,0,.25);
-  font: 14px system-ui, sans-serif; padding: 14px; display: none;
+  width: 340px; max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 108px); overflow-y: auto;
+  background: #fff; color: #0f172a;
+  border-radius: 20px;
+  border: 1px solid rgba(15,23,42,.08);
+  box-shadow: 0 28px 64px -16px rgba(0,0,0,.32), 0 8px 24px -10px rgba(0,0,0,.2);
+  font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transform: translateY(10px) scale(.985);
+  transition: opacity .2s ease, transform .2s cubic-bezier(.2,.8,.2,1), visibility .2s;
 }
-.mky-panel.open { display: block; }
-.mky-panel h2 { font-size: 14px; margin: 0 0 10px; }
-.mky-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0; }
-.mky-toggle, .mky-step {
-  border: 1px solid #d1d5db; background: #f9fafb; color: #111;
-  border-radius: 8px; padding: 6px 10px; cursor: pointer; font: inherit;
-}
-.mky-toggle[aria-pressed="true"] { background: ${color}; color: #fff; border-color: ${color}; }
-.mky-toggle:focus-visible, .mky-step:focus-visible { outline: 2px solid ${color}; outline-offset: 2px; }
-.mky-reset { width: 100%; margin-top: 10px; padding: 8px; border: none; border-radius: 8px; background: #111; color: #fff; cursor: pointer; font: inherit; }
-.mky-brand { margin-top: 10px; font-size: 11px; color: #6b7280; text-align: center; }
-.mky-brand a { color: #6b7280; }
-.mky-note { font-size: 11px; color: #6b7280; margin: 8px 0 0; }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+.mky-panel.open { opacity: 1; visibility: visible; pointer-events: auto; transform: none; }
+
+.mky-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 16px 18px 14px; border-bottom: 1px solid rgba(15,23,42,.07); }
+.mky-title { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: -.01em; color: #0f172a; }
+.mky-sub { margin: 2px 0 0; font-size: 12px; color: #64748b; }
+.mky-close { width: 30px; height: 30px; flex: none; border: none; background: transparent; color: #64748b; border-radius: 9px; cursor: pointer; display: grid; place-items: center; transition: background .15s, color .15s; }
+.mky-close:hover { background: #f1f5f9; color: #0f172a; }
+.mky-close:focus-visible { outline: 2px solid ${color}; outline-offset: 1px; }
+.mky-close svg { width: 18px; height: 18px; }
+
+.mky-body { padding: 8px 10px; }
+.mky-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 8px; border-radius: 12px; transition: background .15s; }
+.mky-row:hover { background: #f8fafc; }
+.mky-label { display: flex; align-items: center; gap: 11px; font-weight: 500; color: #1e293b; }
+.mky-label svg { width: 18px; height: 18px; color: #64748b; flex: none; }
+
+.mky-switch { position: relative; width: 42px; height: 24px; flex: none; border: none; border-radius: 999px; background: #e2e8f0; cursor: pointer; padding: 0; transition: background .2s; }
+.mky-switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .2s cubic-bezier(.2,.8,.2,1); }
+.mky-switch[aria-pressed="true"] { background: ${color}; }
+.mky-switch[aria-pressed="true"]::after { transform: translateX(18px); }
+.mky-switch:focus-visible { outline: 2px solid ${color}; outline-offset: 2px; }
+
+.mky-seg { display: inline-flex; background: #f1f5f9; border-radius: 11px; padding: 3px; gap: 2px; }
+.mky-seg button { border: none; background: transparent; color: #475569; padding: 5px 11px; border-radius: 8px; cursor: pointer; font: inherit; font-weight: 500; transition: background .15s, color .15s; }
+.mky-seg button[aria-pressed="true"] { background: #fff; color: ${color}; font-weight: 700; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.mky-seg button:focus-visible { outline: 2px solid ${color}; outline-offset: 1px; }
+
+.mky-stepper { display: inline-flex; align-items: center; gap: 6px; }
+.mky-step { width: 30px; height: 30px; flex: none; border: 1px solid #e2e8f0; border-radius: 9px; background: #fff; color: #1e293b; font: inherit; font-weight: 700; cursor: pointer; display: grid; place-items: center; transition: background .15s; }
+.mky-step:hover { background: #f8fafc; }
+.mky-step:focus-visible { outline: 2px solid ${color}; outline-offset: 1px; }
+.mky-stepval { min-width: 46px; text-align: center; font-weight: 600; font-size: 13px; color: #475569; font-variant-numeric: tabular-nums; }
+
+.mky-foot { padding: 12px 18px 16px; border-top: 1px solid rgba(15,23,42,.07); }
+.mky-reset { width: 100%; padding: 9px; border: 1px solid #e2e8f0; border-radius: 11px; background: #fff; color: #334155; font: inherit; font-weight: 600; cursor: pointer; transition: background .15s; }
+.mky-reset:hover { background: #f8fafc; }
+.mky-reset:focus-visible { outline: 2px solid ${color}; outline-offset: 1px; }
+.mky-note { margin: 11px 2px 0; font-size: 11px; line-height: 1.45; color: #94a3b8; text-align: center; }
+.mky-brand { margin: 9px 0 0; font-size: 11px; color: #94a3b8; text-align: center; }
+.mky-brand a { color: #64748b; text-decoration: none; font-weight: 600; }
+.mky-brand a:hover { text-decoration: underline; }
+
+@media (prefers-reduced-motion: reduce) { .mky-btn, .mky-panel, .mky-switch::after { transition: none !important; } }
 `;
+
+const CLOSE_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>`;
 
 const POSITIONS: Record<string, string> = {
   "bottom-right": "bottom:16px; right:16px;",
@@ -181,7 +240,7 @@ function makeRuler(): { on: () => void; off: () => void } {
       el = document.createElement("div");
       el.setAttribute("aria-hidden", "true");
       el.style.cssText =
-        "position:fixed;left:0;width:100vw;height:28px;background:rgba(0,0,0,.08);border-top:2px solid rgba(0,0,0,.4);border-bottom:2px solid rgba(0,0,0,.4);pointer-events:none;z-index:2147483646;transform:translateY(-14px);";
+        "position:fixed;left:0;width:100vw;height:28px;background:rgba(0,0,0,.06);border-top:2px solid rgba(0,0,0,.45);border-bottom:2px solid rgba(0,0,0,.45);pointer-events:none;z-index:2147483646;transform:translateY(-14px);";
       document.body.appendChild(el);
       window.addEventListener("mousemove", move);
     },
@@ -193,7 +252,7 @@ function makeRuler(): { on: () => void; off: () => void } {
   };
 }
 
-/** Mounts the full widget UI and returns nothing (self-contained). */
+/** Mounts the full widget UI (self-contained). */
 export function mountUI(config: WidgetConfig): void {
   const host = document.createElement("div");
   host.id = "makoya-widget-root";
@@ -206,11 +265,12 @@ export function mountUI(config: WidgetConfig): void {
 
   const prefs = loadPrefs();
   const ruler = makeRuler();
+  const corner = POSITIONS[config.position] ?? POSITIONS["bottom-right"];
 
   // Launcher button
   const btn = document.createElement("button");
   btn.className = "mky-btn";
-  btn.style.cssText = POSITIONS[config.position] ?? POSITIONS["bottom-right"];
+  btn.style.cssText = corner;
   btn.setAttribute("aria-label", "Accessibility options");
   btn.setAttribute("aria-expanded", "false");
   btn.innerHTML = LAUNCHER_ICONS[config.launcherIcon] ?? LAUNCHER_ICONS.accessibility;
@@ -220,14 +280,9 @@ export function mountUI(config: WidgetConfig): void {
   panel.className = "mky-panel";
   panel.setAttribute("role", "dialog");
   panel.setAttribute("aria-label", "Accessibility options");
-  panel.style.cssText = POSITIONS[config.position] ?? POSITIONS["bottom-right"];
-  // nudge the panel above the button
-  panel.style.bottom = config.position.startsWith("bottom") ? "80px" : "";
-  panel.style.top = config.position.startsWith("top") ? "80px" : "";
-
-  const heading = document.createElement("h2");
-  heading.textContent = "Accessibility options";
-  panel.appendChild(heading);
+  panel.style.cssText = corner;
+  panel.style.bottom = config.position.startsWith("bottom") ? "84px" : "";
+  panel.style.top = config.position.startsWith("top") ? "84px" : "";
 
   const apply = () => {
     applyPrefs(prefs);
@@ -235,75 +290,78 @@ export function mountUI(config: WidgetConfig): void {
     savePrefs(prefs);
   };
 
-  // Render only the features this site enabled, in order.
-  for (const key of config.featuresEnabled) {
-    const meta = FEATURES[key];
-    if (meta) panel.appendChild(meta.render(prefs, apply));
-  }
+  // ---- header
+  const head = document.createElement("div");
+  head.className = "mky-head";
+  const titleWrap = document.createElement("div");
+  const h2 = document.createElement("h2");
+  h2.className = "mky-title";
+  h2.textContent = "Accessibility";
+  const sub = document.createElement("p");
+  sub.className = "mky-sub";
+  sub.textContent = "Adjust this page to your needs";
+  titleWrap.append(h2, sub);
+  const close = document.createElement("button");
+  close.className = "mky-close";
+  close.type = "button";
+  close.setAttribute("aria-label", "Close");
+  close.innerHTML = CLOSE_ICON;
+  head.append(titleWrap, close);
 
+  // ---- body (enabled features only)
+  const body = document.createElement("div");
+  body.className = "mky-body";
+  const renderBody = () => {
+    body.innerHTML = "";
+    for (const key of config.featuresEnabled) {
+      const build = FEATURES[key];
+      if (build) body.appendChild(build(prefs, apply));
+    }
+  };
+  renderBody();
+
+  // ---- footer
+  const foot = document.createElement("div");
+  foot.className = "mky-foot";
   const reset = document.createElement("button");
   reset.className = "mky-reset";
   reset.type = "button";
   reset.textContent = "Reset all";
   reset.addEventListener("click", () => {
     Object.assign(prefs, {
-      text: 0, spacing: false, contrast: "off", stopMotion: false,
-      ruler: false, links: false, cursor: false,
+      text: 0, spacing: false, contrast: "off", stopMotion: false, ruler: false, links: false, cursor: false,
     });
     apply();
-    // re-render toggle states cheaply by reloading the panel
-    rebuild();
+    renderBody();
   });
-  panel.appendChild(reset);
-
   const note = document.createElement("p");
   note.className = "mky-note";
-  note.textContent = "Adjusts your view only. It does not change the website's code.";
-  panel.appendChild(note);
-
+  note.textContent = "Changes affect your view only — they don't alter the website.";
+  foot.append(reset, note);
   if (!config.hideBranding) {
     const brand = document.createElement("p");
     brand.className = "mky-brand";
     brand.innerHTML = `Powered by <a href="${config.brandingUrl}" target="_blank" rel="noopener">Makoya</a>`;
-    panel.appendChild(brand);
+    foot.appendChild(brand);
   }
 
-  // Open/close logic with focus management
+  panel.append(head, body, foot);
+
+  // open/close with focus management
   let open = false;
   const setOpen = (v: boolean) => {
     open = v;
     panel.classList.toggle("open", v);
     btn.setAttribute("aria-expanded", String(v));
-    if (v) (panel.querySelector("button") as HTMLButtonElement)?.focus();
+    if (v) close.focus();
     else btn.focus();
   };
   btn.addEventListener("click", () => setOpen(!open));
+  close.addEventListener("click", () => setOpen(false));
   shadow.addEventListener("keydown", (e) => {
     if ((e as KeyboardEvent).key === "Escape" && open) setOpen(false);
   });
 
-  // Rebuild panel contents (used after Reset) without remounting host.
-  function rebuild() {
-    // Re-sync aria-pressed by re-rendering feature controls.
-    const heading2 = panel.querySelector("h2");
-    panel.innerHTML = "";
-    if (heading2) panel.appendChild(heading2);
-    for (const key of config.featuresEnabled) {
-      const meta = FEATURES[key];
-      if (meta) panel.appendChild(meta.render(prefs, apply));
-    }
-    panel.appendChild(reset);
-    panel.appendChild(note);
-    if (!config.hideBranding) {
-      const brand = document.createElement("p");
-      brand.className = "mky-brand";
-      brand.innerHTML = `Powered by <a href="${config.brandingUrl}" target="_blank" rel="noopener">Makoya</a>`;
-      panel.appendChild(brand);
-    }
-  }
-
   shadow.append(btn, panel);
-
-  // Apply saved prefs immediately on load.
   apply();
 }
