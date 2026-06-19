@@ -9,3 +9,9 @@ dist/
 .keys.tmp.json
 .keys.err
 *.tmp.json
+*.tsbuildinfo
+supabase/.temp/
+supabase/.branches/
+# local verification scaffolding (never commit)
+apps/web/_*.mjs
+apps/web/_*.txt
