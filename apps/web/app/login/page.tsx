@@ -32,7 +32,7 @@ export default function LoginPage() {
           <div className="rounded-3xl border border-neutral-200 bg-white p-8 shadow-sm">
             <h1 className="font-display text-2xl font-bold tracking-tight text-neutral-900">Welcome back</h1>
             <p className="mt-1.5 text-sm text-neutral-500">
-              Enter your email and we&apos;ll send you a secure sign-in link — no password to remember.
+              Sign in with your email and password — or get a one-tap magic link instead.
             </p>
             <LoginForm />
           </div>
