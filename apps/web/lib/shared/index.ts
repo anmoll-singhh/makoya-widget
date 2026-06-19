@@ -47,8 +47,8 @@ export type FeatureKey =
 export type WidgetLauncherSize = "sm" | "md" | "lg";
 export type WidgetLanguage = "en" | "es" | "fr" | "de";
 export type WidgetProfileKey =
-  | "none" | "vision" | "low-vision" | "dyslexia"
-  | "adhd" | "seizure" | "senior" | "cognitive";
+  | "none" | "vision" | "lowVision" | "dyslexia"
+  | "adhd" | "seizure" | "senior" | "cognitive" | "colorBlind";
 
 export interface WidgetConfig {
   /** Public site id (lives in the <script> snippet — NOT a secret). */
