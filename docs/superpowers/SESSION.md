@@ -16,12 +16,10 @@
 - ✅ **Phase 1 Foundation** — MERGED `main`. auth (magic-link), role gating, 4-table schema+RLS. E2E verified.
 - ✅ **Phase 2 Widget Customizer** — MERGED. shared launcher icons, sites/config data layer, config API (plan-gated), customize UI + live preview. E2E verified. Fast-follows pending (Phase 5): atomic site-create trigger, save-error UX, clipboard guard.
 - ✅ **Phase 3 Scanner** — MERGED. engine port, plain-language, /api/scan (auto+cached), cron, consultation funnel, report UI. E2E verified. **Critical SSRF found+fixed** (validateScanUrl wired in; 8 internal targets blocked). Minor hardening pending: octal/hex IP encodings.
-- 🔄 **Phase 4 Admin CRM** — IN PROGRESS on branch `phase-4-admin-crm`. Plan: `docs/superpowers/plans/2026-06-19-makoya-phase4-admin-crm.md`.
-  - T1 admin constants + guard — ✅ done+reviewed (commit 66a5283).
-  - T2 admin data layer — **NEXT** (base 66a5283; brief at `.git/sdd/task-2-brief.md`).
-  - T3 mutation routes, T4 customers list+detail, T5 requests inbox — pending.
-  - After T5: E2E QA (admin sees data, change plan/status, non-admin blocked) → opus final review → merge to main.
-- ⬜ **Phase 5 Polish + Deploy prep** — NOT STARTED. Design pass (ui-ux-pro-max/frontend-design), apply logged fast-follow minors, remove old `apps/dashboard`, env fail-fast in prod, `vercel.json` cron config + deploy prep + SETUP.md, final whole-product QA.
+- ✅ **Phase 4 Admin CRM** — MERGED `main`. admin guard, cross-tenant data layer, plan + status mutation routes, customers list + site detail + requests inbox. E2E verified (admin reads/mutates, non-admin 403+redirect). Minors deferred to Phase 5.
+- 🔄 **Phase 5 Polish + Deploy prep** — IN PROGRESS on branch `phase-5-polish`. Plan: `docs/superpowers/plans/2026-06-19-makoya-phase5-polish.md`.
+  - Scope: env fail-fast in prod; admin perf+error fixes (getUserById, batch N+1, surface read errors); client res.ok feedback (PlanSelect/StatusSelect/ConfigEditor save); atomic site-create (DB trigger) ; SnippetBox clipboard guard; login loading state; REMOVE legacy `apps/dashboard`; `vercel.json` cron schedule; SETUP.md/README deploy doc; final whole-product QA + production build; frontend-design cohesion pass.
+  - On completion: final review → merge to main → write completion summary for the user. DEFERRED to user: email (Resend), Stripe, Supabase Auth redirect URLs, actual deploy logins (Vercel/Cloudflare).
 
 ## Resume protocol
 1. `git branch --show-current` and `git log --oneline -15`.

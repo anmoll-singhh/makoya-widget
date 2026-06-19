@@ -8,7 +8,12 @@ export const maxDuration = 60;
 const STALE_MS = 7 * 24 * 60 * 60 * 1000;
 
 export async function GET(req: Request) {
-  if (req.headers.get("x-cron-secret") !== process.env.CRON_SECRET) {
+  // Vercel Cron sends `Authorization: Bearer ${CRON_SECRET}`. Also accept an
+  // `x-cron-secret` header for manual invocation. Fail closed if CRON_SECRET is unset.
+  const expected = process.env.CRON_SECRET;
+  const auth = req.headers.get("authorization");
+  const headerSecret = req.headers.get("x-cron-secret");
+  if (!expected || (auth !== `Bearer ${expected}` && headerSecret !== expected)) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
   const admin = getAdminSupabase();

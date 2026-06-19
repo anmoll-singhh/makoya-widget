@@ -24,11 +24,12 @@ export function ConfigEditor({ siteId, plan, initial }: { siteId: string; plan: 
   const [cfg, setCfg] = useState<SiteConfig>(initial);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState(false);
   const canHideBranding = plan !== "free";
 
   function set<K extends keyof SiteConfig>(k: K, v: SiteConfig[K]) {
     setCfg((c) => ({ ...c, [k]: v }));
-    setSaved(false);
+    setSaved(false); setSaveError(false);
   }
   function toggleFeature(k: FeatureKey) {
     setCfg((c) => ({
@@ -37,17 +38,18 @@ export function ConfigEditor({ siteId, plan, initial }: { siteId: string; plan: 
         ? c.featuresEnabled.filter((f) => f !== k)
         : [...c.featuresEnabled, k],
     }));
-    setSaved(false);
+    setSaved(false); setSaveError(false);
   }
   async function save() {
-    setSaving(true);
+    setSaving(true); setSaveError(false);
     const res = await fetch(`/api/sites/${siteId}/config`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(cfg),
-    });
+    }).catch(() => null);
     setSaving(false);
-    if (res.ok) { setSaved(true); router.refresh(); }
+    if (res && res.ok) { setSaved(true); router.refresh(); }
+    else setSaveError(true);
   }
 
   return (
@@ -115,6 +117,7 @@ export function ConfigEditor({ siteId, plan, initial }: { siteId: string; plan: 
             {saving ? "Saving…" : "Save changes"}
           </button>
           {saved && <span className="text-sm text-green-600">Saved ✓</span>}
+          {saveError && <span className="text-sm text-red-600">Save failed — please try again</span>}
         </div>
       </div>
 

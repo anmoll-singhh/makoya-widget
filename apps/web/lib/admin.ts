@@ -24,23 +24,23 @@ export interface AdminSiteRow {
 
 export async function listAdminSites(): Promise<AdminSiteRow[]> {
   const admin = getAdminSupabase();
-  const [{ data: sites }, emails] = await Promise.all([
+  const [{ data: sites, error }, emails] = await Promise.all([
     admin.from("sites").select("id, owner_id, domain, plan, created_at").order("created_at", { ascending: false }),
     emailMap(),
   ]);
-  const rows: AdminSiteRow[] = [];
-  for (const s of sites ?? []) {
-    const { data: latest } = await admin.from("scans").select("score")
-      .eq("site_id", s.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
-    const { count } = await admin.from("consultation_requests")
-      .select("id", { count: "exact", head: true }).eq("site_id", s.id).eq("status", "new");
-    rows.push({
+  if (error) console.error("[admin] listAdminSites sites query:", error.message);
+  // Per-site scan + open-count run in parallel across all sites (not serial).
+  return Promise.all((sites ?? []).map(async (s) => {
+    const [{ data: latest }, { count }] = await Promise.all([
+      admin.from("scans").select("score").eq("site_id", s.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      admin.from("consultation_requests").select("id", { count: "exact", head: true }).eq("site_id", s.id).eq("status", "new"),
+    ]);
+    return {
       id: s.id, domain: s.domain, plan: s.plan, createdAt: s.created_at,
       ownerEmail: emails.get(s.owner_id) ?? "(unknown)",
       lastScanScore: latest?.score ?? null, openRequests: count ?? 0,
-    });
-  }
-  return rows;
+    };
+  }));
 }
 
 export interface AdminRequest {
@@ -55,16 +55,18 @@ export interface AdminSiteDetail {
 
 export async function getAdminSiteDetail(siteId: string): Promise<AdminSiteDetail | null> {
   const admin = getAdminSupabase();
-  const { data: s } = await admin.from("sites").select("id, owner_id, domain, plan, created_at").eq("id", siteId).maybeSingle();
+  const { data: s, error: sErr } = await admin.from("sites").select("id, owner_id, domain, plan, created_at").eq("id", siteId).maybeSingle();
+  if (sErr) console.error("[admin] getAdminSiteDetail site query:", sErr.message);
   if (!s) return null;
-  const emails = await emailMap();
+  // Resolve just this one owner's email (not the full user list).
+  const { data: ownerData } = await admin.auth.admin.getUserById(s.owner_id);
   const { data: scans } = await admin.from("scans").select("id, score, totals, created_at")
     .eq("site_id", siteId).order("created_at", { ascending: false }).limit(20);
   const { data: reqs } = await admin.from("consultation_requests").select("*")
     .eq("site_id", siteId).order("created_at", { ascending: false });
   return {
     id: s.id, domain: s.domain, plan: s.plan, createdAt: s.created_at,
-    ownerEmail: emails.get(s.owner_id) ?? "(unknown)",
+    ownerEmail: ownerData?.user?.email ?? "(unknown)",
     scans: (scans ?? []).map((x) => ({ id: x.id, score: x.score, totals: x.totals, createdAt: x.created_at })),
     requests: (reqs ?? []).map((r) => ({ id: r.id, siteId: r.site_id, siteDomain: s.domain, type: r.type, status: r.status, note: r.note, createdAt: r.created_at })),
   };
