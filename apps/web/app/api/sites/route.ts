@@ -27,7 +27,8 @@ export async function POST(req: Request) {
   try {
     const site = await createSite(supabase, user.id, domain);
     return NextResponse.json(site, { status: 201 });
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? "failed to create site" }, { status: 500 });
+  } catch {
+    // Generic message — don't echo raw DB/library errors to the client.
+    return NextResponse.json({ error: "Could not create the site. Please try again." }, { status: 500 });
   }
 }
