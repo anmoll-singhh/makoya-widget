@@ -36,16 +36,18 @@ html[data-mky-images="off"] video {
   opacity: 0 !important;
 }
 
-html[data-mky-contrast="on"] { filter: contrast(1.18); }
-html[data-mky-contrast="dark"] { filter: invert(1) hue-rotate(180deg); background: #fff; }
-html[data-mky-contrast="dark"] img,
-html[data-mky-contrast="dark"] video,
-html[data-mky-contrast="dark"] picture,
-html[data-mky-contrast="dark"] [style*="background-image"] {
+/* Contrast filters are applied to BODY (not html). A filter on an ancestor
+   breaks position:fixed for its descendants — the widget is mounted on <html>
+   (outside body), so the page's filter never re-anchors or hides it. */
+html[data-mky-contrast="on"] body { filter: contrast(1.18); }
+html[data-mky-contrast="dark"] { background: #000; }
+html[data-mky-contrast="dark"] body { filter: invert(1) hue-rotate(180deg); background: #fff; }
+html[data-mky-contrast="dark"] body img,
+html[data-mky-contrast="dark"] body video,
+html[data-mky-contrast="dark"] body picture,
+html[data-mky-contrast="dark"] body [style*="background-image"] {
   filter: invert(1) hue-rotate(180deg);
 }
-/* Keep the widget itself un-inverted while the page is in dark mode. */
-html[data-mky-contrast="dark"] #makoya-widget-root { filter: invert(1) hue-rotate(180deg); }
 
 html[data-mky-motion="off"] *,
 html[data-mky-motion="off"] *::before,

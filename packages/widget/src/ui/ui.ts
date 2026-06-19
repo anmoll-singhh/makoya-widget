@@ -269,7 +269,7 @@ function makeRuler(): { on: () => void; off: () => void } {
       el.setAttribute("aria-hidden", "true");
       el.style.cssText =
         "position:fixed;left:0;width:100vw;height:28px;background:rgba(0,0,0,.06);border-top:2px solid rgba(0,0,0,.45);border-bottom:2px solid rgba(0,0,0,.45);pointer-events:none;z-index:2147483646;transform:translateY(-14px);";
-      document.body.appendChild(el);
+      document.documentElement.appendChild(el);
       window.addEventListener("mousemove", move);
     },
     off() {
@@ -285,7 +285,9 @@ export function mountUI(config: WidgetConfig): void {
   const host = document.createElement("div");
   host.id = "makoya-widget-root";
   const shadow = host.attachShadow({ mode: "open" });
-  document.body.appendChild(host);
+  // Mount on <html> (not body) so a page contrast/dark filter on body can't
+  // re-anchor or hide the widget's fixed-position button/panel.
+  document.documentElement.appendChild(host);
 
   const style = document.createElement("style");
   style.textContent = PANEL_CSS(config.primaryColor);
