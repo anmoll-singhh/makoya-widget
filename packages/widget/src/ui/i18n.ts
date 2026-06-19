@@ -87,6 +87,10 @@ export type StringKey =
   | "opt_black"
   | "opt_white"
 
+  // Stepper button aria-labels
+  | "decrease"
+  | "increase"
+
   // Footer / misc
   | "reset"
   | "note"
@@ -154,6 +158,9 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     opt_black: "Black",
     opt_white: "White",
 
+    decrease: "Decrease",
+    increase: "Increase",
+
     reset: "Reset all",
     note: "Changes affect your view only — they don't alter the website.",
     poweredBy: "Powered by",
@@ -213,6 +220,9 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     opt_tint: "Tinte",
     opt_black: "Negro",
     opt_white: "Blanco",
+
+    decrease: "Disminuir",
+    increase: "Aumentar",
 
     reset: "Restablecer todo",
     note: "Los cambios solo afectan tu vista — no modifican el sitio web.",
@@ -274,6 +284,9 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     opt_black: "Noir",
     opt_white: "Blanc",
 
+    decrease: "Diminuer",
+    increase: "Augmenter",
+
     reset: "Tout réinitialiser",
     note: "Les modifications n'affectent que votre affichage — elles ne modifient pas le site.",
     poweredBy: "Propulsé par",
@@ -333,6 +346,9 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     opt_tint: "Tönung",
     opt_black: "Schwarz",
     opt_white: "Weiß",
+
+    decrease: "Verringern",
+    increase: "Erhöhen",
 
     reset: "Alles zurücksetzen",
     note: "Änderungen wirken sich nur auf Ihre Ansicht aus — die Website wird nicht verändert.",

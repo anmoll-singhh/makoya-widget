@@ -22,7 +22,7 @@ import type { FeatureKey } from "@makoya/shared";
 import type { Prefs } from "../core/state";
 import type { Lang } from "./i18n";
 import { t } from "./i18n";
-import { makeSwitch, makeSeg, makeStepper, row } from "./controls";
+import { makeSwitch, makeSeg, makeDiscreteStepper, row } from "./controls";
 
 // ---------------------------------------------------------------------------
 // ICON map — decorative inline SVGs for all 15 FeatureKeys.
@@ -100,30 +100,27 @@ export function buildFeature(
     // ── Stepper ─────────────────────────────────────────────────────────────
     case "textSize": {
       const label = t(lang, "f_textSize");
-      // prefs.text is a discrete 0–3 step. The stepper spec says min=50 max=200
-      // step=10 with a percentage value. We represent the current step as a
-      // rounded percentage (step 0→100, 1→110, 2→125, 3→150) mapped into the
-      // continuous [50,200] space. On set() we snap to the nearest step index
-      // and clamp. This preserves full type-safety against the existing Prefs
-      // shape while matching the stepper UX spec.
-      const STEP_PCT: [number, number, number, number] = [100, 110, 125, 150];
-      const currentPct = STEP_PCT[prefs.text];
-      const stepper = makeStepper(
+      // prefs.text is a discrete 0|1|2|3 index. The four levels and their
+      // display labels exactly match the scale factors applied by effects.ts:
+      //   0 → 100% (default, no scaling)
+      //   1 → 112%
+      //   2 → 125%
+      //   3 → 140%
+      // A discrete stepper is used here instead of a continuous one so the
+      // display ALWAYS shows the label for the level that is actually applied —
+      // there is no intermediate value that could diverge from the real effect.
+      const TEXT_LEVELS: { label: string }[] = [
+        { label: "100%" },
+        { label: "112%" },
+        { label: "125%" },
+        { label: "140%" },
+      ];
+      const stepper = makeDiscreteStepper(
+        lang,
         label,
-        currentPct,
-        50,
-        200,
-        10,
-        (v) => {
-          // Find the closest step index for the new percentage value.
-          let best = 0;
-          let bestDist = Math.abs(STEP_PCT[0] - v);
-          for (let i = 1; i < STEP_PCT.length; i++) {
-            const d = Math.abs(STEP_PCT[i] - v);
-            if (d < bestDist) { best = i; bestDist = d; }
-          }
-          prefs.text = best as Prefs["text"];
-        },
+        TEXT_LEVELS,
+        prefs.text,
+        (i) => { prefs.text = i as Prefs["text"]; },
         onChange
       );
       return row(icon, label, stepper);
