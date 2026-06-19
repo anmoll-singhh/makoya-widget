@@ -184,12 +184,12 @@ export function PANEL_CSS(color: string, size: "sm" | "md" | "lg"): string {
 
 /* ─────────────────────────────────────────────────────────────────────────
    AA LEGIBILITY INNER LAYERS
-   Text-bearing regions get a more opaque white layer so content stays AA
-   over the glass blur regardless of the page behind the panel.
+   The body gets a near-opaque tint so text stays WCAG AA over the glass
+   blur. Head and foot are handled separately below because they are sticky
+   and need their OWN opaque surface to prevent scrolled body content from
+   showing through them.
    ───────────────────────────────────────────────────────────────────────── */
-.mky-head,
-.mky-body,
-.mky-foot {
+.mky-body {
   background: rgba(255,255,255,.9);
 }
 
@@ -206,9 +206,29 @@ export function PANEL_CSS(color: string, size: "sm" | "md" | "lg"): string {
   /* Stick header at the top when body scrolls */
   position: sticky;
   top: 0;
-  z-index: 1;
+  /* Must be above .mky-body so scrolled rows don't bleed through */
+  z-index: 2;
   /* Round top corners to match panel */
   border-radius: 22px 22px 0 0;
+  /*
+   * Opaque-enough surface so body content scrolling underneath is invisible.
+   * Own backdrop-filter creates a frosted layer matching the panel glass look.
+   * rgba(.92) base means even at low GPU quality there is <8% bleed-through.
+   */
+  background: rgba(255,255,255,.92);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  backdrop-filter: blur(20px) saturate(1.4);
+}
+
+/*
+ * Solid white fallback for browsers / headless environments without
+ * backdrop-filter support (no GPU blur). This is the critical path for
+ * automated QA (headless Chromium) — must be fully opaque: no bleed.
+ */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .mky-head {
+    background: #fff;
+  }
 }
 .mky-title {
   margin: 0;
@@ -283,7 +303,12 @@ export function PANEL_CSS(color: string, size: "sm" | "md" | "lg"): string {
    BODY
    ───────────────────────────────────────────────────────────────────────── */
 .mky-body {
-  padding: 10px;
+  /*
+   * Vertical padding ensures the first and last feature rows are never
+   * hidden behind the sticky header or footer. 4px top + 4px bottom gives
+   * a small visual gap between the body rows and the sticky bars.
+   */
+  padding: 4px 10px 4px;
 }
 
 /* Section group wrapper */
@@ -514,7 +539,25 @@ export function PANEL_CSS(color: string, size: "sm" | "md" | "lg"): string {
   /* Stick footer at bottom when panel overflows */
   position: sticky;
   bottom: 0;
-  z-index: 1;
+  /* Must be above .mky-body so scrolled rows don't bleed through */
+  z-index: 2;
+  /*
+   * Opaque-enough surface so body content scrolling underneath is invisible.
+   * Own backdrop-filter creates a frosted layer matching the panel glass look.
+   */
+  background: rgba(255,255,255,.92);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  backdrop-filter: blur(20px) saturate(1.4);
+}
+
+/*
+ * Solid white fallback for browsers / headless environments without
+ * backdrop-filter support (no GPU blur). Must be fully opaque: no bleed.
+ */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .mky-foot {
+    background: #fff;
+  }
 }
 .mky-reset {
   width: 100%;
