@@ -8,7 +8,17 @@ export async function GET(_req: Request, { params }: { params: Promise<{ siteId:
   const headers = { "cache-control": "public, s-maxage=300, stale-while-revalidate=86400" };
   const cfg = await getConfig(getAdminSupabase(), siteId);
   if (!cfg) {
-    return NextResponse.json({ ...DEFAULT_CONFIG, siteId }, { headers });
+    // Explicit allowlist (same shape as the happy path) so a future
+    // DEFAULT_CONFIG field can never silently leak through the fallback.
+    return NextResponse.json({
+      siteId,
+      primaryColor: DEFAULT_CONFIG.primaryColor,
+      position: DEFAULT_CONFIG.position,
+      launcherIcon: DEFAULT_CONFIG.launcherIcon,
+      featuresEnabled: DEFAULT_CONFIG.featuresEnabled,
+      hideBranding: DEFAULT_CONFIG.hideBranding,
+      brandingUrl: DEFAULT_CONFIG.brandingUrl,
+    }, { headers });
   }
   // Only safe display fields cross to the public widget.
   return NextResponse.json({
