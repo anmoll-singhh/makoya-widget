@@ -1,5 +1,4 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { FeatureKey } from "@makoya/shared";
 import { rowToConfig, configToRow, type SiteConfig } from "./sites-mappers";
 
 export type { SiteConfig };
@@ -11,15 +10,15 @@ export interface Site {
   createdAt: string;
 }
 
-const DEFAULT_FEATURES: FeatureKey[] = [
-  "textSize", "lineSpacing", "contrast", "stopMotion",
-  "readingRuler", "highlightLinks", "bigCursor",
-];
-
 function rowToSite(r: any): Site {
   return { id: r.id, ownerId: r.owner_id, domain: r.domain, plan: r.plan, createdAt: r.created_at };
 }
 
+/**
+ * Creates a site. The default `site_config` row is created atomically by a
+ * Postgres AFTER INSERT trigger (see infra/schema.sql), so there is no
+ * second insert here and therefore no orphaned-site window.
+ */
 export async function createSite(client: SupabaseClient, ownerId: string, domain: string): Promise<Site> {
   const { data, error } = await client
     .from("sites")
@@ -27,12 +26,6 @@ export async function createSite(client: SupabaseClient, ownerId: string, domain
     .select("*")
     .single();
   if (error) throw error;
-  // create the default config row for this site
-  const { error: cErr } = await client.from("site_config").insert({
-    site_id: data.id,
-    features_enabled: DEFAULT_FEATURES,
-  });
-  if (cErr) throw cErr;
   return rowToSite(data);
 }
 
@@ -44,12 +37,14 @@ export async function listSites(client: SupabaseClient, ownerId: string): Promis
 }
 
 export async function getSite(client: SupabaseClient, id: string): Promise<Site | null> {
-  const { data } = await client.from("sites").select("*").eq("id", id).maybeSingle();
+  const { data, error } = await client.from("sites").select("*").eq("id", id).maybeSingle();
+  if (error) throw error; // distinguish infra failure from "not found" (null)
   return data ? rowToSite(data) : null;
 }
 
 export async function getConfig(client: SupabaseClient, siteId: string): Promise<SiteConfig | null> {
-  const { data } = await client.from("site_config").select("*").eq("site_id", siteId).maybeSingle();
+  const { data, error } = await client.from("site_config").select("*").eq("site_id", siteId).maybeSingle();
+  if (error) throw error;
   return data ? rowToConfig(data) : null;
 }
 

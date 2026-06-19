@@ -60,3 +60,15 @@ create policy "owner reads own scans" on scans
   for select using (exists (select 1 from sites s where s.id = scans.site_id and s.owner_id = auth.uid()));
 
 -- consultation_requests: RLS on, NO client policy → service role only.
+
+-- ── ATOMIC DEFAULT CONFIG ─────────────────────────────────────────────────
+-- Auto-create the default site_config row whenever a site is created.
+create or replace function create_default_site_config()
+returns trigger language plpgsql security definer as $$
+begin
+  insert into site_config (site_id) values (new.id);
+  return new;
+end; $$;
+drop trigger if exists trg_create_default_site_config on sites;
+create trigger trg_create_default_site_config
+  after insert on sites for each row execute function create_default_site_config();
