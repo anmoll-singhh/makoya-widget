@@ -29,7 +29,7 @@
  */
 
 import { LAUNCHER_ICONS, type WidgetConfig } from "@makoya/shared";
-import { type Prefs, DEFAULT_PREFS, loadPrefs, savePrefs, applyPrefs } from "../core/state";
+import { type Prefs, DEFAULT_PREFS, loadPrefs, savePrefs, applyPrefs, STORAGE_KEY } from "../core/state";
 import { PANEL_CSS } from "./styles";
 import { type Lang, LANG_LABELS, t } from "./i18n";
 import { buildFeature } from "./features";
@@ -41,7 +41,6 @@ import { makeRuler, makeMask, makeReadAloud, makeMute } from "./live";
 // ---------------------------------------------------------------------------
 
 const LANG_STORAGE_KEY = "makoya_lang";
-const PREFS_STORAGE_KEY = "makoya_prefs";
 
 const CLOSE_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>`;
 
@@ -143,7 +142,7 @@ function _mount(config: WidgetConfig): void {
   // Check for stored prefs BEFORE loading so we can decide whether to apply
   // the defaultProfile on first visit.
   const hasStoredPrefs = (() => {
-    try { return localStorage.getItem(PREFS_STORAGE_KEY) !== null; } catch { return false; }
+    try { return localStorage.getItem(STORAGE_KEY) !== null; } catch { return false; }
   })();
   const prefs: Prefs = loadPrefs();
 
@@ -236,6 +235,7 @@ function _mount(config: WidgetConfig): void {
   const closeBtn = document.createElement("button");
   closeBtn.className = "mky-close";
   closeBtn.type = "button";
+  closeBtn.innerHTML = CLOSE_ICON;
 
   head.append(titleWrap, langSel, closeBtn);
 
@@ -295,7 +295,6 @@ function _mount(config: WidgetConfig): void {
     h2.textContent = title;
     sub.textContent = t(lang, "subtitle");
     closeBtn.setAttribute("aria-label", t(lang, "close"));
-    closeBtn.innerHTML = CLOSE_ICON;
     langSel.setAttribute("aria-label", t(lang, "language"));
     resetBtn.textContent = t(lang, "reset");
     noteEl.textContent = t(lang, "note");

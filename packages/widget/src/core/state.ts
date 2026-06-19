@@ -56,7 +56,7 @@ export interface Prefs {
   readAloud: boolean;
 }
 
-const STORAGE_KEY = "makoya_prefs";
+export const STORAGE_KEY = "makoya_prefs";
 
 export const DEFAULT_PREFS: Prefs = {
   text: 0,
