@@ -5,7 +5,10 @@ import { DEFAULT_CONFIG } from "@makoya/shared";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = await params;
-  const headers = { "cache-control": "public, s-maxage=300, stale-while-revalidate=86400" };
+  const headers = {
+    "cache-control": "public, s-maxage=300, stale-while-revalidate=86400",
+    "access-control-allow-origin": "*", // widget fetches this cross-origin from client sites
+  };
   const cfg = await getConfig(getAdminSupabase(), siteId);
   if (!cfg) {
     // Explicit allowlist (same shape as the happy path) so a future

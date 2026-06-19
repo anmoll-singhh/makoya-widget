@@ -19,9 +19,9 @@ import { DEFAULT_CONFIG, WidgetConfig } from "@makoya/shared";
 // In production these come from your build env. Hardcoded defaults keep the
 // loader working even if env injection fails.
 const CONFIG_BASE =
-  (window as any).MAKOYA_CONFIG_BASE || "https://cdn.makoya.example/config";
+  (window as any).MAKOYA_CONFIG_BASE || "https://makoya-gamma.vercel.app/api/config";
 const CORE_URL =
-  (window as any).MAKOYA_CORE_URL || "https://cdn.makoya.example/core.js";
+  (window as any).MAKOYA_CORE_URL || "https://makoya-gamma.vercel.app/widget/core.js";
 
 function getSiteId(): string | null {
   const current = document.currentScript as HTMLScriptElement | null;
@@ -34,7 +34,7 @@ function getSiteId(): string | null {
 
 async function fetchConfig(siteId: string): Promise<Partial<WidgetConfig>> {
   try {
-    const res = await fetch(`${CONFIG_BASE}/${encodeURIComponent(siteId)}.json`, {
+    const res = await fetch(`${CONFIG_BASE}/${encodeURIComponent(siteId)}`, {
       cache: "default",
     });
     if (!res.ok) return {};
