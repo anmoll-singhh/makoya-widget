@@ -8,6 +8,17 @@
 - **Widget served from the app:** `https://makoya-gamma.vercel.app/widget/loader.js` (+ `core.js`). Loader fetches config from `/api/config/{siteId}` (CORS enabled).
 - All 5 build phases done + merged, then: deployed, password auth added, full UI redesign (client dashboard + admin CRM), widget UI overhaul, and live bug fixes.
 
+## 🔭 OVERHAUL IN PROGRESS (2026-06-20) — spec + plans under `docs/superpowers/{specs,plans}/`
+Goal: best-in-market widget + dashboards. Decomposed into Phase 0 (foundation) → WS1 widget → WS2 client dashboard → WS3 admin dashboard. Spec: `docs/superpowers/specs/2026-06-20-makoya-overhaul-design.md`.
+- **Phase 0 (foundation) — DONE, merged to main, deployed.** (plan: `docs/superpowers/plans/2026-06-20-phase0-foundation.md`)
+  - Shared config expanded: **15 feature keys** (added saturation, readingMask, highlightTitles, textAlign, muteSounds, readAloud) + 5 new scalars (`launcherSize`, `defaultProfile`, `accessibilityStatementUrl`, `defaultLanguage`, `panelTitle`). Mirrored in `packages/shared/src/index.ts` AND `apps/web/lib/shared/index.ts`.
+  - Persistence: migration `supabase/migrations/20260620010000_widget_config_v3.sql` (5 new `site_config` columns + 15-key default + backfill). `infra/schema.sql` synced. Mappers + public config API allowlist + plan-gated PATCH updated.
+  - **⚠️ MIGRATION NOT YET APPLIED to live DB** (no DB password in this env). App is safe (rowToConfig `?? default` fallbacks). APPLY before Phase 2 customizer persistence: paste the migration SQL in Supabase SQL Editor (project `vgxvkegjnibvsngjrxqa`) or `npx supabase db push`.
+  - Onboarding: `lib/admin.ts createCustomer()` (service-role, idempotent) + `POST /api/admin/customers` (admin-gated) — operator creates auth user + pre-assigned site. Verified live (creates+cleans up).
+  - Admin: `issueCountFromTotals` + `AdminSiteRow.latestScore/issueCount` for worst-first sort.
+  - Widget `ui.ts` maps made `Partial<Record<FeatureKey,…>>` (gracefully skips not-yet-implemented features; widget bundle NOT rebuilt this phase — WS1 does that).
+- **WS1 / WS2 / WS3 — NOT STARTED.** Next: WS1 widget redesign (glass + mobile bottom-sheet + implement the 6 new effects + read-aloud + lang selector). Build via subagent-driven-development pipeline; rebuild widget + copy dist to `apps/web/public/widget`; deploy; live-QA (prod QA test records AUTHORIZED by user).
+
 ## 🔑 Test accounts (password auth — no email/rate-limit)
 Password for all: `Makoya2026!`
 - `anmols@wavesmvmnt.com` — **admin/operator**
