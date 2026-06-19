@@ -2,6 +2,7 @@ import "server-only";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import type { Plan, RequestStatus } from "@/lib/admin-constants";
 import { createSite } from "@/lib/sites";
+import { issueCountFromTotals } from "@/lib/issue-count-utils";
 
 /** id -> email for all auth users (paged). */
 async function emailMap(): Promise<Map<string, string>> {
@@ -17,6 +18,9 @@ async function emailMap(): Promise<Map<string, string>> {
   }
   return map;
 }
+
+// Re-export for testing; defined in issue-count-utils to avoid server-only import issues.
+export { issueCountFromTotals };
 
 function generateTempPassword(): string {
   // 16 url-safe chars; not security-critical (operator hands it over, user can reset).
@@ -64,6 +68,7 @@ export async function createCustomer(args: { email: string; domain: string; plan
 export interface AdminSiteRow {
   id: string; domain: string; plan: string; createdAt: string;
   ownerEmail: string; lastScanScore: number | null; openRequests: number;
+  latestScore: number | null; issueCount: number | null;
 }
 
 export async function listAdminSites(): Promise<AdminSiteRow[]> {
@@ -76,13 +81,16 @@ export async function listAdminSites(): Promise<AdminSiteRow[]> {
   // Per-site scan + open-count run in parallel across all sites (not serial).
   return Promise.all((sites ?? []).map(async (s) => {
     const [{ data: latest }, { count }] = await Promise.all([
-      admin.from("scans").select("score").eq("site_id", s.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      admin.from("scans").select("score, totals").eq("site_id", s.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
       admin.from("consultation_requests").select("id", { count: "exact", head: true }).eq("site_id", s.id).eq("status", "new"),
     ]);
     return {
       id: s.id, domain: s.domain, plan: s.plan, createdAt: s.created_at,
       ownerEmail: emails.get(s.owner_id) ?? "(unknown)",
-      lastScanScore: latest?.score ?? null, openRequests: count ?? 0,
+      lastScanScore: latest?.score ?? null,
+      latestScore: latest?.score ?? null,
+      issueCount: issueCountFromTotals(latest?.totals ?? null),
+      openRequests: count ?? 0,
     };
   }));
 }
