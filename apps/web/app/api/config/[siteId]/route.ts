@@ -27,6 +27,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ siteId:
       featuresEnabled: DEFAULT_CONFIG.featuresEnabled,
       hideBranding: DEFAULT_CONFIG.hideBranding,
       brandingUrl: DEFAULT_CONFIG.brandingUrl,
+      launcherSize: DEFAULT_CONFIG.launcherSize,
+      defaultProfile: DEFAULT_CONFIG.defaultProfile,
+      accessibilityStatementUrl: DEFAULT_CONFIG.accessibilityStatementUrl,
+      defaultLanguage: DEFAULT_CONFIG.defaultLanguage,
+      panelTitle: DEFAULT_CONFIG.panelTitle,
     }, { headers });
   }
   // Only safe display fields cross to the public widget.
@@ -38,5 +43,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ siteId:
     featuresEnabled: cfg.featuresEnabled,
     hideBranding: cfg.hideBranding,
     brandingUrl: DEFAULT_CONFIG.brandingUrl,
+    launcherSize: cfg.launcherSize,
+    defaultProfile: cfg.defaultProfile,
+    accessibilityStatementUrl: cfg.accessibilityStatementUrl,
+    defaultLanguage: cfg.defaultLanguage,
+    panelTitle: cfg.panelTitle,
   }, { headers });
 }

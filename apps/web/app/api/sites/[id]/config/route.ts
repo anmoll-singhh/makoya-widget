@@ -14,8 +14,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   let patch: Partial<SiteConfig>;
   try { patch = await req.json(); } catch { return NextResponse.json({ error: "bad json" }, { status: 400 }); }
 
-  // Server-side plan gating: free plan cannot hide branding.
-  if (site.plan === "free") patch.hideBranding = false;
+  // Server-side plan gating: free plan cannot use branding controls.
+  if (site.plan === "free") {
+    patch.hideBranding = false;
+    delete patch.panelTitle;
+    delete patch.accessibilityStatementUrl;
+  }
 
   try {
     await updateConfig(supabase, id, patch);
