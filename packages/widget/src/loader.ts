@@ -51,6 +51,10 @@ function loadCore(): Promise<void> {
     const s = document.createElement("script");
     s.src = CORE_URL;
     s.async = true;
+    // The loader drives init() with the fetched config. Without this, core's
+    // auto-init would fire first with DEFAULTS and win the double-init guard,
+    // ignoring the site's real config.
+    s.setAttribute("data-no-auto", "");
     s.onload = () => resolve();
     s.onerror = () => reject(new Error("Makoya core failed to load"));
     document.head.appendChild(s);

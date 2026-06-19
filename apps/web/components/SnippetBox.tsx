@@ -3,7 +3,7 @@ import { useState } from "react";
 
 export function SnippetBox({ siteId }: { siteId: string }) {
   const [copied, setCopied] = useState(false);
-  const snippet = `<script src="https://cdn.makoya.example/loader.js" data-site="${siteId}" defer></script>`;
+  const snippet = `<script src="https://makoya-gamma.vercel.app/widget/loader.js" data-site="${siteId}" defer></script>`;
   return (
     <div className="mt-3">
       <div className="flex items-center justify-between">
