@@ -1,6 +1,7 @@
 import "server-only";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import type { Plan, RequestStatus } from "@/lib/admin-constants";
+import { createSite } from "@/lib/sites";
 
 /** id -> email for all auth users (paged). */
 async function emailMap(): Promise<Map<string, string>> {
@@ -15,6 +16,49 @@ async function emailMap(): Promise<Map<string, string>> {
     page++;
   }
   return map;
+}
+
+function generateTempPassword(): string {
+  // 16 url-safe chars; not security-critical (operator hands it over, user can reset).
+  const bytes = crypto.getRandomValues(new Uint8Array(12));
+  return "Mk-" + Buffer.from(bytes).toString("base64url");
+}
+
+/**
+ * Operator-led onboarding: ensure a Supabase auth user exists for `email`
+ * (idempotent), then create a site owned by them. Returns a handover payload
+ * the operator can give the client. No email vendor required.
+ */
+export async function createCustomer(args: { email: string; domain: string; plan?: Plan }): Promise<{
+  email: string; tempPassword: string; siteId: string; created: boolean;
+}> {
+  const admin = getAdminSupabase();
+  const email = args.email.trim().toLowerCase();
+  const tempPassword = generateTempPassword();
+
+  // Try to create; if the user already exists, find their id instead.
+  let userId: string | null = null;
+  let created = false;
+  const { data: createdData, error: createErr } = await admin.auth.admin.createUser({
+    email, password: tempPassword, email_confirm: true,
+  });
+  if (createdData?.user) { userId = createdData.user.id; created = true; }
+  else if (createErr) {
+    // Already registered → look the user up by paging the user list.
+    for (let page = 1; !userId; page++) {
+      const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+      if (error || !data?.users?.length) break;
+      const hit = data.users.find((u) => u.email?.toLowerCase() === email);
+      if (hit) userId = hit.id;
+      if (data.users.length < 1000) break;
+    }
+    if (!userId) throw createErr;
+  }
+  if (!userId) throw new Error("could not resolve user id for customer");
+
+  const site = await createSite(admin, userId, args.domain.trim());
+  if (args.plan && args.plan !== "free") await updateSitePlan(site.id, args.plan);
+  return { email, tempPassword: created ? tempPassword : "(existing user — unchanged)", siteId: site.id, created };
 }
 
 export interface AdminSiteRow {
