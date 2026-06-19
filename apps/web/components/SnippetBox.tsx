@@ -9,7 +9,17 @@ export function SnippetBox({ siteId }: { siteId: string }) {
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-neutral-500">Install snippet</span>
         <button
-          onClick={() => { navigator.clipboard.writeText(snippet); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
+          onClick={async () => {
+            try {
+              if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(snippet);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 1500);
+              }
+            } catch {
+              /* clipboard unavailable (insecure context) — the snippet is visible to select manually */
+            }
+          }}
           className="text-xs font-medium text-neutral-700 hover:text-neutral-900"
         >{copied ? "Copied" : "Copy"}</button>
       </div>
