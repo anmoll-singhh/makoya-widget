@@ -64,11 +64,14 @@ function makeSwitch(label: string, isOn: () => boolean, set: (v: boolean) => voi
 
 /** Segmented control (one active option). */
 function makeSeg(
+  groupLabel: string,
   opts: { label: string; isActive: () => boolean; set: () => void }[],
   onChange: () => void
 ): HTMLElement {
   const seg = document.createElement("div");
   seg.className = "mky-seg";
+  seg.setAttribute("role", "group");
+  seg.setAttribute("aria-label", groupLabel);
   const btns: HTMLButtonElement[] = [];
   const paint = () => btns.forEach((b, i) => b.setAttribute("aria-pressed", String(opts[i].isActive())));
   opts.forEach((o) => {
@@ -126,6 +129,7 @@ const FEATURES: Record<FeatureKey, (prefs: Prefs, onChange: () => void) => HTMLE
     row(
       "contrast",
       makeSeg(
+        "Contrast mode",
         [
           { label: "Off", isActive: () => prefs.contrast === "off", set: () => (prefs.contrast = "off") },
           { label: "Boost", isActive: () => prefs.contrast === "on", set: () => (prefs.contrast = "on") },
@@ -211,10 +215,9 @@ const PANEL_CSS = (color: string) => `
 .mky-reset { width: 100%; padding: 9px; border: 1px solid #e2e8f0; border-radius: 11px; background: #fff; color: #334155; font: inherit; font-weight: 600; cursor: pointer; transition: background .15s; }
 .mky-reset:hover { background: #f8fafc; }
 .mky-reset:focus-visible { outline: 2px solid ${color}; outline-offset: 1px; }
-.mky-note { margin: 11px 2px 0; font-size: 11px; line-height: 1.45; color: #94a3b8; text-align: center; }
-.mky-brand { margin: 9px 0 0; font-size: 11px; color: #94a3b8; text-align: center; }
-.mky-brand a { color: #64748b; text-decoration: none; font-weight: 600; }
-.mky-brand a:hover { text-decoration: underline; }
+.mky-note { margin: 11px 2px 0; font-size: 11px; line-height: 1.45; color: #64748b; text-align: center; }
+.mky-brand { margin: 9px 0 0; font-size: 11px; color: #64748b; text-align: center; }
+.mky-brand a { color: #475569; text-decoration: underline; font-weight: 600; }
 
 @media (prefers-reduced-motion: reduce) { .mky-btn, .mky-panel, .mky-switch::after { transition: none !important; } }
 `;
@@ -279,6 +282,7 @@ export function mountUI(config: WidgetConfig): void {
   const panel = document.createElement("div");
   panel.className = "mky-panel";
   panel.setAttribute("role", "dialog");
+  panel.setAttribute("aria-modal", "true");
   panel.setAttribute("aria-label", "Accessibility options");
   panel.style.cssText = corner;
   panel.style.bottom = config.position.startsWith("bottom") ? "84px" : "";
@@ -304,7 +308,7 @@ export function mountUI(config: WidgetConfig): void {
   const close = document.createElement("button");
   close.className = "mky-close";
   close.type = "button";
-  close.setAttribute("aria-label", "Close");
+  close.setAttribute("aria-label", "Close accessibility options");
   close.innerHTML = CLOSE_ICON;
   head.append(titleWrap, close);
 
@@ -359,7 +363,29 @@ export function mountUI(config: WidgetConfig): void {
   btn.addEventListener("click", () => setOpen(!open));
   close.addEventListener("click", () => setOpen(false));
   shadow.addEventListener("keydown", (e) => {
-    if ((e as KeyboardEvent).key === "Escape" && open) setOpen(false);
+    const ev = e as KeyboardEvent;
+    if (!open) return;
+    if (ev.key === "Escape") {
+      setOpen(false);
+      return;
+    }
+    if (ev.key === "Tab") {
+      // Trap focus inside the open dialog (WCAG 2.4.3 / modal containment).
+      const focusables = Array.from(
+        panel.querySelectorAll<HTMLElement>('button, a[href], [tabindex]:not([tabindex="-1"])')
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = shadow.activeElement as HTMLElement | null;
+      if (ev.shiftKey && active === first) {
+        ev.preventDefault();
+        last.focus();
+      } else if (!ev.shiftKey && active === last) {
+        ev.preventDefault();
+        first.focus();
+      }
+    }
   });
 
   shadow.append(btn, panel);
