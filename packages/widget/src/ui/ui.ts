@@ -11,7 +11,7 @@
  * the button on close.
  */
 
-import type { WidgetConfig, FeatureKey } from "@makoya/shared";
+import { LAUNCHER_ICONS, type WidgetConfig, type FeatureKey } from "@makoya/shared";
 import { Prefs, loadPrefs, savePrefs, applyPrefs } from "../core/state";
 
 interface FeatureMeta {
@@ -169,8 +169,6 @@ const POSITIONS: Record<string, string> = {
   "top-left": "top:16px; left:16px;",
 };
 
-const A11Y_ICON = `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="4" r="2"/><path d="M21 9c0 .55-.45 1-1 1h-4v11a1 1 0 0 1-2 0v-5h-4v5a1 1 0 0 1-2 0V10H4a1 1 0 0 1 0-2h16c.55 0 1 .45 1 1z"/></svg>`;
-
 /** Live reading ruler that follows the cursor. */
 function makeRuler(): { on: () => void; off: () => void } {
   let el: HTMLDivElement | null = null;
@@ -215,7 +213,7 @@ export function mountUI(config: WidgetConfig): void {
   btn.style.cssText = POSITIONS[config.position] ?? POSITIONS["bottom-right"];
   btn.setAttribute("aria-label", "Accessibility options");
   btn.setAttribute("aria-expanded", "false");
-  btn.innerHTML = A11Y_ICON;
+  btn.innerHTML = LAUNCHER_ICONS[config.launcherIcon] ?? LAUNCHER_ICONS.accessibility;
 
   // Panel
   const panel = document.createElement("div");
