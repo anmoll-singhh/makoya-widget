@@ -16,7 +16,7 @@ create table if not exists site_config (
   launcher_icon    text   not null default 'accessibility',
   features_enabled text[] not null default array[
     'textSize','lineSpacing','contrast','stopMotion',
-    'readingRuler','highlightLinks','bigCursor'
+    'readingRuler','highlightLinks','bigCursor','readableFont','hideImages'
   ],
   hide_branding    boolean not null default false,
   updated_at       timestamptz not null default now()
