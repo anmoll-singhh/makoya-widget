@@ -17,6 +17,8 @@ const ALL_FEATURES: { key: FeatureKey; label: string }[] = [
   { key: "readingRuler", label: "Reading ruler" },
   { key: "highlightLinks", label: "Highlight links" },
   { key: "bigCursor", label: "Big cursor" },
+  { key: "readableFont", label: "Readable font" },
+  { key: "hideImages", label: "Hide images" },
 ];
 
 export function ConfigEditor({ siteId, plan, initial }: { siteId: string; plan: string; initial: SiteConfig }) {

@@ -2,8 +2,7 @@
  * state.ts
  *
  * Holds the user's chosen settings, persists them in localStorage, and
- * applies them to the page via data-attributes. This is the bridge between
- * "what the user clicked" and "what the page looks like".
+ * applies them to the page via data-attributes.
  */
 
 import { ensureEffectStyles, setHtmlAttr } from "../features/effects";
@@ -19,6 +18,10 @@ export interface Prefs {
   ruler: boolean;
   links: boolean;
   cursor: boolean;
+  /** legible/dyslexia-friendly font */
+  font: boolean;
+  /** hide page images to reduce distraction */
+  images: boolean;
 }
 
 const STORAGE_KEY = "makoya_prefs";
@@ -31,6 +34,8 @@ export const DEFAULT_PREFS: Prefs = {
   ruler: false,
   links: false,
   cursor: false,
+  font: false,
+  images: false,
 };
 
 export function loadPrefs(): Prefs {
@@ -39,7 +44,6 @@ export function loadPrefs(): Prefs {
     if (!raw) return { ...DEFAULT_PREFS };
     return { ...DEFAULT_PREFS, ...JSON.parse(raw) };
   } catch {
-    // localStorage can throw in privacy mode — never let that break the widget.
     return { ...DEFAULT_PREFS };
   }
 }
@@ -48,13 +52,13 @@ export function savePrefs(prefs: Prefs): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
   } catch {
-    /* ignore — settings just won't persist this session */
+    /* ignore — privacy mode */
   }
 }
 
 /**
  * Push the current prefs onto the page. Called on load, on every change,
- * and after SPA route changes (so settings survive client-side navigation).
+ * and after SPA route changes.
  */
 export function applyPrefs(prefs: Prefs): void {
   ensureEffectStyles();
@@ -64,5 +68,7 @@ export function applyPrefs(prefs: Prefs): void {
   setHtmlAttr("data-mky-motion", prefs.stopMotion ? "off" : null);
   setHtmlAttr("data-mky-links", prefs.links ? "on" : null);
   setHtmlAttr("data-mky-cursor", prefs.cursor ? "on" : null);
+  setHtmlAttr("data-mky-font", prefs.font ? "on" : null);
+  setHtmlAttr("data-mky-images", prefs.images ? "off" : null);
   // Reading ruler is a live element, handled separately in ui.ts.
 }

@@ -5,37 +5,47 @@
  * (bigger text, contrast, spacing) must change the REAL page. We do that
  * the safe way: we inject ONE stylesheet whose rules only activate when we
  * set data-attributes on <html>. Nothing is touched until the user opts in,
- * and turning a toggle off cleanly removes the attribute. No DOM rewriting,
- * no ARIA injection, no fighting the user's assistive tech.
+ * and turning a toggle off cleanly removes the attribute. No DOM rewriting.
  */
 
 const STYLE_ID = "makoya-effects";
 
 /** The single stylesheet we add to the host <head>, scoped by html[data-mky-*]. */
 const EFFECT_CSS = `
-html[data-mky-text="1"] body { font-size: 112% !important; }
-html[data-mky-text="2"] body { font-size: 125% !important; }
-html[data-mky-text="3"] body { font-size: 140% !important; }
+/* Text size — scale the ROOT font-size so rem/em/%-based text all grow.
+   (Scaling body alone misses rem-based text, which is most modern sites.) */
+html[data-mky-text="1"] { font-size: 112.5% !important; }
+html[data-mky-text="2"] { font-size: 125% !important; }
+html[data-mky-text="3"] { font-size: 140% !important; }
 
 html[data-mky-spacing="on"] body,
 html[data-mky-spacing="on"] body * {
   line-height: 1.8 !important;
   letter-spacing: 0.04em !important;
-  word-spacing: 0.1em !important;
+  word-spacing: 0.12em !important;
 }
 
-html[data-mky-contrast="on"] {
-  filter: contrast(1.15);
+html[data-mky-font="on"] body,
+html[data-mky-font="on"] body * {
+  font-family: Verdana, "Segoe UI", Tahoma, Arial, sans-serif !important;
 }
-html[data-mky-contrast="dark"] {
-  filter: invert(1) hue-rotate(180deg);
+
+html[data-mky-images="off"] img,
+html[data-mky-images="off"] picture,
+html[data-mky-images="off"] video {
+  opacity: 0 !important;
 }
+
+html[data-mky-contrast="on"] { filter: contrast(1.18); }
+html[data-mky-contrast="dark"] { filter: invert(1) hue-rotate(180deg); background: #fff; }
 html[data-mky-contrast="dark"] img,
 html[data-mky-contrast="dark"] video,
 html[data-mky-contrast="dark"] picture,
 html[data-mky-contrast="dark"] [style*="background-image"] {
   filter: invert(1) hue-rotate(180deg);
 }
+/* Keep the widget itself un-inverted while the page is in dark mode. */
+html[data-mky-contrast="dark"] #makoya-widget-root { filter: invert(1) hue-rotate(180deg); }
 
 html[data-mky-motion="off"] *,
 html[data-mky-motion="off"] *::before,

@@ -34,7 +34,9 @@ export type FeatureKey =
   | "stopMotion"
   | "readingRuler"
   | "highlightLinks"
-  | "bigCursor";
+  | "bigCursor"
+  | "readableFont"
+  | "hideImages";
 
 export interface WidgetConfig {
   /** Public site id (lives in the <script> snippet — NOT a secret). */
@@ -67,6 +69,8 @@ export const DEFAULT_CONFIG: WidgetConfig = {
     "readingRuler",
     "highlightLinks",
     "bigCursor",
+    "readableFont",
+    "hideImages",
   ],
   hideBranding: false,
   brandingUrl: "https://makoya.example/scan",
