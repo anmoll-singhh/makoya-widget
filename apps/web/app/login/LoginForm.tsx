@@ -10,7 +10,8 @@ export function LoginForm() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null); setSending(true);
+    setError(null);
+    setSending(true);
     const supabase = getBrowserSupabase();
     const { error } = await supabase.auth.signInWithOtp({
       email,
@@ -21,19 +22,35 @@ export function LoginForm() {
     else setSent(true);
   }
 
-  if (sent) return <p className="mt-6 text-sm text-green-700">Check your email for the sign-in link.</p>;
+  if (sent)
+    return (
+      <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+        <p className="text-sm font-semibold text-emerald-800">Check your inbox ✓</p>
+        <p className="mt-1 text-sm text-emerald-700">
+          We sent a secure sign-in link to <span className="font-medium">{email}</span>. Click it and you&apos;re in.
+        </p>
+      </div>
+    );
 
   return (
     <form onSubmit={onSubmit} className="mt-6 space-y-3">
       <input
-        type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-        placeholder="you@example.com"
-        className="w-full rounded-lg border px-3 py-2 text-sm"
+        type="email"
+        required
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="you@company.com"
+        autoComplete="email"
+        className="transition-base w-full rounded-xl border border-neutral-300 bg-white px-4 py-3 text-[15px] text-neutral-900 placeholder:text-neutral-400 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-100"
       />
-      <button type="submit" disabled={sending} className="w-full rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50">
-        {sending ? "Sending…" : "Send magic link"}
+      <button
+        type="submit"
+        disabled={sending}
+        className="transition-base w-full rounded-xl bg-gradient-to-br from-brand-600 to-violet-600 px-4 py-3 text-[15px] font-semibold text-white shadow-lg shadow-brand-600/25 hover:shadow-xl disabled:opacity-60"
+      >
+        {sending ? "Sending…" : "Send my sign-in link"}
       </button>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm font-medium text-red-600">{error}</p>}
     </form>
   );
 }
