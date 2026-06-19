@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getSite, getConfig } from "@/lib/sites";
 import { ConfigEditor } from "@/components/ConfigEditor";
+import { ScanReport } from "@/components/ScanReport";
 
 export default async function SitePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -21,6 +22,7 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
         <p className="mt-1 text-sm text-neutral-500">{site.domain}</p>
       </div>
       <ConfigEditor siteId={site.id} plan={site.plan} initial={config} />
+      <ScanReport siteId={site.id} />
     </div>
   );
 }
