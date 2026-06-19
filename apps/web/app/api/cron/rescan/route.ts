@@ -14,6 +14,7 @@ export async function GET(req: Request) {
   const admin = getAdminSupabase();
   const { data: sites } = await admin.from("sites").select("id, domain");
   let scanned = 0;
+  let failed = 0;
   for (const s of sites ?? []) {
     const { data: latest } = await admin
       .from("scans").select("created_at").eq("site_id", s.id)
@@ -23,9 +24,11 @@ export async function GET(req: Request) {
     try {
       await runAndStoreScan(admin, s.id, s.domain);
       scanned++;
-    } catch {
-      /* skip failures */
+    } catch (e) {
+      failed++;
+      // Observable: a persistently failing site is logged and counted.
+      console.error(`[cron/rescan] scan failed for site ${s.id} (${s.domain}):`, e instanceof Error ? e.message : e);
     }
   }
-  return NextResponse.json({ ok: true, scanned });
+  return NextResponse.json({ ok: true, scanned, failed });
 }

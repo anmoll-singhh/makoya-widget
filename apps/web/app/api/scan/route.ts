@@ -36,8 +36,10 @@ export async function POST(req: Request) {
     try {
       scan = await runAndStoreScan(getAdminSupabase(), siteId, site.domain);
     } catch (e) {
-      const err = e as { message?: string; code?: string };
-      return NextResponse.json({ error: err?.message ?? "scan failed", code: err?.code }, { status: 502 });
+      // Generic message only — never echo the engine error text, which embeds
+      // the target URL and could act as an SSRF oracle. The machine code is safe.
+      const err = e as { code?: string };
+      return NextResponse.json({ error: "Could not scan this site right now.", code: err?.code }, { status: 502 });
     }
   }
   const report = { issues: scan!.issues } as AccessibilityReport;
