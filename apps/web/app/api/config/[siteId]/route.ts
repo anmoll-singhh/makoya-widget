@@ -9,7 +9,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ siteId:
     "cache-control": "public, s-maxage=300, stale-while-revalidate=86400",
     "access-control-allow-origin": "*", // widget fetches this cross-origin from client sites
   };
-  const cfg = await getConfig(getAdminSupabase(), siteId);
+  // Public endpoint — never 500. Malformed id / transient DB error → safe defaults.
+  let cfg: Awaited<ReturnType<typeof getConfig>> = null;
+  try {
+    cfg = await getConfig(getAdminSupabase(), siteId);
+  } catch {
+    cfg = null;
+  }
   if (!cfg) {
     // Explicit allowlist (same shape as the happy path) so a future
     // DEFAULT_CONFIG field can never silently leak through the fallback.
