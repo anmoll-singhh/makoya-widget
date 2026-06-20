@@ -1,19 +1,33 @@
-import type { ReactNode } from "react";
+﻿/**
+ * app/dashboard/layout.tsx  (RSC)
+ *
+ * Shared shell for all /dashboard/* routes.  Renders:
+ *  - Sticky header: logo on the left, avatar/account-link + sign-out on the right
+ *  - <DashboardTabs>: "Customize" / "Report" tab nav under the header
+ *  - <main>: page content
+ *
+ * Account is reachable via the avatar pill (not as a tab — it is a secondary
+ * destination, not a primary workflow step).
+ */
+
+import { Suspense, type ReactNode } from "react";
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { SignOutButton } from "@/components/SignOutButton";
 import { getServerSupabase } from "@/lib/supabase/server";
+import { DashboardTabs } from "./DashboardTabs";
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const supabase = await getServerSupabase();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const email = user?.email ?? "";
+  const email   = user?.email ?? "";
   const initial = (email[0] ?? "?").toUpperCase();
 
   return (
     <div className="min-h-dvh bg-neutral-50">
+      {/* ── Sticky header ─────────────────────────────────────────────── */}
       <header className="sticky top-0 z-40 border-b border-neutral-200/70 bg-white/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3.5">
           <Link href="/dashboard" className="transition-base hover:opacity-80">
@@ -34,7 +48,13 @@ export default async function DashboardLayout({ children }: { children: ReactNod
             <SignOutButton />
           </div>
         </div>
+
+        {/* Tab nav — useSearchParams requires Suspense boundary */}
+        <Suspense fallback={null}>
+          <DashboardTabs />
+        </Suspense>
       </header>
+
       <main className="mx-auto max-w-6xl px-5 py-8 sm:py-10">{children}</main>
     </div>
   );
