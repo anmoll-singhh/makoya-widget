@@ -27,7 +27,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { buildFeatureRows, rowsToEnabled, moveRow, type FeatureRow } from "@/lib/customizer/feature-order";
@@ -61,6 +61,12 @@ export function FeatureList({ enabled, onChange }: FeatureListProps) {
   // Local rows state so reordering is instant (not round-tripped through the
   // parent's debounced autosave path for every arrow press).
   const [rows, setRows] = useState<FeatureRow[]>(() => buildFeatureRows(enabled));
+
+  // Re-sync rows whenever the parent's enabled prop changes (e.g. site switch
+  // or external state reset) without unmounting this component.
+  useEffect(() => {
+    setRows(buildFeatureRows(enabled));
+  }, [enabled]);
 
   function applyRows(next: FeatureRow[]) {
     setRows(next);

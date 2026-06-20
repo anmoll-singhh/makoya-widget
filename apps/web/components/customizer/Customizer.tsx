@@ -31,7 +31,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -70,6 +70,15 @@ export function Customizer({ sites, activeSiteId, initialConfig, plan }: Customi
   const router = useRouter();
   const [config, setConfig] = useState<SiteConfig>(initialConfig);
   const { status, saveNow } = useAutosave(activeSiteId, config);
+
+  // Debounced copy of config passed to LivePreview to prevent iframe thrash
+  // while the user drags a color picker or types quickly. useAutosave still
+  // receives the live `config` above (it debounces internally).
+  const [previewConfig, setPreviewConfig] = useState(config);
+  useEffect(() => {
+    const t = setTimeout(() => setPreviewConfig(config), 300);
+    return () => clearTimeout(t);
+  }, [config]);
 
   // Generic setter — updates a single key and triggers instant preview update.
   function set<K extends keyof SiteConfig>(key: K, val: SiteConfig[K]) {
@@ -222,7 +231,7 @@ export function Customizer({ sites, activeSiteId, initialConfig, plan }: Customi
                 status === "saving" ? "bg-amber-400 animate-pulse" : "bg-green-400",
               )} aria-hidden="true" />
             </div>
-            <LivePreview config={config} />
+            <LivePreview config={previewConfig} />
           </div>
         </div>
       </div>
