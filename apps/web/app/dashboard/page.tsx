@@ -60,6 +60,7 @@ export default async function DashboardPage({ searchParams }: Props) {
 
   return (
     <Customizer
+      key={activeSiteId}
       sites={sites}
       activeSiteId={activeSiteId}
       initialConfig={config}
