@@ -4,7 +4,7 @@
  * Grouped controls for the visual identity of the widget launcher:
  *  - primaryColor  — native colour picker + hex text field (stays in sync)
  *  - launcherIcon  — icon button group (renders the actual SVGs from LAUNCHER_ICONS,
- *                    matching the pattern used in ConfigEditor.tsx)
+ *                    injected via dangerouslySetInnerHTML with a forced size attr)
  *  - launcherSize  — segmented sm / md / lg selector
  *  - position      — 2×2 spatial grid (corner picker)
  *
@@ -15,8 +15,7 @@
  *    on the first row, bottom-left/bottom-right on the second, so the spatial
  *    metaphor is immediately obvious.
  *  - Active selections use brand-600 ring + background so they match the rest
- *    of the dashboard (indigo/violet system), not the old neutral-900 approach
- *    in ConfigEditor.tsx.
+ *    of the dashboard (indigo/violet system).
  *  - All interactive elements carry proper aria attributes.
  */
 
@@ -138,7 +137,7 @@ export function AppearanceControls({ value, onChange }: AppearanceControlsProps)
                     ? "border-brand-600 bg-brand-50 text-brand-700 ring-2 ring-brand-300"
                     : "border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300 hover:bg-neutral-50",
                 )}
-                // Reuse the same SVG-injection pattern as ConfigEditor.tsx
+                // Inject SVG with a forced size attribute
                 dangerouslySetInnerHTML={{
                   __html: LAUNCHER_ICONS[ic].replace("<svg ", '<svg width="22" height="22" '),
                 }}
