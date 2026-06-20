@@ -41,7 +41,8 @@ function buildSrcDoc(config: SiteConfig): string {
   // Serialise config to JSON so we can safely embed it in the inline script.
   // JSON.stringify produces valid JS; no XSS risk here because this content
   // never reaches the DOM as HTML (it's a JS string literal in a script block).
-  const configJson = JSON.stringify(config);
+  // Escape </ to prevent owner-editable strings from breaking the script tag.
+  const configJson = JSON.stringify(config).replace(/<\//g, "<\\/");
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -202,7 +203,6 @@ export function LivePreview({ config }: { config: SiteConfig }) {
           srcDoc={srcDoc}
           sandbox="allow-scripts"
           className="block h-[560px] w-full bg-[#f8f9ff]"
-          aria-label="Live widget preview"
         />
       </div>
 
