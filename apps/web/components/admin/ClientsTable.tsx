@@ -114,13 +114,13 @@ export function ClientsTable({ rows }: { rows: AdminSiteRow[] }) {
       <table className="w-full text-left text-sm">
         <thead className="border-b border-neutral-800 text-xs uppercase tracking-wide text-neutral-500">
           <tr>
-            {/* Customer — not sortable, label only */}
-            <th
-              scope="col"
-              className="px-5 py-3 font-medium text-neutral-500"
-            >
-              Customer
-            </th>
+            <SortHeader
+              label="Customer"
+              sortKey="email"
+              activeKey={sortKey}
+              dir={sortDir}
+              onSort={handleSort}
+            />
 
             <SortHeader
               label="Plan"
