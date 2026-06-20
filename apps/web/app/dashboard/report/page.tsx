@@ -1,4 +1,4 @@
-﻿/**
+/**
  * app/dashboard/report/page.tsx  (RSC)
  *
  * Accessibility report tab. Resolves the active site (same RLS-scoped

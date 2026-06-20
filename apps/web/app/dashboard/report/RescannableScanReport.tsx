@@ -1,4 +1,4 @@
-﻿/**
+/**
  * RescannableScanReport.tsx  (client component)
  *
  * Thin client wrapper around <ScanReport> that enables Re-scan: clicking the

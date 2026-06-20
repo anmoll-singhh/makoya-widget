@@ -1,4 +1,4 @@
-﻿/**
+/**
  * DashboardTabs.tsx  (client component)
  *
  * Tab navigation for the two top-level dashboard views:
@@ -32,9 +32,9 @@ export function DashboardTabs() {
 
   function isActive(href: string) {
     // /dashboard/report is active only on that exact path.
-    // /dashboard is active on /dashboard and /dashboard/account etc. but NOT /dashboard/report.
+    // /dashboard is active only on /dashboard exactly.
     if (href === "/dashboard/report") return pathname === "/dashboard/report";
-    return pathname === "/dashboard" || (pathname.startsWith("/dashboard") && pathname !== "/dashboard/report");
+    return pathname === "/dashboard";
   }
 
   return (

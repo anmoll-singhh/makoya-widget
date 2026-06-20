@@ -1,4 +1,4 @@
-﻿/**
+/**
  * app/dashboard/page.tsx  (RSC)
  *
  * Customizer-first dashboard landing. Resolves the active site from the
