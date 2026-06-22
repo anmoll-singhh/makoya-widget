@@ -21,7 +21,15 @@
 
 ## Roadmap phases
 - **Phase 0 — Foundation (no keys needed): ✅ DONE 2026-06-22.** Stale docs rewritten (CLAUDE.md, MASTER_CHECKLIST). Shared-config drift killed: canonical=packages/shared, generated mirror via scripts/sync-shared.mjs, CI drift test lib/shared-sync.test.ts. Root `npm run ci` = sync+typecheck(web+widget)+tests. GitHub Actions .github/workflows/ci.yml. Observability seam lib/observability.ts (env-guarded no-op). Verified: 27 tests pass, typecheck 0. (Sentry/PostHog SDK install deferred to a keyed block.)
-- **Phase 1 — Revenue loop (demo core):** scanner-integration → /api/scan-ingest → Resend report email → lead in CRM; rate-limit scan endpoint; PDF report export. [needs: Resend key+domain]
+- **Phase 1 — Revenue loop (demo core): 🔶 IN PROGRESS (backbone done, against email STUB).**
+  - ✅ `leads` table migration (service-role only, RLS no-policy) — supabase/migrations/20260622210000_leads.sql
+  - ✅ Email seam: lib/email/* — provider interface + STUB provider (records to outbox, no send) + honest report-email builder (no compliance claims). Resend swaps in lib/email/index.ts only.
+  - ✅ lib/leads.ts (createLead/listLeads, service-role).
+  - ✅ POST /api/scan-ingest (public, CORS, validation, rate-limit) → lead + stub email. + OPTIONS.
+  - ✅ Fixed scanner-integration/EmailCapture.tsx copy (removed "signed compliance file"/"ADA lawsuits" → honest).
+  - ✅ Unit tests (report-email honesty guardrail, leads mapper). 33 tests green, typecheck 0.
+  - ⛔ BLOCKER to go LIVE: leads migration must be applied to Supabase (founder access / supabase db push). Route typechecks + unit-tested but not yet exercised against live DB here.
+  - 🔶 TODO next: admin Leads page (so leads are visible in CRM); apply migration; swap stub→Resend; PDF export; durable rate-limit.
 - **Phase 2 — Money:** Lemon Squeezy checkout + webhook → plan; server-side plan gating. [needs: LS account, test mode ok]
 - **Phase 3 — Demo polish:** honest-hybrid landing copy; Book-a-call (Calendly); PostHog funnel dashboard.
 - **Phase 4 — V1 hardening:** Inngest queue; scheduled monitoring + "score dropped" alerts; Claude AI remediation suggestions (human-confirmed); WordPress plugin.

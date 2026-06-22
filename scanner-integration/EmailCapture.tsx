@@ -20,6 +20,7 @@ export function EmailCapture({ url, score, totals, ingestUrl = "/api/scan-ingest
   const [email, setEmail] = useState("");
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
+  const issueCount = totals.critical + totals.serious + totals.moderate + totals.minor;
   const highRisk = totals.critical > 0 || totals.serious > 2;
 
   async function submit() {
@@ -40,7 +41,7 @@ export function EmailCapture({ url, score, totals, ingestUrl = "/api/scan-ingest
       <h3 style={{ marginTop: 0 }}>Get your full report (PDF)</h3>
       {highRisk && (
         <p style={{ color: "#b91c1c", fontSize: 14 }}>
-          This site has issues commonly cited in ADA accessibility lawsuits. We can fix them and provide a signed compliance file.
+          We found {issueCount} real accessibility {issueCount === 1 ? "issue" : "issues"}, including critical ones that block some users. We can show you exactly what they are and help you fix them at the source.
         </p>
       )}
       <input
