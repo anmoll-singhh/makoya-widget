@@ -1,10 +1,12 @@
 /**
- * MIRROR of `packages/shared/src/index.ts` — kept in-tree so `apps/web` is a
- * self-contained Vercel deployment (the CLI uploads only this app, not the
- * whole monorepo). The CANONICAL source is `packages/shared/src/index.ts`,
- * which the embeddable widget consumes. Keep the two in sync; if you ever set
- * the Vercel project's Root Directory to `apps/web` and deploy the full repo,
- * this mirror can be removed and the alias repointed at packages/shared.
+ * ⚠️  GENERATED FILE — DO NOT EDIT BY HAND.
+ *
+ * This is an auto-generated mirror of `packages/shared/src/index.ts`, the
+ * single source of truth for the widget config shape. It exists so apps/web is
+ * a self-contained Vercel deployment. To change the config shape, edit the
+ * CANONICAL file and run:  npm run sync:shared
+ *
+ * CI (apps/web/lib/shared-sync.test.ts) fails if this file drifts from canonical.
  *
  * @makoya/shared — single source of truth for the widget config shape.
  */
