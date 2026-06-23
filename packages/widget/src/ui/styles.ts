@@ -127,6 +127,7 @@ export function PANEL_CSS(color: string, size: "sm" | "md" | "lg"): string {
   max-width: calc(100vw - 24px);
   max-height: calc(100vh - 108px);
   overflow-y: auto;
+  overscroll-behavior: contain;
   /* Scrollbar styling (Webkit) */
   scrollbar-width: thin;
   scrollbar-color: rgba(15,23,42,.12) transparent;
@@ -640,6 +641,7 @@ export function PANEL_CSS(color: string, size: "sm" | "md" | "lg"): string {
     border-radius: 22px 22px 0 0;
     max-height: 85dvh;
     overflow-y: auto;
+    overscroll-behavior: contain;
     /* Safe-area padding on the sides and bottom */
     padding-left: env(safe-area-inset-left, 0px);
     padding-right: env(safe-area-inset-right, 0px);
