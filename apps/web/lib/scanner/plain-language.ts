@@ -97,6 +97,126 @@ const MAP: Record<string, Entry> = {
     whatItMeans: "Links to files like PDFs don't mention the format, so visitors don't know what they'll download.",
     whoItAffects: "Screen-reader users and people on limited connections.",
   },
+  "aria-required-attr": {
+    title: "An interactive element is missing required ARIA attributes",
+    whatItMeans: "An element uses an ARIA role but is missing attributes that role needs, so its state isn't announced correctly.",
+    whoItAffects: "Screen-reader users.",
+  },
+  "aria-required-children": {
+    title: "An ARIA container is missing its required child roles",
+    whatItMeans: "A component (like a menu or list) is missing the inner items its role expects, so it's announced incompletely.",
+    whoItAffects: "Screen-reader users.",
+  },
+  "aria-required-parent": {
+    title: "An ARIA item is outside its required container",
+    whatItMeans: "An item that must live inside a specific component isn't, so assistive tech can't interpret it correctly.",
+    whoItAffects: "Screen-reader users.",
+  },
+  "aria-roles": {
+    title: "An element uses an invalid ARIA role",
+    whatItMeans: "An ARIA role isn't a recognised value, so assistive tech doesn't know how to present the element.",
+    whoItAffects: "Screen-reader users.",
+  },
+  "aria-valid-attr-value": {
+    title: "An ARIA attribute has an invalid value",
+    whatItMeans: "An ARIA attribute's value isn't valid, so the information it's meant to convey is lost.",
+    whoItAffects: "Screen-reader users.",
+  },
+  "aria-hidden-focus": {
+    title: "A hidden element can still be focused",
+    whatItMeans: "An element marked hidden from screen readers can still be reached by keyboard, creating a confusing 'ghost' stop.",
+    whoItAffects: "Screen-reader and keyboard users.",
+  },
+  "aria-command-name": {
+    title: "A control has no accessible name",
+    whatItMeans: "A button, link, or menu item built with ARIA has no name, so it's announced without a purpose.",
+    whoItAffects: "Screen-reader users.",
+  },
+  "aria-input-field-name": {
+    title: "A form field has no accessible name",
+    whatItMeans: "An input built with ARIA has no associated label, so its purpose isn't announced.",
+    whoItAffects: "Screen-reader users.",
+  },
+  "frame-title": {
+    title: "An embedded frame has no title",
+    whatItMeans: "An iframe has no title, so screen-reader users can't tell what it contains before entering it.",
+    whoItAffects: "Screen-reader users.",
+  },
+  "input-image-alt": {
+    title: "An image button has no text description",
+    whatItMeans: "A button made from an image has no alternative text, so its action isn't announced.",
+    whoItAffects: "Screen-reader users.",
+  },
+  "role-img-alt": {
+    title: "An image element has no text description",
+    whatItMeans: "An element acting as an image has no alternative text, so its meaning is lost when it can't be seen.",
+    whoItAffects: "Blind and low-vision visitors.",
+  },
+  "svg-img-alt": {
+    title: "An SVG graphic has no text description",
+    whatItMeans: "An SVG conveying meaning has no accessible name, so screen-reader users miss what it shows.",
+    whoItAffects: "Blind and low-vision visitors.",
+  },
+  "select-name": {
+    title: "A dropdown has no label",
+    whatItMeans: "A select menu has no label telling the visitor what they're choosing.",
+    whoItAffects: "Screen-reader users.",
+  },
+  "td-headers-attr": {
+    title: "A data table's cells reference missing headers",
+    whatItMeans: "Table cells point to header cells that don't exist, breaking how the table is read aloud.",
+    whoItAffects: "Screen-reader users.",
+  },
+  "th-has-data-cells": {
+    title: "A table header has no data cells",
+    whatItMeans: "A header cell isn't associated with any data, so the table's structure is announced incorrectly.",
+    whoItAffects: "Screen-reader users.",
+  },
+  "valid-lang": {
+    title: "A language code is invalid",
+    whatItMeans: "Part of the page declares a language that isn't a valid code, so screen readers may mispronounce it.",
+    whoItAffects: "Screen-reader users on multilingual content.",
+  },
+  "meta-viewport": {
+    title: "The page blocks zooming",
+    whatItMeans: "The page prevents pinch-to-zoom, so people who need to enlarge text can't.",
+    whoItAffects: "People with low vision.",
+  },
+  "scrollable-region-focusable": {
+    title: "A scrollable area can't be reached by keyboard",
+    whatItMeans: "A region that scrolls can't be focused with the keyboard, so its content is unreachable without a mouse.",
+    whoItAffects: "Keyboard-only users.",
+  },
+  "nested-interactive": {
+    title: "Interactive controls are nested inside each other",
+    whatItMeans: "A control contains another control (like a button inside a button), which confuses assistive tech.",
+    whoItAffects: "Screen-reader and keyboard users.",
+  },
+  "link-in-text-block": {
+    title: "Links aren't distinguishable from surrounding text",
+    whatItMeans: "Links rely on colour alone to stand out from text, so they're invisible to some readers.",
+    whoItAffects: "People with low vision or colour blindness.",
+  },
+  "listitem": {
+    title: "A list item is outside a list",
+    whatItMeans: "A list item isn't inside a proper list, so the structure is announced incorrectly.",
+    whoItAffects: "Screen-reader users.",
+  },
+  "form-field-multiple-labels": {
+    title: "A form field has conflicting labels",
+    whatItMeans: "A field has more than one label, which can be announced unpredictably.",
+    whoItAffects: "Screen-reader users.",
+  },
+  "bypass": {
+    title: "There's no way to skip to the main content",
+    whatItMeans: "The page offers no skip link or landmark to jump past repeated navigation.",
+    whoItAffects: "Keyboard and screen-reader users.",
+  },
+  "target-size": {
+    title: "Tap targets are too small or too close together",
+    whatItMeans: "Buttons or links are small or crowded, making them hard to tap accurately.",
+    whoItAffects: "People with motor impairments and touchscreen users.",
+  },
 };
 
 const SEVERITY_ORDER: SeverityLevel[] = ["critical", "serious", "moderate", "minor"];

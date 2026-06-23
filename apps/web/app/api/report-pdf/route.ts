@@ -22,6 +22,7 @@ import { NextResponse } from "next/server";
 import { renderReportPdf, reportFilename } from "@/lib/pdf/render-report";
 import type { ReportPdfInput, ReportPdfIssue } from "@/lib/pdf/report-content";
 import { captureError } from "@/lib/observability";
+import { isValidEmail } from "@/lib/utils/email";
 
 // @react-pdf/renderer is Node-only.
 export const runtime = "nodejs";
@@ -101,7 +102,20 @@ export async function POST(req: Request): Promise<NextResponse> {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
 
-  const { url, score, totals, topIssues, isPartialScan } = body ?? {};
+  const { url, email, score, totals, topIssues, isPartialScan } = body ?? {};
+
+  // ── Email gate (server-side enforcement) ───────────────────────────────────
+  // The PDF is the lead magnet: it cannot be downloaded without an email. The
+  // /scan UI captures the lead (via /api/scan-ingest) before requesting the PDF;
+  // enforcing it here too means the gate can't be bypassed by calling the API
+  // directly. We don't trust the client to self-gate.
+  if (!isValidEmail(email)) {
+    return NextResponse.json(
+      { error: "An email address is required to download the report." },
+      { status: 400 }
+    );
+  }
+
   if (!isHttpUrl(url)) {
     return NextResponse.json({ error: "A valid scanned URL is required." }, { status: 400 });
   }

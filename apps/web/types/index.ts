@@ -24,6 +24,76 @@ export type SeverityLevel = "critical" | "serious" | "moderate" | "minor";
 export type WcagLevel = "A" | "AA" | "AAA";
 
 // ---------------------------------------------------------------------------
+// Evidence + scoring value objects
+// ---------------------------------------------------------------------------
+
+/**
+ * The WCAG success criterion an issue maps to — "the impacted standard".
+ * `criterion`/`name`/`url` are null for best-practice rules that map to no
+ * specific success criterion (we never fabricate one); `level` is then
+ * "best-practice".
+ */
+export interface WcagInfo {
+  /** Dotted criterion number, e.g. "1.4.3" — null for best-practice rules. */
+  criterion: string | null;
+  /** Criterion name, e.g. "Contrast (Minimum)" — null for best-practice. */
+  name: string | null;
+  /** Conformance level, or "best-practice" when there is no criterion. */
+  level: "A" | "AA" | "AAA" | "best-practice";
+  /** Link to the W3C "Understanding" doc — null for best-practice. */
+  url: string | null;
+  /** Additional criteria this rule also maps to (deterministic order). */
+  others?: string[];
+}
+
+/**
+ * One rule's contribution to the score — the auditable unit behind every
+ * deducted point. Mirrors the scorer's output and crosses the wire/storage.
+ */
+export interface ScoreLineItem {
+  ruleId: string;
+  severity: SeverityLevel;
+  /** True instance count used for the penalty (post-dedup). */
+  instanceCount: number;
+  /** Unrounded points this rule removed from 100 (line items sum to rawPenalty). */
+  pointsContributed: number;
+  wcagCriterion: string | null;
+  level: string | null;
+}
+
+/** Fully explainable score result stored alongside every scan. */
+export interface ScoreBreakdown {
+  /** Integer 0–100. */
+  score: number;
+  /** Sum of all line-item penalties — may exceed 100. */
+  rawPenalty: number;
+  /** Penalty actually applied after clamping to [0, 100]. */
+  appliedPenalty: number;
+  /** Per-rule line items, sorted by `pointsContributed` desc. */
+  lineItems: ScoreLineItem[];
+  /** Scoring model version that produced this breakdown. */
+  scoringModelVersion: number;
+}
+
+/**
+ * Provenance recorded with every scan so a score change can be attributed to
+ * the SITE changing vs the ENGINE/MODEL changing. This is what makes the
+ * benchmark defensible.
+ */
+export interface EngineMeta {
+  /** Exact axe-core version (e.g. "4.10.2"). */
+  axeVersion: string;
+  /** Our pipeline version. */
+  engineVersion: number;
+  /** Scoring model version. */
+  scoringModelVersion: number;
+  /** Hash of enabled axe tags + axe version + custom-check ids & version. */
+  rulesetHash: string;
+  /** Hash of the normalised structural/a11y DOM skeleton (change detector). */
+  contentHash: string;
+}
+
+// ---------------------------------------------------------------------------
 // Core domain models
 // ---------------------------------------------------------------------------
 
@@ -60,8 +130,30 @@ export interface AccessibilityIssue {
   /** URL of the help article explaining the violation and how to fix it. */
   helpUrl: string;
 
-  /** DOM nodes that triggered this violation. */
+  /** DOM nodes that triggered this violation (display-capped). */
   nodes: IssueNode[];
+
+  /**
+   * The impacted WCAG success criterion + level. Optional for backward
+   * compatibility with pre-v2 stored scans; always present on new scans.
+   */
+  wcag?: WcagInfo;
+
+  /** Plain-language impact: what this means for real users. */
+  whyItMatters?: string;
+
+  /** Plain-language: which disability groups are affected. */
+  whoItAffects?: string;
+
+  /**
+   * TRUE number of offending instances (post-dedup, post-verification),
+   * independent of the display-capped `nodes` array. Drives the score.
+   * Optional for pre-v2 stored scans.
+   */
+  instanceCount?: number;
+
+  /** Points this issue removed from the score (from the score breakdown). */
+  pointsContributed?: number;
 }
 
 /**
@@ -167,13 +259,25 @@ export interface AccessibilityReport {
   pagesScanned?: number;
 
   /**
-   * True when the full-rule scan timed out and the report was built from a
-   * reduced-ruleset fallback (WCAG 2.0 A + AA only, iframes skipped).
-   * The UI should show a notice so the user knows the result is partial.
+   * @deprecated Retired in v2 — the engine no longer degrades to a reduced
+   * ruleset (it fails honestly with SCAN_TIMEOUT instead). Kept readable for
+   * pre-v2 stored scans; never written by the v2 engine.
    */
   isPartialScan?: boolean;
   /** Base64 JPEG data-URL screenshot of the page taken after render. */
   screenshot?: string;
+
+  /**
+   * Auditable per-rule score breakdown (v2). Optional for pre-v2 stored scans.
+   * Every deducted point is traceable to a line item here.
+   */
+  scoreBreakdown?: ScoreBreakdown;
+
+  /**
+   * Engine/model provenance (v2). Lets a score change be attributed to the
+   * site vs the engine. Optional for pre-v2 stored scans.
+   */
+  engineMeta?: EngineMeta;
 }
 
 // ---------------------------------------------------------------------------

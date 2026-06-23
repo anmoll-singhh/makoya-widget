@@ -29,7 +29,8 @@
  */
 
 import type { AccessibilityReport, AccessibilityIssue, IssueTotals, PageScanSummary } from "@/types";
-import { scoreFromReport } from "@/lib/utils/score";
+import { scoreBreakdownFromReport } from "@/lib/utils/score";
+import { deriveEvidence } from "./enrich";
 import type { RawScanResult, RawAxeViolation } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -41,21 +42,35 @@ const SEVERITY_LEVELS = ["critical", "serious", "moderate", "minor"] as const;
 type Severity = (typeof SEVERITY_LEVELS)[number];
 
 /**
- * Converts a `RawAxeViolation` to the flat `AccessibilityIssue` shape that
+ * Converts a `RawAxeViolation` to the enriched `AccessibilityIssue` shape that
  * crosses the HTTP boundary.
  *
- * The `nodes` array is passed through as-is — it is already normalised and
- * HTML-truncated by the scanner engine.
+ * Enrichment adds the evidence every issue must carry: the impacted WCAG
+ * criterion + level, plain-language "why it matters / who it affects", and the
+ * TRUE instance count (drives the score). `pointsContributed` is attached
+ * afterwards once the score breakdown is computed. The `nodes` array is passed
+ * through as-is (already normalised, display-capped, and HTML-truncated by the
+ * engine).
  */
 function violationToIssue(violation: RawAxeViolation): AccessibilityIssue {
+  const evidence = deriveEvidence(
+    violation.id,
+    violation.tags,
+    violation.help,
+    violation.description
+  );
   return {
-    id:          violation.id,
-    description: violation.description,
-    help:        violation.help,
-    impact:      violation.impact,
-    tags:        violation.tags,
-    helpUrl:     violation.helpUrl,
-    nodes:       violation.nodes,
+    id:            violation.id,
+    description:   violation.description,
+    help:          violation.help,
+    impact:        violation.impact,
+    tags:          violation.tags,
+    helpUrl:       violation.helpUrl,
+    nodes:         violation.nodes,
+    wcag:          evidence.wcag,
+    whyItMatters:  evidence.whyItMatters,
+    whoItAffects:  evidence.whoItAffects,
+    instanceCount: violation.totalInstances,
   };
 }
 
@@ -131,21 +146,39 @@ export function buildReport(
 ): AccessibilityReport {
   const issues  = groupBySeverity(raw.violations);
   const totals  = buildTotals(issues);
-  const score   = scoreFromReport(issues);
+  const breakdown = scoreBreakdownFromReport(issues);
+  attachPoints(issues, breakdown);
 
   return {
     url:                raw.url || requestUrl,
     scannedAt:          raw.scannedAt,
     wcagLevel:          raw.wcagLevel,
-    score,
+    score:              breakdown.score,
     issues,
     totalIssues:        totals.total,
     totals,
     javascriptRendered: raw.javascriptRendered,
     durationMs:         raw.durationMs,
-    isPartialScan:      raw.isPartialScan,
     screenshot:         raw.screenshot,
+    scoreBreakdown:     breakdown,
+    engineMeta:         raw.engineMeta,
   };
+}
+
+/**
+ * Attaches each rule's `pointsContributed` (from the score breakdown) back onto
+ * the matching issue, so the report carries per-issue point attribution.
+ */
+function attachPoints(
+  issues: AccessibilityReport["issues"],
+  breakdown: ReturnType<typeof scoreBreakdownFromReport>
+): void {
+  const byId = new Map(breakdown.lineItems.map((li) => [li.ruleId, li.pointsContributed]));
+  (["critical", "serious", "moderate", "minor"] as const).forEach((sev) => {
+    for (const issue of issues[sev]) {
+      issue.pointsContributed = byId.get(issue.id) ?? 0;
+    }
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -176,14 +209,15 @@ export function buildMergedReport(
 ): AccessibilityReport {
   const issues     = groupBySeverity(mergedViolations);
   const totals     = buildTotals(issues);
-  const score      = scoreFromReport(issues);
+  const breakdown  = scoreBreakdownFromReport(issues);
+  attachPoints(issues, breakdown);
   const durationMs = pageResults.reduce((sum, p) => sum + p.durationMs, 0);
 
   return {
     url:                homepageResult.url || requestUrl,
     scannedAt:          homepageResult.scannedAt,
     wcagLevel:          homepageResult.wcagLevel,
-    score,
+    score:              breakdown.score,
     issues,
     totalIssues:        totals.total,
     totals,
@@ -191,5 +225,7 @@ export function buildMergedReport(
     durationMs,
     pageResults,
     pagesScanned,
+    scoreBreakdown:     breakdown,
+    engineMeta:         homepageResult.engineMeta,
   };
 }

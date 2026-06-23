@@ -13,7 +13,7 @@
  * surface and allows the engine internals to evolve without breaking callers.
  */
 
-import type { SeverityLevel, WcagLevel } from "@/types";
+import type { EngineMeta, SeverityLevel, WcagLevel } from "@/types";
 
 // ---------------------------------------------------------------------------
 // Scanner engine input
@@ -64,6 +64,11 @@ export interface RawAxeViolation {
   tags: string[];
   helpUrl: string;
   nodes: RawAxeNode[];
+  /**
+   * TRUE number of offending instances (post-dedup, post-verification),
+   * independent of the display-capped `nodes` array. Drives the score.
+   */
+  totalInstances: number;
 }
 
 export interface RawAxeNode {
@@ -94,7 +99,16 @@ export interface RawScanResult {
    * Already filtered (same-domain, no binary files) and deduplicated.
    */
   extractedLinks?: string[];
+  /**
+   * @deprecated Retired in v2 — the engine no longer degrades to a reduced
+   * ruleset. Never set by the v2 engine; kept for type compatibility.
+   */
   isPartialScan?: boolean;
   /** Base64 JPEG data-URL thumbnail of the page taken after render. */
   screenshot?: string;
+  /**
+   * Engine/model provenance (axe version, ruleset hash, content hash, etc.).
+   * Lets a score change be attributed to the site vs the engine.
+   */
+  engineMeta?: EngineMeta;
 }
