@@ -38,7 +38,10 @@ Honest hybrid (real scan + remediation + monitoring + honest preferences widget)
 
 ## Funnel / revenue loop — NOT WIRED (Phase 1)
 - ✅ `scanner-integration/EmailCapture.tsx` drop-in exists
-- 🔶 Wire `/api/scan-ingest` → Resend report email → lead in CRM
+- ✅ Public scanner page `/scan` (score + breakdown + plain-English issues + email gate) → `POST /api/scan-ingest`
+- ✅ Public scan API `POST /api/public-scan` (SSRF double-gate via `lib/scan-utils/public-url.ts`, per-IP rate limit, ephemeral / not stored)
+- ✅ Admin Leads page `/admin/leads` (worst-score-first, service-role read, getAdminUser-gated) + admin nav link
+- 🔶 Wire `/api/scan-ingest` → Resend report email (stub today) → lead in CRM (loop blocked on applying `leads` migration to Supabase)
 - 🔶 Rate-limit the scan endpoint
 - 🔶 PDF report export (`@react-pdf/renderer`)
 

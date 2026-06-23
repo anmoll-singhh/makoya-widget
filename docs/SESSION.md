@@ -28,8 +28,12 @@
   - ✅ POST /api/scan-ingest (public, CORS, validation, rate-limit) → lead + stub email. + OPTIONS.
   - ✅ Fixed scanner-integration/EmailCapture.tsx copy (removed "signed compliance file"/"ADA lawsuits" → honest).
   - ✅ Unit tests (report-email honesty guardrail, leads mapper). 33 tests green, typecheck 0.
-  - ⛔ BLOCKER to go LIVE: leads migration must be applied to Supabase (founder access / supabase db push). Route typechecks + unit-tested but not yet exercised against live DB here.
-  - 🔶 TODO next: admin Leads page (so leads are visible in CRM); apply migration; swap stub→Resend; PDF export; durable rate-limit.
+  - ✅ Public scan API `POST /api/public-scan` (nodejs, maxDuration 60, NO auth). SSRF double-gate: new `lib/scan-utils/public-url.ts#isPublicHttpUrl` (pure, unit-tested) + existing `validateScanUrl`; per-IP rate limit (5/min); calls `runScan` directly (NOT stored — public scans are ephemeral); returns {score, totals, topIssues[], finalUrl}; generic error + machine `code` only (no SSRF oracle).
+  - ✅ Public scanner page `/scan` (client): URL input → scan → big score/100 + critical/serious/moderate/minor breakdown + top-5 plain-English issues → email-capture card → `POST /api/scan-ingest` → "Report on its way" success. shadcn UI, honest copy, loading/error states, mobile-friendly.
+  - ✅ Admin Leads page `/admin/leads` (server, getAdminUser-gated): `listLeads(getAdminSupabase())` → shadcn Table (email, domain, score, issue total, status, date), worst-first sort (lowest score then most issues), empty state. "Leads" + "Requests" links added to admin nav (app/admin/layout.tsx).
+  - ✅ Unit test for the SSRF guard: `lib/scan-utils/public-url.test.ts` (10 cases). CI green: 43 tests, typecheck 0.
+  - ⛔ BLOCKER to go LIVE: leads migration must be applied to Supabase (founder access / supabase db push). Routes + Leads page typecheck + unit-tested but NOT exercised against live DB. Also: real browser scan can not run on this Windows box (@sparticuz/chromium = Lambda), so `/api/public-scan` is verified by typecheck/units only, not live.
+  - 🔶 TODO next: apply migration; swap stub→Resend; PDF export; durable cross-instance rate-limit; resolved-IP SSRF check (current guard is hostname-string only — DNS-rebinding still needs network egress controls).
 - **Phase 2 — Money:** Lemon Squeezy checkout + webhook → plan; server-side plan gating. [needs: LS account, test mode ok]
 - **Phase 3 — Demo polish:** honest-hybrid landing copy; Book-a-call (Calendly); PostHog funnel dashboard.
 - **Phase 4 — V1 hardening:** Inngest queue; scheduled monitoring + "score dropped" alerts; Claude AI remediation suggestions (human-confirmed); WordPress plugin.
@@ -39,4 +43,5 @@
 Anthropic API key · Resend key + verified domain (DNS) · Lemon Squeezy (or Stripe) account · Sentry + PostHog projects · Calendly link · confirm Supabase service-role.
 
 ## Session log
+- 2026-06-23: Phase 1 funnel made demo-visible end-to-end. Added public scan API (/api/public-scan, SSRF double-gate + rate limit, ephemeral, generic errors), public scanner page (/scan, score + breakdown + plain-English issues + email gate → /api/scan-ingest), admin Leads page (/admin/leads, worst-first, getAdminUser-gated, service-role read), + isPublicHttpUrl guard with 10 unit tests. `npm run ci` green: 43 tests / typecheck 0. NOT verified live: browser scan needs Lambda chromium (cannot run on Windows); leads loop still blocked on applying the leads migration to Supabase.
 - 2026-06-22: Audited real codebase (corrected stale docs). Ran competitive teardown (FTC, Overlay Fact Sheet, WebAIM, accessiBe pages) → docs/research/COMPETITIVE_TEARDOWN.md. Founder locked strategy (honest hybrid / SMB / bootstrap / demo-first). Delivered 3-perspective product walkthrough. **Executed Phase 0** (docs, shared-config drift guard, CI, observability seam) — verified green (27 tests, typecheck 0). Changes uncommitted on main. NEXT: commit Phase 0 (branch first); get Resend key + domain to start Phase 1 (scanner→email→lead loop).
