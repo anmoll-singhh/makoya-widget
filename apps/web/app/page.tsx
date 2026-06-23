@@ -75,7 +75,7 @@ export default function LandingPage() {
               {hero.subhead}
             </p>
             <HeroScanInput cta={hero.cta} placeholder={hero.inputPlaceholder} />
-            <p className="mt-3 text-xs text-neutral-400">{hero.microcopy}</p>
+            <p className="mt-3 text-xs text-neutral-500">{hero.microcopy}</p>
           </div>
         </section>
 
@@ -96,7 +96,7 @@ export default function LandingPage() {
                 >
                   <div className="font-display text-3xl font-extrabold text-brand-600">{s.figure}</div>
                   <p className="mt-2 text-sm leading-relaxed text-neutral-600">{s.label}</p>
-                  <p className="mt-3 text-xs font-medium uppercase tracking-wide text-neutral-400">
+                  <p className="mt-3 text-xs font-medium uppercase tracking-wide text-neutral-500">
                     {s.source}
                   </p>
                 </li>
@@ -186,7 +186,7 @@ export default function LandingPage() {
             </nav>
           </div>
           <p className="mt-6 max-w-2xl text-sm text-neutral-500">{footer.tagline}</p>
-          <p className="mt-2 max-w-2xl text-xs text-neutral-400">{footer.disclaimer}</p>
+          <p className="mt-2 max-w-2xl text-xs text-neutral-500">{footer.disclaimer}</p>
         </div>
       </footer>
     </div>
