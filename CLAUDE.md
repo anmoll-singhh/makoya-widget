@@ -2,6 +2,18 @@
 
 Guidance for Claude Code when working in this repository.
 
+## 🧠 Project memory — READ THIS FIRST (every session, every agent)
+
+There is a **central memory system**. Use it so parallel agents don't re-confuse each other.
+
+1. **`docs/STATUS.md`** — the glanceable dashboard (single source of truth). What's live / in-flight / blocked / next, plus the **agent-coordination board** (which worktree+branch each agent owns). **Read it at session start; update it at the end of every work block, before SESSION.md.**
+2. **`docs/SESSION.md`** — append-only narrative log (the "why" + verification detail).
+3. **gbrain** — a local searchable brain (PGLite). Query past project state semantically. See `## GBrain Configuration` below.
+
+**Multi-agent rule (founder often runs 2-3 Claude sessions at once):** one worktree = one branch = one agent. Claim your lane on the STATUS.md agent board before editing. **Never edit files outside your worktree's lane.** Deploys happen only from a clean `main` worktree.
+
+**To get a status update:** read `docs/STATUS.md`, or run `gbrain search "makoya status"`.
+
 ## What Makoya is
 
 A 3-part product for selling and running an embeddable web-accessibility widget:
@@ -89,4 +101,18 @@ Do **not** put WCAG/ADA/Section-508 "compliance" or "guaranteed accessible" clai
 - Source files carry thorough top-of-file doc comments explaining *why*; match that density when editing.
 - Auth is **real Supabase Auth** (`@supabase/ssr`; `lib/supabase/{server,client,middleware}.ts`; `app/auth/*`). Admin gating: `lib/auth/roles.ts` + `lib/auth/require-admin.ts` against `ADMIN_EMAILS`.
 
-See `docs/SESSION.md` for live phase/session status and the locked strategy, `docs/research/COMPETITIVE_TEARDOWN.md` for market positioning, and `docs/MASTER_CHECKLIST.md` for the piece-by-piece checklist.
+See `docs/STATUS.md` for the glanceable dashboard + agent board (READ FIRST), `docs/SESSION.md` for the narrative phase/session log + locked strategy, `docs/research/COMPETITIVE_TEARDOWN.md` for market positioning, and `docs/MASTER_CHECKLIST.md` for the piece-by-piece checklist.
+
+## GBrain Configuration (configured by /setup-gbrain, 2026-06-24)
+- Mode: local-stdio
+- Engine: pglite (`C:\Users\ANMOL\.gbrain\brain.pglite`)
+- Binary: `C:\Users\ANMOL\.bun\bin\gbrain.exe` (not on PATH — call by absolute path, or add `~/.bun/bin` to PATH)
+- MCP registered: yes (user scope, `✔ Connected`) — restart Claude Code sessions to see `mcp__gbrain__*` tools
+- Embeddings: **disabled** (no OpenAI/Voyage/ZeroEntropy key on this box). Search is full-text/keyword only. To unlock semantic search later: `export OPENAI_API_KEY=…` (or VOYAGE/ZEROENTROPY) then `gbrain config set embedding_model <id> && gbrain embed --stale`.
+- Seeded pages: `makoya-status-dashboard`, `makoya-project-state-2026-06-24`.
+
+## GBrain Search Guidance
+Prefer `gbrain` (via `C:\Users\ANMOL\.bun\bin\gbrain.exe` or the `mcp__gbrain__*` tools) over Grep for **semantic / "what did we decide" / "what's the status"** questions:
+- Project state: `gbrain search "makoya status"` / `gbrain search "what is blocked"`.
+- Past decisions / history: `gbrain search "<terms>"`.
+Grep is still right for exact strings, regex, and file globs. Re-seed the status page after big changes: `cat docs/STATUS.md | gbrain put "makoya-status-dashboard"`.
