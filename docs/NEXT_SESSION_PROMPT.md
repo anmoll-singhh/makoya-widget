@@ -15,13 +15,13 @@ You are my CTO + lead engineer for **Makoya**, an honest web-accessibility platf
 
 **Locked strategy (do not relitigate):** Honest hybrid (real scan + remediation + monitoring + honest widget; NEVER overlay-compliance claims) · SMB self-serve via the public scanner funnel · bootstrap/OSS-first (<$50/mo) · demo-first then harden.
 
-**Git state:** branches `chore/phase-0-foundation` (Phase 0) and `feat/phase-1-scanner-funnel` (Phase 1, stacked on Phase 0) are committed but NOT merged to `main`. Phase 1 docs/PDF/this prompt are on `feat/phase-1-scanner-funnel`. Decide with me whether to merge to main or keep stacking.
+**Git state:** branches `chore/phase-0-foundation` (Phase 0) and `feat/phase-1-scanner-funnel` (Phase 1, stacked on Phase 0) are committed but NOT merged to `main`. Phase 1 docs/PDF/this prompt are on `feat/phase-1-scanner-funnel`. **DECIDED (2026-06-23):** apply the migration first, THEN merge BOTH Phase 0 + Phase 1 into `main` (CI-green, additive). Deploy stays gated on founder approval.
 
 **What's DONE & verified (`npm run ci` green = sync:shared + typecheck web+widget + ~43 vitest tests):**
 - Phase 0: shared-config drift guard, CI, observability seam, corrected docs.
 - Phase 1 backbone (against an email STUB): `leads` table migration (supabase/migrations/20260622210000_leads.sql), provider-agnostic email seam (lib/email/* — stub records to outbox; Resend swaps in lib/email/index.ts ONLY), lib/leads.ts, public `/api/scan-ingest`, public `/api/public-scan` (SSRF double-gate via lib/scan-utils/public-url.ts + rate limit, NOT stored), public scanner page `/scan`, admin `/admin/leads` (worst-first). Honest-copy guardrail test enforces no "compliant/guaranteed/lawsuit-proof".
 
-**THE blocker to going live:** the `leads` migration is NOT yet applied to Supabase. I am setting up the **Supabase MCP** this session — once it's connected, APPLY `supabase/migrations/20260622210000_leads.sql` first thing (via the MCP, or `node scripts/db-migrate.mjs` if I added `SUPABASE_DB_URL` to apps/web/.env.local, or I'll paste it in the dashboard). Then the scanner→email(stub)→lead→/admin/leads loop is live.
+**THE blocker to going live:** the `leads` migration is NOT yet applied to Supabase. The **Supabase MCP is now fixed and ✔ Connected** (re-registered with `--project-ref=vgxvkegjnibvsngjrxqa` + `SUPABASE_ACCESS_TOKEN` env; the previous positional-token arg format had silently failed). FIRST ACTION this session: APPLY `supabase/migrations/20260622210000_leads.sql` via the Supabase MCP (it's idempotent; the table was confirmed not to exist yet). Then verify the scanner→email(stub)→lead→/admin/leads loop on the deployed app (real browser scan only runs on Vercel, not locally on Windows). THEN merge the stack to main (see Git state).
 
 **Immediate next steps (demo-first order):**
 1. Apply the `leads` migration (above). Verify the loop end-to-end on the deployed app (real browser scan only runs on Vercel, not locally on Windows).
