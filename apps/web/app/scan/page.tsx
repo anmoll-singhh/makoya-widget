@@ -44,12 +44,30 @@ interface ScanTotals {
   total: number;
 }
 
+/**
+ * WCAG evidence attached to an issue. Threaded through from /api/public-scan,
+ * which derives it from the scanned issue's own WCAG tags. Every field is
+ * optional and rendered defensively — pre-v2 / unmapped issues simply omit it.
+ *  - `criterion`/`name` are null for best-practice findings (NO fabricated
+ *    criterion — we show a neutral "Best practice" chip instead).
+ *  - `level` is the conformance level ("A" | "AA" | "AAA" | "best-practice").
+ *  - `url` links to the official W3C "Understanding" page when known.
+ */
+interface IssueWcag {
+  criterion: string | null;
+  name: string | null;
+  level: "A" | "AA" | "AAA" | "best-practice";
+  url: string | null;
+}
+
 interface TopIssue {
   id: string;
   impact: Severity | null;
   help: string; // plain-English title
   whatItMeans: string;
   whoItAffects: string;
+  /** Optional WCAG evidence — absent on pre-v2 / unmapped issues. */
+  wcag?: IssueWcag;
 }
 
 interface ScanResult {
@@ -67,6 +85,46 @@ const SEVERITY_META: Record<Severity, { label: string; dot: string; chip: string
   moderate: { label: "Moderate", dot: "bg-amber-500", chip: "bg-amber-500/10 text-amber-700 ring-1 ring-amber-500/20" },
   minor: { label: "Minor", dot: "bg-sky-500", chip: "bg-sky-500/10 text-sky-700 ring-1 ring-sky-500/20" },
 };
+
+/**
+ * A small, accessible WCAG evidence chip.
+ *  - For a mapped criterion it reads e.g. "WCAG 1.4.3 · AA" and links to the
+ *    official W3C "Understanding" page when a URL is known.
+ *  - For best-practice findings it shows a neutral "Best practice" chip with
+ *    NO fabricated criterion number.
+ * The level is conveyed in text (not colour alone) so it's not colour-only.
+ */
+function WcagChip({ wcag }: { wcag: IssueWcag }) {
+  const isBestPractice = wcag.level === "best-practice" || !wcag.criterion;
+  const label = isBestPractice
+    ? "Best practice"
+    : `WCAG ${wcag.criterion}${wcag.level !== "best-practice" ? ` · ${wcag.level}` : ""}`;
+  const title =
+    !isBestPractice && wcag.name ? `${label} — ${wcag.name}` : label;
+
+  const className =
+    "inline-flex shrink-0 items-center rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-700 ring-1 ring-brand-100";
+
+  if (!isBestPractice && wcag.url) {
+    return (
+      <a
+        href={wcag.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`${className} underline-offset-2 hover:underline focus-visible:underline`}
+        title={title}
+      >
+        {label}
+        <span className="sr-only"> (opens WCAG documentation in a new tab)</span>
+      </a>
+    );
+  }
+  return (
+    <span className={className} title={title}>
+      {label}
+    </span>
+  );
+}
 
 function scoreTone(score: number): { ring: string; text: string; verdict: string } {
   if (score >= 80) return { ring: "ring-emerald-500/30", text: "text-emerald-600", verdict: "A solid start — a few things to tidy up." };
@@ -308,13 +366,16 @@ function Results({ result }: { result: ScanResult }) {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <h3 className="text-sm font-semibold text-neutral-900">{issue.help}</h3>
-                    {meta && (
-                      <span
-                        className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${meta.chip}`}
-                      >
-                        {meta.label}
-                      </span>
-                    )}
+                    <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+                      {issue.wcag && <WcagChip wcag={issue.wcag} />}
+                      {meta && (
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${meta.chip}`}
+                        >
+                          {meta.label}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <p className="mt-1.5 text-sm text-neutral-600">{issue.whatItMeans}</p>
                   <p className="mt-1 text-xs text-neutral-400">Affects: {issue.whoItAffects}</p>

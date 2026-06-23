@@ -1,4 +1,4 @@
-import type { AccessibilityReport, AccessibilityIssue, SeverityLevel } from "@/types";
+import type { AccessibilityReport, AccessibilityIssue, SeverityLevel, WcagInfo } from "@/types";
 
 export interface PlainIssue {
   id: string;
@@ -6,6 +6,10 @@ export interface PlainIssue {
   title: string;
   whatItMeans: string;
   whoItAffects: string;
+  /** v2 evidence passthrough (optional; present on v2 scans). */
+  wcag?: WcagInfo;
+  instanceCount?: number;
+  pointsContributed?: number;
 }
 
 type Entry = { title: string; whatItMeans: string; whoItAffects: string };

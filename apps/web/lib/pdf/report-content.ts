@@ -17,6 +17,21 @@ import { hostOf } from "@/lib/utils/url";
 
 export type ReportSeverity = "critical" | "serious" | "moderate" | "minor";
 
+/**
+ * WCAG evidence for a single issue, threaded through from /api/public-scan.
+ * Every field is optional and defensive:
+ *  - `criterion`/`name` are null for best-practice findings (we never invent a
+ *    criterion number).
+ *  - `level` is the conformance level the engine flagged.
+ * Absent entirely on pre-v2 / unmapped issues — the PDF simply omits the line.
+ */
+export interface ReportPdfWcag {
+  criterion?: string | null;
+  name?: string | null;
+  level?: "A" | "AA" | "AAA" | "best-practice" | null;
+  url?: string | null;
+}
+
 export interface ReportPdfIssue {
   id: string;
   impact: ReportSeverity | null;
@@ -24,6 +39,8 @@ export interface ReportPdfIssue {
   help: string;
   whatItMeans: string;
   whoItAffects: string;
+  /** Optional WCAG evidence — absent on pre-v2 / unmapped issues. */
+  wcag?: ReportPdfWcag | null;
 }
 
 export interface ReportPdfTotals {
@@ -51,6 +68,12 @@ export interface ReportContentIssue {
   title: string;
   whatItMeans: string;
   whoItAffects: string;
+  /**
+   * Pre-formatted, factual WCAG line for display, e.g.
+   * "WCAG 1.4.3 — Contrast (Minimum) · AA" or "Best practice".
+   * Empty string when no WCAG evidence is available (PDF omits the line).
+   */
+  wcagLabel: string;
 }
 
 export interface SeverityRow {
@@ -108,6 +131,42 @@ function coerceImpact(v: unknown): ReportSeverity | null {
     : null;
 }
 
+const WCAG_LEVELS = ["A", "AA", "AAA", "best-practice"] as const;
+type WcagLevel = (typeof WCAG_LEVELS)[number];
+
+function coerceLevel(v: unknown): WcagLevel | null {
+  return typeof v === "string" && (WCAG_LEVELS as readonly string[]).includes(v)
+    ? (v as WcagLevel)
+    : null;
+}
+
+/**
+ * Build a factual, single-line WCAG label for the PDF from (untrusted) input.
+ *  - "WCAG 1.4.3 — Contrast (Minimum) · AA" when a numbered criterion is known.
+ *  - "WCAG 1.4.3 · AA" when the criterion name is unknown.
+ *  - "Best practice" for best-practice findings (NO fabricated criterion).
+ *  - "" when there's nothing to show (caller omits the line).
+ * Never asserts compliance — it only names the criterion the scan flagged.
+ */
+function formatWcagLabel(wcag: ReportPdfWcag | null | undefined): string {
+  if (!wcag) return "";
+  const level = coerceLevel(wcag.level);
+  const criterion = typeof wcag.criterion === "string" ? wcag.criterion.trim() : "";
+  const name = typeof wcag.name === "string" ? wcag.name.trim() : "";
+
+  if (!criterion) {
+    // No numbered criterion → best practice (or nothing meaningful).
+    return level === "best-practice" || (!level && (wcag.level === "best-practice"))
+      ? "Best practice"
+      : level
+        ? `WCAG (${level})`
+        : "";
+  }
+
+  const head = name ? `WCAG ${criterion} — ${name}` : `WCAG ${criterion}`;
+  return level && level !== "best-practice" ? `${head} · ${level}` : head;
+}
+
 function verdictFor(score: number): string {
   if (score >= 80) return "A solid start — a few things to tidy up.";
   if (score >= 60) return "Real gaps are turning some visitors away.";
@@ -146,6 +205,7 @@ export function buildReportContent(input: ReportPdfInput): ReportContent {
         title: clip(i.help),
         whatItMeans: clip(i.whatItMeans),
         whoItAffects: clip(i.whoItAffects),
+        wcagLabel: clip(formatWcagLabel(i.wcag)),
       };
     });
 

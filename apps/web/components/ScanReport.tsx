@@ -1,19 +1,59 @@
 "use client";
 import { useEffect, useState } from "react";
 
+/**
+ * WCAG evidence for an issue. Optional + rendered defensively: pre-v2 scans
+ * (and the current /api/scan response) may omit it entirely, in which case the
+ * badge is simply not shown. `criterion`/`name` are null for best-practice
+ * findings — we render a neutral "Best practice" chip, never a fabricated
+ * criterion number.
+ */
+interface IssueWcag {
+  criterion?: string | null;
+  name?: string | null;
+  level?: "A" | "AA" | "AAA" | "best-practice" | null;
+  url?: string | null;
+  others?: string[];
+}
+
 interface PlainIssue {
   id: string;
   impact: string | null;
   title: string;
   whatItMeans: string;
   whoItAffects: string;
+  /** v2 evidence fields — all optional, hidden when absent. */
+  wcag?: IssueWcag | null;
+  whyItMatters?: string | null;
+  instanceCount?: number | null;
+  pointsContributed?: number | null;
 }
+
+/** One row of the evidence-based score breakdown (v2). */
+interface ScoreLineItem {
+  ruleId: string;
+  severity?: string | null;
+  instanceCount?: number | null;
+  pointsContributed?: number | null;
+  wcagCriterion?: string | null;
+  level?: string | null;
+}
+interface ScoreBreakdown {
+  score?: number;
+  rawPenalty?: number;
+  appliedPenalty?: number;
+  lineItems?: ScoreLineItem[];
+  scoringModelVersion?: string;
+}
+
 interface ScanResult {
   scanId: string;
   score: number;
   totals: { critical: number; serious: number; moderate: number; minor: number; total: number };
   createdAt: string;
   plainTop3: PlainIssue[];
+  /** v2 scoring transparency — optional, hidden when absent. */
+  scoreBreakdown?: ScoreBreakdown | null;
 }
 
 const SEV = {
@@ -28,6 +68,52 @@ function scoreTone(score: number) {
   if (score >= 80) return { ring: "ring-emerald-200", text: "text-emerald-600", bg: "bg-emerald-50", bar: "bg-emerald-500", headline: "Strong — let's make it airtight." };
   if (score >= 60) return { ring: "ring-amber-200", text: "text-amber-600", bg: "bg-amber-50", bar: "bg-amber-500", headline: "You're close — but customers are still slipping away." };
   return { ring: "ring-red-200", text: "text-red-600", bg: "bg-red-50", bar: "bg-red-500", headline: "Your site is quietly turning customers away." };
+}
+
+/** Whole, non-negative integer or null (never trust JSON shape). */
+function asCount(v: unknown): number | null {
+  return typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.trunc(v) : null;
+}
+/** Points removed → "−7 pts" label, or null when not a positive number. */
+function pointsLabel(v: unknown): string | null {
+  if (typeof v !== "number" || !Number.isFinite(v) || v <= 0) return null;
+  return `−${Math.round(v)} pts`;
+}
+
+/**
+ * Accessible WCAG evidence chip for the dashboard report.
+ *  - Mapped criterion → "WCAG 1.4.3 (AA)", linking to wcag.url when present.
+ *  - Best-practice / unmapped → neutral "Best practice" chip, no fake number.
+ * The level is shown as text (not colour-only).
+ */
+function WcagBadge({ wcag }: { wcag: IssueWcag }) {
+  const hasCriterion = typeof wcag.criterion === "string" && wcag.criterion.trim().length > 0;
+  const levelText =
+    wcag.level && wcag.level !== "best-practice" ? ` (${wcag.level})` : "";
+  const label = hasCriterion ? `WCAG ${wcag.criterion}${levelText}` : "Best practice";
+  const title = hasCriterion && wcag.name ? `${label} — ${wcag.name}` : label;
+  const cls =
+    "inline-flex shrink-0 items-center rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-700 ring-1 ring-brand-100";
+
+  if (hasCriterion && wcag.url) {
+    return (
+      <a
+        href={wcag.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`${cls} underline-offset-2 hover:underline focus-visible:underline`}
+        title={title}
+      >
+        {label}
+        <span className="sr-only"> — opens WCAG documentation in a new tab</span>
+      </a>
+    );
+  }
+  return (
+    <span className={cls} title={title}>
+      {label}
+    </span>
+  );
 }
 
 export function ScanReport({ siteId }: { siteId: string }) {
@@ -147,23 +233,54 @@ export function ScanReport({ siteId }: { siteId: string }) {
       <div className="space-y-3 p-8 pt-5">
         <p className="text-sm font-semibold text-neutral-900">The 3 costing you the most right now</p>
         <ul className="space-y-3">
-          {data.plainTop3.map((p) => (
-            <li key={p.id} className="rounded-2xl border border-neutral-200 bg-neutral-50/60 p-4">
-              <div className="flex items-center gap-2">
-                <span className={`h-2 w-2 rounded-full ${sev(p.impact).dot}`} />
-                <span
-                  className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ring-1 ${sev(p.impact).pill}`}
-                >
-                  {p.impact ?? "minor"}
-                </span>
-                <span className="font-semibold text-neutral-900">{p.title}</span>
-              </div>
-              <p className="mt-2 text-sm leading-relaxed text-neutral-600">{p.whatItMeans}</p>
-              <p className="mt-1 text-xs font-medium text-neutral-400">You&apos;re losing: {p.whoItAffects}</p>
-            </li>
-          ))}
+          {data.plainTop3.map((p) => {
+            const instances = asCount(p.instanceCount);
+            const points = pointsLabel(p.pointsContributed);
+            return (
+              <li key={p.id} className="rounded-2xl border border-neutral-200 bg-neutral-50/60 p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`h-2 w-2 rounded-full ${sev(p.impact).dot}`} />
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ring-1 ${sev(p.impact).pill}`}
+                  >
+                    {p.impact ?? "minor"}
+                  </span>
+                  {p.wcag && <WcagBadge wcag={p.wcag} />}
+                  <span className="font-semibold text-neutral-900">{p.title}</span>
+                </div>
+
+                {/* Evidence row: true instance count + points removed (both v2, optional). */}
+                {(instances || points) && (
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold">
+                    {instances && (
+                      <span className="inline-flex items-center rounded-md bg-neutral-200/70 px-2 py-0.5 text-neutral-700">
+                        {instances} {instances === 1 ? "instance" : "instances"}
+                      </span>
+                    )}
+                    {points && (
+                      <span className="inline-flex items-center rounded-md bg-red-50 px-2 py-0.5 text-red-700 ring-1 ring-red-100">
+                        {points}
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                <p className="mt-2 text-sm leading-relaxed text-neutral-600">{p.whatItMeans}</p>
+                {p.whyItMatters && (
+                  <p className="mt-1.5 text-sm leading-relaxed text-neutral-600">
+                    <span className="font-semibold text-neutral-700">Why it matters: </span>
+                    {p.whyItMatters}
+                  </p>
+                )}
+                <p className="mt-1 text-xs font-medium text-neutral-400">You&apos;re losing: {p.whoItAffects}</p>
+              </li>
+            );
+          })}
         </ul>
       </div>
+
+      {/* How this score was calculated — evidence-based breakdown (v2, optional). */}
+      <ScoreBreakdownSection breakdown={data.scoreBreakdown} score={data.score} />
 
       {/* CTA */}
       <div className="p-8 pt-0">
@@ -208,6 +325,108 @@ export function ScanReport({ siteId }: { siteId: string }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * "How this score was calculated" — a compact, collapsible panel that makes
+ * every deduction traceable to a real, counted finding. Driven entirely by
+ * scoreBreakdown.lineItems (top contributors by points). Renders nothing when
+ * the breakdown is absent (pre-v2 data), so older reports degrade gracefully.
+ */
+function ScoreBreakdownSection({
+  breakdown,
+  score,
+}: {
+  breakdown?: ScoreBreakdown | null;
+  score: number;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const items = (breakdown?.lineItems ?? [])
+    .filter((li) => li && typeof li.ruleId === "string")
+    .slice()
+    .sort((a, b) => (Number(b.pointsContributed) || 0) - (Number(a.pointsContributed) || 0))
+    .slice(0, 8);
+
+  if (items.length === 0) return null;
+
+  const version = breakdown?.scoringModelVersion;
+
+  return (
+    <div className="border-t border-neutral-100 px-8 py-6">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="transition-base flex w-full items-center justify-between gap-3 text-left"
+      >
+        <span>
+          <span className="block text-sm font-semibold text-neutral-900">How this score was calculated</span>
+          <span className="mt-0.5 block text-xs text-neutral-500">
+            Every point removed maps to a real, counted finding — not a guess.
+          </span>
+        </span>
+        <span
+          aria-hidden
+          className={`shrink-0 text-neutral-400 transition-transform ${open ? "rotate-180" : ""}`}
+        >
+          ▾
+        </span>
+      </button>
+
+      {open && (
+        <div className="mt-4">
+          <p className="text-xs text-neutral-500">
+            Starting from 100, we subtract points for each issue based on its severity and how many
+            times it appears. These are the biggest contributors.
+          </p>
+          <table className="mt-3 w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-neutral-200 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
+                <th scope="col" className="py-2 pr-2 font-semibold">Finding</th>
+                <th scope="col" className="py-2 pr-2 font-semibold">WCAG</th>
+                <th scope="col" className="py-2 pr-2 text-right font-semibold">Instances</th>
+                <th scope="col" className="py-2 text-right font-semibold">Points</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((li, i) => {
+                const instances = asCount(li.instanceCount);
+                const points = pointsLabel(li.pointsContributed);
+                const wcagText = li.wcagCriterion
+                  ? `${li.wcagCriterion}${li.level && li.level !== "best-practice" ? ` (${li.level})` : ""}`
+                  : li.level === "best-practice"
+                    ? "Best practice"
+                    : "—";
+                return (
+                  <tr key={`${li.ruleId}-${i}`} className="border-b border-neutral-100 last:border-0">
+                    <td className="py-2 pr-2 align-top">
+                      <span className="font-medium text-neutral-800">{li.ruleId}</span>
+                      {li.severity && (
+                        <span className="ml-2 text-[11px] font-medium text-neutral-400">{li.severity}</span>
+                      )}
+                    </td>
+                    <td className="py-2 pr-2 align-top text-neutral-600">{wcagText}</td>
+                    <td className="py-2 pr-2 text-right align-top tabular-nums text-neutral-600">
+                      {instances ?? "—"}
+                    </td>
+                    <td className="py-2 text-right align-top tabular-nums font-semibold text-red-700">
+                      {points ?? "—"}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <p className="mt-3 text-[11px] text-neutral-400">
+            Score: {score}/100{version ? ` · scoring model ${version}` : ""}. This is an automated
+            measure of common checks — it surfaces real issues but isn&apos;t a compliance
+            certification.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

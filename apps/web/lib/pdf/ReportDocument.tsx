@@ -57,6 +57,7 @@ const s = StyleSheet.create({
   issueTitle: { fontFamily: "Helvetica-Bold", fontSize: 10.5, flex: 1 },
   chip: { fontFamily: "Helvetica-Bold", fontSize: 7.5, color: "#ffffff", borderRadius: 8, paddingVertical: 2, paddingHorizontal: 7 },
   issueBody: { color: MUTED },
+  issueWcag: { color: BRAND, fontFamily: "Helvetica-Bold", fontSize: 8.5, marginTop: 4 },
   issueAffects: { color: FAINT, fontSize: 9, marginTop: 3 },
   emptyBox: { borderWidth: 1, borderColor: "#bbf7d0", backgroundColor: "#f0fdf4", borderRadius: 6, padding: 12, marginBottom: 22, color: "#15803d" },
   steps: { marginBottom: 20 },
@@ -131,6 +132,9 @@ export function ReportDocument({ content }: { content: ReportContent }) {
                   )}
                 </View>
                 <Text style={s.issueBody}>{issue.whatItMeans}</Text>
+                {issue.wcagLabel ? (
+                  <Text style={s.issueWcag}>{issue.wcagLabel}</Text>
+                ) : null}
                 {issue.whoItAffects ? (
                   <Text style={s.issueAffects}>Affects: {issue.whoItAffects}</Text>
                 ) : null}

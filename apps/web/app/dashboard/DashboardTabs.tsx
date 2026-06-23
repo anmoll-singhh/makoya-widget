@@ -42,7 +42,7 @@ export function DashboardTabs() {
       aria-label="Dashboard sections"
       className="border-b border-neutral-200 bg-white/80 backdrop-blur-sm"
     >
-      <div className="mx-auto flex max-w-6xl gap-0 px-5">
+      <div className="mx-auto flex max-w-6xl gap-1 px-5">
         {TABS.map(({ label, href }) => {
           const active = isActive(href);
           return (
@@ -51,19 +51,23 @@ export function DashboardTabs() {
               href={tabHref(href)}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "relative inline-flex items-center px-4 py-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-1",
+                "transition-base relative -mb-px inline-flex items-center rounded-t-md px-3.5 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-1",
                 active
                   ? "text-brand-700"
-                  : "text-neutral-500 hover:text-neutral-800",
+                  : "text-neutral-500 hover:bg-neutral-50/80 hover:text-neutral-900",
               )}
             >
               {label}
-              {active && (
-                <span
-                  aria-hidden
-                  className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-brand-600"
-                />
-              )}
+              {/* Active underline. A persistent 2px baseline sits under every
+                  tab; only the active one is brand-coloured, so the cue never
+                  relies on colour alone — position + weight reinforce it. */}
+              <span
+                aria-hidden
+                className={cn(
+                  "transition-base absolute inset-x-2 bottom-0 h-0.5 rounded-full",
+                  active ? "bg-brand-600" : "bg-transparent",
+                )}
+              />
             </Link>
           );
         })}
