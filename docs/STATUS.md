@@ -18,9 +18,9 @@
 |---|---|
 | **Current phase** | Phase 3 (demo polish) in progress · Phase 2 (billing) blocked on founder |
 | **Prod URL** | https://makoya-gamma.vercel.app (deployed from `main`, manual `vercel --prod`) |
-| **Prod = which branch** | `main` (clean: widget + provisioning + Resend email) |
+| **Prod = which branch** | `main` — now includes scanner-v2 (merged `ac82c9e`, CI-verified). ⚠️ **deployed artifact predates the merge** until next `vercel --prod` from `apps/web` |
 | **You are reading from** | this repo checkout → see the agent board below for which branch |
-| **Biggest risk right now** | Unmerged work across 2 worktrees + ~13 stale branches → decide merges & prune (all backed up to origin, so safe to act) |
+| **Biggest risk right now** | Dashboard UI WIP still unmerged + ~13 stale branches to prune (all backed up to origin, so safe to act) |
 | **Next founder unblock** | Lemon Squeezy account (billing) · Calendly link · PostHog project · rotate leaked keys |
 
 ---
@@ -32,8 +32,8 @@
 | Worktree path | Branch | Owner / purpose | Status | Safe to touch |
 |---|---|---|---|---|
 | `C:\Users\ANMOL\Desktop\makoya` | `feat/dashboards-ui-wip` | **Dashboard/admin/CRM UI** elevation + scanner-evidence display | 🔶 1 commit ahead of main, WIP, unmerged | `apps/web/app/(dashboard)`, `apps/web/app/admin`, UI components |
-| `C:\Users\ANMOL\Desktop\makoya-scanner` | `feat/scanner-trustworthy-v2` | **Scanner v2** — deterministic evidence-based scoring + watermarked PDF | 🔶 Isolated, unmerged, **OFF prod**, awaiting founder blessing | `apps/web/lib/scanner`, scan routes, PDF |
-| *(none — `main` is for deploys only)* | `main` | Production source of truth | ✅ Clean, deployed | Deploy/merge only — don't develop directly on it |
+| `C:\Users\ANMOL\Desktop\makoya-scanner` | `feat/scanner-trustworthy-v2` | **Scanner v2** — deterministic evidence-based scoring + watermarked PDF | ✅ **MERGED to main `ac82c9e` (2026-06-24)**, CI-verified, DB columns live. Worktree can be removed. | (merged — done) |
+| *(none — `main` is for deploys only)* | `main` | Production source of truth | ✅ Has scanner-v2; **needs redeploy** to go live | Deploy/merge only — don't develop directly on it |
 
 **Rules of the board**
 1. One worktree = one branch = one agent. Don't develop two features in one checkout.
@@ -65,7 +65,7 @@
 | Item | Where | What's needed from founder |
 |---|---|---|
 | Dashboard/admin/CRM UI elevation | `feat/dashboards-ui-wip` (here) | Review the WIP UI direction, then decide: finish → merge, or fold into the planned strategic frontend rebuild |
-| Scanner v2 (evidence-based scoring) | `feat/scanner-trustworthy-v2` worktree | Bless it → merge to main + redeploy, **or** keep iterating. It's better than what's on prod but currently rolled off. |
+| ~~Scanner v2~~ | ~~worktree~~ | ✅ Done — merged to `main` `ac82c9e` 2026-06-24 (CI-verified, DB live). Pending: a `vercel --prod` redeploy to make it live. |
 
 ---
 
