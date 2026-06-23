@@ -13,6 +13,8 @@
  *  - State real findings plainly; offer to fix them at the source and monitor.
  */
 
+import { hostOf } from "@/lib/utils/url";
+
 export type ReportSeverity = "critical" | "serious" | "moderate" | "minor";
 
 export interface ReportPdfIssue {
@@ -85,14 +87,6 @@ const SEVERITY_ORDER: ReportSeverity[] = ["critical", "serious", "moderate", "mi
 // Defensive caps so a hostile/oversized client payload can't blow up the PDF.
 const MAX_ISSUES = 50;
 const MAX_FIELD = 600;
-
-function hostOf(url: string): string {
-  try {
-    return new URL(url).host || url;
-  } catch {
-    return url;
-  }
-}
 
 function clampScore(raw: number): number {
   if (!Number.isFinite(raw)) return 0;

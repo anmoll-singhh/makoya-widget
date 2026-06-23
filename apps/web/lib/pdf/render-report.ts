@@ -8,6 +8,7 @@
 
 import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
 import { createElement, type ReactElement } from "react";
+import { hostSlug } from "@/lib/utils/url";
 import { ReportDocument } from "./ReportDocument";
 import { buildReportContent, type ReportPdfInput } from "./report-content";
 
@@ -21,14 +22,7 @@ export async function renderReportPdf(input: ReportPdfInput): Promise<Buffer> {
   return renderToBuffer(element);
 }
 
-/** A safe, host-derived filename like `makoya-report-shop-example.pdf`. */
+/** A safe, host-derived filename like `makoya-report-shop.example.pdf`. */
 export function reportFilename(url: string): string {
-  let host = "site";
-  try {
-    host = new URL(url).host || host;
-  } catch {
-    /* keep default */
-  }
-  const slug = host.replace(/[^a-z0-9.-]+/gi, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "site";
-  return `makoya-report-${slug}.pdf`;
+  return `makoya-report-${hostSlug(url)}.pdf`;
 }

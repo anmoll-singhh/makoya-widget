@@ -46,6 +46,7 @@ describe("renderReportPdf", () => {
 
   it("derives a safe filename from the host", () => {
     expect(reportFilename("https://shop.example/x")).toBe("makoya-report-shop.example.pdf");
-    expect(reportFilename("not a url")).toBe("makoya-report-site.pdf");
+    // Unparseable input is slugified to safe chars (callers validate first).
+    expect(reportFilename("not a url")).toBe("makoya-report-not-a-url.pdf");
   });
 });

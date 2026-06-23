@@ -20,6 +20,7 @@
 "use client";
 
 import { useState } from "react";
+import { hostSlug } from "@/lib/utils/url";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -184,9 +185,7 @@ export default function PublicScanPage() {
         )}
 
         {/* Result */}
-        {result && !scanning && (
-          <Results result={result} originalUrl={url.trim()} />
-        )}
+        {result && !scanning && <Results result={result} />}
       </div>
     </main>
   );
@@ -196,7 +195,7 @@ export default function PublicScanPage() {
 // Result block: score, severity breakdown, top issues, email gate.
 // ---------------------------------------------------------------------------
 
-function Results({ result, originalUrl }: { result: ScanResult; originalUrl: string }) {
+function Results({ result }: { result: ScanResult }) {
   const tone = scoreTone(result.score);
   const severities: Severity[] = ["critical", "serious", "moderate", "minor"];
 
@@ -210,7 +209,7 @@ function Results({ result, originalUrl }: { result: ScanResult; originalUrl: str
               Results for{" "}
               <span className="font-medium text-neutral-700">{result.finalUrl}</span>
             </CardDescription>
-            <DownloadReportButton result={result} url={originalUrl || result.finalUrl} />
+            <DownloadReportButton result={result} url={result.finalUrl} />
           </div>
         </CardHeader>
         <CardContent>
@@ -300,11 +299,7 @@ function Results({ result, originalUrl }: { result: ScanResult; originalUrl: str
       )}
 
       {/* Email gate */}
-      <EmailGate
-        url={originalUrl || result.finalUrl}
-        score={result.score}
-        totals={result.totals}
-      />
+      <EmailGate url={result.finalUrl} score={result.score} totals={result.totals} />
     </div>
   );
 }
@@ -313,15 +308,6 @@ function Results({ result, originalUrl }: { result: ScanResult; originalUrl: str
 // Download PDF report → POST /api/report-pdf → triggers a file download.
 // The report is built from data the page already has (no re-scan).
 // ---------------------------------------------------------------------------
-
-function hostSlug(url: string): string {
-  try {
-    const host = new URL(url).host || "site";
-    return host.replace(/[^a-z0-9.-]+/gi, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "site";
-  } catch {
-    return "site";
-  }
-}
 
 function DownloadReportButton({ result, url }: { result: ScanResult; url: string }) {
   const [busy, setBusy] = useState(false);
