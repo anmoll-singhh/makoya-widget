@@ -5,6 +5,8 @@
 >
 > **Last updated:** 2026-06-24 · **Updated by:** Claude (memory-system block)
 >
+> **Backup status:** ✅ All 16 branches pushed to `origin` (github.com/anmoll-singhh/makoya-widget) on 2026-06-24 — no work is local-only anymore.
+>
 > **How to ask for an update:** open this file, or tell any agent *"read docs/STATUS.md and tell me the status."*
 > **How agents keep it true:** see [§ Update protocol](#-update-protocol) at the bottom. Update this file at the end of every work block — before SESSION.md.
 
@@ -18,7 +20,7 @@
 | **Prod URL** | https://makoya-gamma.vercel.app (deployed from `main`, manual `vercel --prod`) |
 | **Prod = which branch** | `main` (clean: widget + provisioning + Resend email) |
 | **You are reading from** | this repo checkout → see the agent board below for which branch |
-| **Biggest risk right now** | Unmerged work scattered across 2 worktrees + ~12 stale branches → decide merges |
+| **Biggest risk right now** | Unmerged work across 2 worktrees + ~13 stale branches → decide merges & prune (all backed up to origin, so safe to act) |
 | **Next founder unblock** | Lemon Squeezy account (billing) · Calendly link · PostHog project · rotate leaked keys |
 
 ---
