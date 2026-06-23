@@ -1,51 +1,70 @@
 # Makoya — master build checklist (living document)
 
-Legend: ✅ done & verified · 🟡 real code, needs creds/deploy · ⬜ not built · ❌ deliberately not building
+> Updated 2026-06-22 to match the ACTUAL codebase (the previous version described a
+> `apps/dashboard` + mock-mode + 7-feature product that no longer exists).
+> See `docs/SESSION.md` for phases and the locked strategy; `docs/research/COMPETITIVE_TEARDOWN.md` for positioning.
 
-## Widget
-- ✅ Shadow-DOM widget, 7 features, persistence, SPA re-apply, keyboard a11y
-- ✅ Auto-init from script tag (the "icon not showing" fix)
-- ✅ Loader pattern (loader.js + versioned core.js)
-- ✅ Built bundles: core 3.6KB gz, loader 0.7KB gz
-- ✅ Render proven via jsdom test (test-widget.mjs)
-- 🟡 Hosted on a real CDN (URLs are placeholders today)
-- ⬜ Shopify app / WP plugin wrappers
-- ❌ Widget behavioural analytics dashboard (intentionally not built)
+Legend: ✅ done & verified · 🟡 real code, needs creds/deploy · 🔶 planned (phase) · ⬜ not built · ❌ deliberately not building
 
-## Dashboard (apps/dashboard) — RUNS in mock mode, zero creds
-- ✅ Next.js 15 app, typecheck clean
-- ✅ Mock data layer (in-memory + seed) — runs with no database
-- ✅ Sites list + stats, create site
-- ✅ Config editor (color/position/features/branding) with plan gating
-- ✅ Install snippet generator
-- ✅ Accessibility report view + dollar-risk remediation CTA
-- ✅ Lead funnel page (new→contacted→audit→won→lost)
-- ✅ Billing placeholder (3 plans)
-- ✅ API: /api/sites (CRUD), /api/config/[siteId], /api/scan-ingest
-- 🟡 Real auth (mock cookie now → swap Supabase Auth)
-- 🟡 Real DB (set DB_MODE=supabase + run infra/schema.sql)
-- 🟡 Stripe billing (placeholder buttons)
-- 🟡 CDN cache purge on config save
+## Strategy (locked)
+Honest hybrid (real scan + remediation + monitoring + honest preferences widget) · SMB self-serve (PLG via scanner funnel) · bootstrap/OSS-first · demo-first then harden.
 
-## Scanner funnel (scanner-integration/)
-- ✅ EmailCapture.tsx drop-in component
-- ✅ /api/scan-ingest creates scan + lead
-- 🟡 Resend email (report + day-2 follow-up) — RESEND_API_KEY
-- 🟡 Rate limiting on scan endpoint (add in scanner repo)
+## Widget (packages/widget) — DEPLOYED
+- ✅ Shadow-DOM widget, **15 features**, 9 profiles, i18n (en/es/fr/de), persistence, SPA re-apply, keyboard a11y
+- ✅ Loader/core split (stable `loader.js` + versioned `core.js`); auto-init from script tag
+- ✅ Glassmorphic panel + mobile bottom-sheet; read-aloud
+- ✅ Built bundles copied to `apps/web/public/widget`; render proven via jsdom (`test-widget.mjs`)
+- 🟡 Hosted on a real CDN (currently served from the app's `/public/widget`)
+- 🔶 WordPress plugin wrapper (Phase 4) · ⬜ Shopify app
+- ❌ Widget behavioural analytics (privacy risk, low value)
+- RULE: widget is an honest usability convenience — never auto-detects assistive tech, never claims to "fix"/"comply"
+
+## App (apps/web) — Next 15, Supabase, DEPLOYED (makoya-gamma.vercel.app)
+- ✅ Real Supabase auth (@supabase/ssr) + RLS multi-tenancy; admin gating via `ADMIN_EMAILS`
+- ✅ **Customizer-first client dashboard**: live-preview iframe (real bundle), debounced autosave, 15-feature reorder, report tab
+- ✅ **Admin CRM**: customer overview (worst-score-first), plan management, scan history, consultations/leads, bulk customer add
+- ✅ Config API (`/api/config/[siteId]`), on-demand scan API (`/api/scan`), cron rescan route
+- ✅ Install snippet generator; typecheck clean; 27 unit tests pass
+- 🔶 Server-side plan gating enforcement (Phase 2)
+- ⬜ Billing UI beyond plan field
+
+## Scanner engine (apps/web/lib/scanner) — THE MOAT
+- ✅ Playwright + @axe-core/playwright; WCAG 2.0/2.1/2.2 A+AA + best-practice
+- ✅ 6 custom DOM checks axe misses; second-pass stale-node verification; dedup
+- ✅ Timeout fallback to reduced ruleset; screenshot; multi-page link crawl; serverless-tuned (@sparticuz/chromium)
+- ✅ Plain-language issue translation (`lib/scanner/plain-language.ts`)
+- ⚠️ Runs in the request path (`maxDuration=60`) — fine on-demand, won't scale to monitoring
+- 🔶 Move heavy/monitoring scans to a queue (Inngest, Phase 4)
+
+## Funnel / revenue loop — NOT WIRED (Phase 1)
+- ✅ `scanner-integration/EmailCapture.tsx` drop-in exists
+- ✅ Public scanner page `/scan` (score + breakdown + plain-English issues + email gate) → `POST /api/scan-ingest`
+- ✅ Public scan API `POST /api/public-scan` (SSRF double-gate via `lib/scan-utils/public-url.ts`, per-IP rate limit, ephemeral / not stored)
+- ✅ Admin Leads page `/admin/leads` (worst-score-first, service-role read, getAdminUser-gated) + admin nav link
+- 🔶 Wire `/api/scan-ingest` → Resend report email (stub today) → lead in CRM (loop blocked on applying `leads` migration to Supabase)
+- 🔶 Rate-limit the scan endpoint
+- 🔶 PDF report export (`@react-pdf/renderer`)
+
+## Billing — NOT BUILT (Phase 2)
+- 🔶 Lemon Squeezy checkout + webhook → `plan`; server-side gating
+
+## Monitoring & AI — NOT BUILT (Phase 4)
+- 🔶 Scheduled re-scan + "score dropped" email
+- 🔶 Claude-powered remediation suggestions (alt-text, plain-language, code snippets) — human-confirmed, never silent auto-fix
+
+## Foundation / DX — Phase 0 (DONE 2026-06-22)
+- ✅ Shared-config drift killed: canonical `packages/shared`, generated mirror, CI drift test (`lib/shared-sync.test.ts`)
+- ✅ Root scripts: `npm run ci` (sync + typecheck web+widget + tests)
+- ✅ GitHub Actions CI (`.github/workflows/ci.yml`)
+- ✅ Observability seam (`lib/observability.ts`) — env-guarded no-op, ready for PostHog + Sentry
+- ✅ Docs corrected (this file, CLAUDE.md, SESSION.md)
+- 🔶 Install Sentry + PostHog SDKs (next block, needs keys)
 
 ## Infra
-- ✅ Postgres schema with RLS (infra/schema.sql)
-- 🟡 Supabase project created + schema applied
-- 🟡 Vercel deploy (dashboard) + Cloudflare (widget CDN)
+- ✅ Supabase project live; migrations applied (`supabase/migrations`)
+- ✅ Vercel deploy (app)
+- 🟡 Dedicated CDN for the widget bundle
+- 🔶 Resend domain, Lemon Squeezy account
 
-## Next 10 (priority)
-1. Test contrast/dark on 10 real sites; fix layout breakage (filter-on-html risk)
-2. Fix reading ruler surviving SPA navigation
-3. Deploy widget to CDN; test full loader path end-to-end
-4. Wire EmailCapture into the real scanner + ingest (revenue path)
-5. Swap mock auth → Supabase Auth; set DB_MODE=supabase
-6. Resend emails (report + follow-up)
-7. Stripe checkout + webhook → plan
-8. One install wrapper (Shopify OR WordPress)
-9. Widget error reporting
-10. CSP/enterprise install note
+## Required from founder (access)
+Anthropic API key · Resend key + verified sending domain (DNS) · Lemon Squeezy (or Stripe) account · Sentry + PostHog projects · Calendly link.

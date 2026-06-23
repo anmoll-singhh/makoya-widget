@@ -7,7 +7,11 @@
     "apps/web"
   ],
   "scripts": {
-    "build:widget": "npm run build -w @makoya/widget"
+    "build:widget": "npm run build -w @makoya/widget",
+    "sync:shared": "node scripts/sync-shared.mjs",
+    "typecheck": "npm run typecheck -w @makoya/web && npm run typecheck -w @makoya/widget",
+    "test": "npm run test -w @makoya/web",
+    "ci": "npm run sync:shared && npm run typecheck && npm run test"
   },
   "devDependencies": {
     "jsdom": "^29.1.1"

@@ -20,3 +20,4 @@ apps/web/_*.txt
 
 # subagent-driven-development scratch
 .superpowers/
+.gstack/

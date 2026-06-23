@@ -1,0 +1,41 @@
+name: CI
+
+# Gate every push and PR on: shared-config sync, typecheck (web + widget), unit tests.
+# This is intentionally lightweight (no browser/scanner run) so it stays fast and
+# requires no secrets. The scanner is exercised manually / in a later integration job.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install (workspaces)
+        run: npm ci
+
+      - name: Verify shared mirror is in sync
+        # Regenerates the mirror; if it changes, the working tree is dirty -> fail.
+        run: |
+          npm run sync:shared
+          if ! git diff --quiet -- apps/web/lib/shared/index.ts; then
+            echo "::error::apps/web/lib/shared mirror is out of sync. Run 'npm run sync:shared' and commit."
+            git --no-pager diff -- apps/web/lib/shared/index.ts
+            exit 1
+          fi
+
+      - name: Typecheck (web + widget)
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test

@@ -6,42 +6,47 @@ Guidance for Claude Code when working in this repository.
 
 A 3-part product for selling and running an embeddable web-accessibility widget:
 
-1. **Widget** (`packages/widget`) — a `<script>` clients drop on any site. Renders a launcher button + settings panel; applies accessibility preferences (text size, spacing, contrast, stop-motion, reading ruler, highlight links, big cursor) to the host page.
-2. **Dashboard** (`apps/dashboard`) — Next.js app where clients create sites, edit widget config, view scan reports, manage leads, and (eventually) billing.
-3. **Scanner funnel** (`scanner-integration/`, `/api/scan-ingest`) — a public accessibility scanner captures an email in exchange for a report, which creates a **lead** in the dashboard. This is the sales funnel.
+1. **Widget** (`packages/widget`) — a `<script>` clients drop on any site. Renders a launcher button + settings panel; applies **15** accessibility preferences (text size, spacing, contrast, stop-motion, reading ruler/mask, highlight links/titles, big cursor, readable font, hide images, saturation, text align, mute sounds, read-aloud) to the host page. Ships with 9 quick-profiles and 4 UI languages (en/es/fr/de).
+2. **Dashboard** (`apps/web`) — Next.js 15 app with **real Supabase auth + RLS**. Clients land in a customizer-first widget editor with live preview, view their scan report, and re-scan. A separate **admin CRM** (`/admin`, gated by `ADMIN_EMAILS`) lists customers worst-score-first, manages plans, and tracks leads/consultations.
+3. **Scanner** (`apps/web/lib/scanner`, `/api/scan`) — a REAL WCAG 2.0/2.1/2.2 engine (Playwright + axe-core + 6 custom DOM checks) that scores a site and returns plain-language issues. It is both the product core and the top of the funnel. `scanner-integration/` + `/api/scan-ingest` are the email→lead capture path (Phase 1, not yet wired).
 
-It's an npm-workspaces monorepo. `packages/shared` is the single source of truth for the widget config shape, consumed by both widget and dashboard via a path alias (no build step).
+It's an npm-workspaces monorepo. `packages/shared` is the single source of truth for the widget config shape. The widget imports it directly; `apps/web` consumes a **generated mirror** (`apps/web/lib/shared/index.ts`, the `@makoya/shared` alias) because Vercel uploads only `apps/web`. Regenerate with `npm run sync:shared`; CI fails if it drifts (`apps/web/lib/shared-sync.test.ts`). **Never hand-edit the mirror.**
 
 ## Layout
 
 ```
-packages/shared      WidgetConfig type + DEFAULT_CONFIG + resolveConfig() — imported by both sides
-packages/widget      The embeddable widget. Two bundles: loader.js + core.js
-apps/dashboard       Next.js 15 / React 19 dashboard (runs on port 3001)
-scanner-integration  Drop-in EmailCapture.tsx for an external scanner + the funnel join
-infra/schema.sql     Postgres/Supabase schema with RLS
-apps/demo*.html      Standalone widget demos (double-click to run)
-docs/                MASTER_CHECKLIST (status of every piece), TESTING, DEPLOYMENT
-CLAUDE_CODE_PROMPTS.md  Prompts for the remaining real-service wiring
+packages/shared          CANONICAL WidgetConfig + DEFAULT_CONFIG + resolveConfig()
+packages/widget          The embeddable widget. Two bundles: loader.js + core.js
+apps/web                 Next.js 15 / React 19 app (port 3000): client dashboard,
+                         admin CRM, scanner engine, config API, Supabase auth + RLS
+apps/web/lib/shared      GENERATED mirror of packages/shared — do not hand-edit
+scripts/sync-shared.mjs  Regenerates the mirror from canonical
+scanner-integration      Drop-in EmailCapture.tsx for the scanner funnel (Phase 1)
+supabase/migrations      Applied DB migrations (canonical schema lives here)
+infra/schema.sql         Original RLS schema reference
+docs/SESSION.md          Living phase/session tracker + ground-truth status
+docs/research/           Competitive teardown (positioning decisions)
+.github/workflows/ci.yml Typecheck + tests + shared-sync drift gate
 ```
 
 ## Commands
 
 ```bash
+# From repo root (npm workspaces)
+npm ci                         # install all workspaces
+npm run ci                     # sync:shared + typecheck (web+widget) + tests  ← run before pushing
+npm run sync:shared            # regenerate the @makoya/shared mirror
+npm run build:widget           # builds dist/core.js AND dist/loader.js
+
+# App (apps/web) — needs Supabase env vars (see apps/web/lib/env.ts)
+npm run dev -w @makoya/web     # http://localhost:3000 (real Supabase Auth)
+npm run test -w @makoya/web    # vitest
+
 # Widget
-cd packages/widget && npm install && npm run build   # builds dist/core.js AND dist/loader.js
-npm run typecheck                                     # tsc --noEmit
-node test-widget.mjs                                  # proves the widget renders (needs: npm i jsdom)
-
-# Dashboard
-cd apps/dashboard && npm install && npm run dev       # http://localhost:3001, login = any email
-npm run typecheck
-
-# Widget build from repo root
-npm run build:widget
+node test-widget.mjs           # proves the widget renders (needs: npm i jsdom)
 ```
 
-The dashboard runs in **mock mode** by default — in-memory seed data, **zero credentials needed**. Login accepts any email; `demo@makoya.dev` is seeded. Data resets on server restart. Set `DB_MODE=supabase` + Supabase env vars for real data.
+There is **no mock mode** — the app talks to Supabase directly (real auth + RLS). Local dev needs `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `ADMIN_EMAILS`. `lib/env.ts` fails fast in production on missing public keys; admin routes are gated by `ADMIN_EMAILS`.
 
 ## Widget architecture: the loader/core split
 
@@ -71,8 +76,8 @@ Config flows one way: dashboard **writes** config → CDN JSON → loader **read
 - **Multi-tenant via RLS.** Every row is owned by an auth user; RLS makes cross-tenant reads impossible. See `infra/schema.sql`.
 - **`leads` is service-role only.** It has RLS enabled with **no policy** — only the service role touches it. The public scanner writes leads via a server route (`/api/scan-ingest`) using the service key, never from the browser. Owners never see other owners' leads.
 - **Service key never reaches the client.** The widget never queries the DB directly; it only fetches a public, read-only config JSON (`/api/config/[siteId]`) that exposes only safe display fields.
-- **Billing is gated server-side** and (when wired) driven by Stripe webhooks — never trust the client for plan state.
-- The data layer (`apps/dashboard/lib/db.ts`) presents the **same function API** in mock and supabase modes; swap modes with no UI changes. Supabase columns are snake_case (`toSnake`/`fromSnake` helpers).
+- **Billing is gated server-side** and (when wired) driven by payment webhooks (Lemon Squeezy — our chosen Merchant-of-Record; Stripe is the fallback) — never trust the client for plan state. **Not yet built.**
+- The data layer lives in `apps/web/lib/{sites,scans,admin}.ts` and is **Supabase-only** (no mock mode). Each function takes a Supabase client (server, or service-role for privileged writes). Columns are snake_case; `*-mappers.ts` convert to/from camelCase.
 
 ## Compliance guardrails
 
@@ -80,8 +85,8 @@ Do **not** put WCAG/ADA/Section-508 "compliance" or "guaranteed accessible" clai
 
 ## Conventions
 
-- `REQUIRED_MANUAL_SETUP` comments mark the only places real credentials/services need wiring (Supabase, Resend, Stripe). Search for them before a real deploy.
+- Supabase is wired and live. Still to wire: Resend (email), Lemon Squeezy (billing), Sentry/PostHog (route through `apps/web/lib/observability.ts` — the single seam). See `docs/SESSION.md` for phase status.
 - Source files carry thorough top-of-file doc comments explaining *why*; match that density when editing.
-- Auth is currently a mock cookie holding an email (`lib/session.ts`) — swap for Supabase Auth in real mode.
+- Auth is **real Supabase Auth** (`@supabase/ssr`; `lib/supabase/{server,client,middleware}.ts`; `app/auth/*`). Admin gating: `lib/auth/roles.ts` + `lib/auth/require-admin.ts` against `ADMIN_EMAILS`.
 
-See `docs/MASTER_CHECKLIST.md` for the exact done/todo status of every piece, and `CLAUDE_CODE_PROMPTS.md` for the remaining real-service wiring prompts.
+See `docs/SESSION.md` for live phase/session status and the locked strategy, `docs/research/COMPETITIVE_TEARDOWN.md` for market positioning, and `docs/MASTER_CHECKLIST.md` for the piece-by-piece checklist.

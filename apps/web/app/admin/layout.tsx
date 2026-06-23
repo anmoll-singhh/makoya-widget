@@ -16,7 +16,19 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               Operator
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <Link
+              href="/admin/requests"
+              className="transition-base rounded-lg px-3 py-1.5 text-sm font-medium text-neutral-400 hover:bg-white/10 hover:text-white"
+            >
+              Requests
+            </Link>
+            <Link
+              href="/admin/leads"
+              className="transition-base rounded-lg px-3 py-1.5 text-sm font-medium text-neutral-400 hover:bg-white/10 hover:text-white"
+            >
+              Leads
+            </Link>
             <Link
               href="/dashboard"
               className="transition-base rounded-lg px-3 py-1.5 text-sm font-medium text-neutral-400 hover:bg-white/10 hover:text-white"
