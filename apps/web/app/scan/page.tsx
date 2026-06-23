@@ -19,7 +19,8 @@
  */
 "use client";
 
-import { useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { hostSlug } from "@/lib/utils/url";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
@@ -73,15 +74,41 @@ function scoreTone(score: number): { ring: string; text: string; verdict: string
   return { ring: "ring-red-500/30", text: "text-red-600", verdict: "Several visitors likely can't use parts of this site." };
 }
 
+// Default export wraps the page in Suspense because useSearchParams() (used to
+// read the ?url= deep-link from the landing page) requires a Suspense boundary
+// under the App Router.
 export default function PublicScanPage() {
+  return (
+    <Suspense fallback={null}>
+      <PublicScanPageInner />
+    </Suspense>
+  );
+}
+
+function PublicScanPageInner() {
+  const searchParams = useSearchParams();
   const [url, setUrl] = useState("");
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ScanResult | null>(null);
 
-  async function runScan(e?: React.FormEvent) {
+  // Deep link from the landing hero: /scan?url=example.com → prefill + auto-run
+  // exactly once. The ref guards against re-running on re-render / param change.
+  const autoRan = useRef(false);
+  useEffect(() => {
+    if (autoRan.current) return;
+    const incoming = searchParams.get("url")?.trim();
+    if (incoming) {
+      autoRan.current = true;
+      setUrl(incoming);
+      void runScan(undefined, incoming);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  async function runScan(e?: React.FormEvent, override?: string) {
     e?.preventDefault();
-    const trimmed = url.trim();
+    const trimmed = (override ?? url).trim();
     if (!trimmed || scanning) return;
 
     setScanning(true);
