@@ -27,4 +27,9 @@ export const env = {
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
   ADMIN_EMAILS: process.env.ADMIN_EMAILS ?? "",
   APP_URL: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+  // Email (Resend). Server-only secret — undefined client-side, never throws here.
+  // When RESEND_API_KEY is set, lib/email/index.ts uses Resend; otherwise the stub.
+  RESEND_API_KEY: process.env.RESEND_API_KEY ?? "",
+  // Must be a Resend-verified sending domain. Today: mailer.jewlx.ai.
+  EMAIL_FROM: process.env.EMAIL_FROM ?? "Makoya <reports@mailer.jewlx.ai>",
 };
