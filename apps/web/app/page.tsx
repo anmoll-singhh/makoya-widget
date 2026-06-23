@@ -17,10 +17,12 @@
  * headings. We QA it by running our own scanner against the deployed page.
  */
 
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { HeroScanInput } from "@/components/landing/HeroScanInput";
+import { getServerSupabase } from "@/lib/supabase/server";
 import {
   hero,
   contrast,
@@ -31,7 +33,16 @@ import {
   footer,
 } from "@/lib/landing-copy";
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  // Signed-in users skip the marketing page and go straight to their dashboard,
+  // preserving the pre-landing behavior where `/` bounced into the app. Only
+  // anonymous (cold-traffic) visitors see the landing below.
+  const supabase = await getServerSupabase();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (user) redirect("/dashboard");
+
   return (
     <div className="min-h-dvh bg-neutral-50 text-neutral-900">
       {/* Header */}
