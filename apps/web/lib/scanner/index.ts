@@ -38,12 +38,42 @@
 
 import { AxeBuilder } from "@axe-core/playwright";
 import type { Page } from "playwright-core";
+import { createHash } from "crypto";
 
 import { launchBrowser, openPage } from "@/lib/browser/launcher";
 import { AppError } from "@/lib/utils/error";
 import { extractSameDomainLinks } from "@/lib/scanner/link-extractor";
-import type { SeverityLevel } from "@/types";
+import { buildA11ySkeleton, computeContentHash } from "./content-hash";
+import { SCORING_MODEL_VERSION } from "@/lib/utils/score";
+import type { EngineMeta, SeverityLevel } from "@/types";
 import type { ResolvedScanOptions, RawAxeViolation, RawAxeNode, RawScanResult } from "./types";
+
+/**
+ * Engine pipeline version. Bump whenever the scan PIPELINE changes in a way
+ * that could alter results (ruleset, freeze/settle behaviour, custom checks).
+ * Stored in `engine_meta` so a score change can be attributed to the engine
+ * rather than the site.
+ */
+const ENGINE_VERSION = 2 as const;
+
+/**
+ * Version of the custom-check suite. Bump when adding/removing/altering a
+ * custom check so the `rulesetHash` changes and the shift is attributable.
+ */
+const CUSTOM_CHECKS_VERSION = 1 as const;
+
+/** Stable list of custom-check ids (folded into the ruleset hash). */
+const CUSTOM_CHECK_IDS = [
+  "generic-link-text",
+  "new-window-no-warning",
+  "document-link-no-type",
+  "media-autoplay",
+  "focus-ring-hidden",
+  "icon-button-no-label",
+] as const;
+
+/** Max DOM nodes displayed per issue (true count lives in `totalInstances`). */
+const MAX_DISPLAY_NODES = 10;
 
 // ---------------------------------------------------------------------------
 // Custom DOM checks — supplement axe-core with rules it doesn't cover
@@ -64,7 +94,10 @@ import type { ResolvedScanOptions, RawAxeViolation, RawAxeNode, RawScanResult } 
 async function runCustomChecks(page: Page): Promise<RawAxeViolation[]> {
   type CheckNode  = { selector: string; html: string; failureSummary: string };
   type CheckResult = {
-    id: string; description: string; help: string; impact: string; nodes: CheckNode[];
+    id: string; description: string; help: string; impact: string;
+    /** TRUE number of matched elements (before display capping). */
+    totalInstances: number;
+    nodes: CheckNode[];
   };
 
   let raw: CheckResult[];
@@ -113,6 +146,7 @@ async function runCustomChecks(page: Page): Promise<RawAxeViolation[]> {
           description: "Links use non-descriptive text that loses meaning out of context",
           help: 'Replace generic text like "click here" or "read more" with a description of the destination',
           impact: "serious",
+          totalInstances: genericLinks.length,
           nodes: genericLinks.slice(0, 6).map(el => ({
             selector: sel(el),
             html: html(el),
@@ -132,6 +166,7 @@ async function runCustomChecks(page: Page): Promise<RawAxeViolation[]> {
           description: "Links that open in a new window or tab do not warn the user",
           help: 'Add "(opens in new window)" to link text or aria-label for target="_blank" links',
           impact: "minor",
+          totalInstances: newWin.length,
           nodes: newWin.slice(0, 6).map(el => ({
             selector: sel(el),
             html: html(el),
@@ -154,6 +189,7 @@ async function runCustomChecks(page: Page): Promise<RawAxeViolation[]> {
           description: "Links to downloadable documents do not identify the file format",
           help: 'Include the file type in the link text, e.g. "Annual Report (PDF)"',
           impact: "moderate",
+          totalInstances: docLinks.length,
           nodes: docLinks.slice(0, 5).map(el => ({
             selector: sel(el),
             html: html(el),
@@ -172,6 +208,7 @@ async function runCustomChecks(page: Page): Promise<RawAxeViolation[]> {
           description: "Media elements start playing without user interaction",
           help: "Remove autoplay, or ensure the media has no audio and provide a pause mechanism",
           impact: "serious",
+          totalInstances: autoplay.length,
           nodes: autoplay.slice(0, 4).map(el => ({
             selector: sel(el),
             html: html(el),
@@ -192,6 +229,7 @@ async function runCustomChecks(page: Page): Promise<RawAxeViolation[]> {
           description: "Focusable elements have their focus indicator removed via inline style",
           help: "Never set outline:none on focusable elements without providing a custom focus style",
           impact: "serious",
+          totalInstances: noFocus.length,
           nodes: noFocus.slice(0, 6).map(el => ({
             selector: sel(el),
             html: html(el),
@@ -220,6 +258,7 @@ async function runCustomChecks(page: Page): Promise<RawAxeViolation[]> {
           description: "Icon-only buttons have no accessible name for screen readers",
           help: "Add aria-label or aria-labelledby to every button that contains only an icon",
           impact: "critical",
+          totalInstances: iconBtns.length,
           nodes: iconBtns.slice(0, 6).map(el => ({
             selector: sel(el),
             html: html(el),
@@ -241,14 +280,100 @@ async function runCustomChecks(page: Page): Promise<RawAxeViolation[]> {
       description: r.description,
       help: r.help,
       impact: normaliseImpact(r.impact),
-      tags: ["custom", "wcag2a", "wcag2aa", "best-practice"],
+      tags: CUSTOM_CHECK_TAGS[r.id] ?? ["custom", "best-practice"],
       helpUrl: "https://www.w3.org/WAI/WCAG21/quickref/",
+      totalInstances: r.totalInstances,
       nodes: r.nodes.map(n => ({
         target: [n.selector],
         html: truncateHtml(n.html),
         failureSummary: n.failureSummary,
       })),
     }));
+}
+
+/**
+ * Per-custom-check axe-style tags, so each maps to a real WCAG criterion via
+ * `resolveWcag`. Without specific tags the evidence layer can't show "the
+ * impacted standard". (Previously all custom checks shared a generic tag set.)
+ */
+const CUSTOM_CHECK_TAGS: Record<string, string[]> = {
+  "generic-link-text":     ["custom", "wcag2a",  "wcag244"], // 2.4.4 Link Purpose (In Context)
+  "new-window-no-warning": ["custom", "best-practice"],      // no specific SC at A/AA
+  "document-link-no-type": ["custom", "wcag2a",  "wcag244"], // 2.4.4 Link Purpose (In Context)
+  "media-autoplay":        ["custom", "wcag2a",  "wcag142"], // 1.4.2 Audio Control
+  "focus-ring-hidden":     ["custom", "wcag2aa", "wcag247"], // 2.4.7 Focus Visible
+  "icon-button-no-label":  ["custom", "wcag2a",  "wcag412"], // 4.1.2 Name, Role, Value
+};
+
+/**
+ * Stabilises the page for a DETERMINISTIC scan, before axe runs:
+ *  1. Freezes all CSS animations/transitions (reducedMotion is already emulated
+ *     at the context level, but this also pins any JS-independent CSS motion).
+ *  2. Disables native lazy-loading and scrolls the full page once so
+ *     IntersectionObserver / lazy content mounts — otherwise off-screen content
+ *     may or may not exist at scan time depending on machine load, which axe
+ *     scans and which would make results flaky.
+ *  3. Returns to the top.
+ *
+ * Non-fatal: any failure leaves the page as-is rather than aborting the scan.
+ */
+async function stabilisePage(page: Page): Promise<void> {
+  try {
+    await page.addStyleTag({
+      content: `*,*::before,*::after{animation:none!important;transition:none!important;` +
+        `animation-duration:0s!important;transition-duration:0s!important;` +
+        `scroll-behavior:auto!important;caret-color:transparent!important}`,
+    });
+  } catch { /* non-fatal */ }
+
+  try {
+    // Force eager loading so lazy images/iframes resolve deterministically.
+    await page.evaluate(() => {
+      document.querySelectorAll("[loading='lazy']").forEach((el) => {
+        el.setAttribute("loading", "eager");
+      });
+    });
+    // Scroll through the page in viewport-sized steps to trigger observers,
+    // then return to the top so the screenshot is the hero.
+    await page.evaluate(async () => {
+      const step = window.innerHeight || 800;
+      const max = document.body ? document.body.scrollHeight : 0;
+      for (let y = 0; y <= max; y += step) {
+        window.scrollTo(0, y);
+        await new Promise((r) => requestAnimationFrame(() => r(null)));
+      }
+      window.scrollTo(0, 0);
+    });
+  } catch { /* non-fatal */ }
+}
+
+/** Computes the structural/a11y content hash from the live page (best-effort). */
+async function computePageContentHash(page: Page): Promise<string> {
+  try {
+    // buildA11ySkeleton is self-contained; Playwright serializes it and runs it
+    // in the browser, where its `root = document.documentElement` default
+    // applies. Cast resolves the evaluate() arg-typing (no arg is passed).
+    const skeleton = await page.evaluate(buildA11ySkeleton as () => string);
+    return computeContentHash(skeleton);
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Builds the ruleset hash — folds the enabled axe tags, the exact axe version,
+ * the custom-check ids, and the custom-check suite version into one digest, so
+ * any change to WHAT we test is attributable in `engine_meta`.
+ */
+function buildRulesetHash(axeVersion: string): string {
+  const material = JSON.stringify({
+    axeTags: [...AXE_TAGS],
+    axeVersion,
+    customChecks: [...CUSTOM_CHECK_IDS],
+    customChecksVersion: CUSTOM_CHECKS_VERSION,
+    engineVersion: ENGINE_VERSION,
+  });
+  return createHash("sha256").update(material).digest("hex").slice(0, 32);
 }
 
 // ---------------------------------------------------------------------------
@@ -316,13 +441,7 @@ const NETWORK_IDLE_TIMEOUT_MS = 2_500;
  *   2 s   screenshot + cleanup
  *   Total fallback path: 2+18+2.5+18+9+2 = 51.5 s  ✓ fits inside 60 s
  */
-const AXE_ANALYSIS_TIMEOUT_MS = 14_000;
-
-/**
- * Fallback timeout — reduced ruleset if full scan times out.
- * wcag2a + wcag2aa only. Covers legal ADA baseline.
- */
-const AXE_FALLBACK_TIMEOUT_MS = 9_000;
+const AXE_ANALYSIS_TIMEOUT_MS = 18_000;
 
 // ---------------------------------------------------------------------------
 // HTML truncation
@@ -456,6 +575,7 @@ async function normaliseViolations(
         tags: Array.isArray(v.tags) ? v.tags : [],
         helpUrl: v.helpUrl ?? "",
         nodes: [],
+        totalInstances: 0,
       });
     }
   }
@@ -510,6 +630,7 @@ async function normaliseViolations(
   });
 
   // Remove stale nodes and purge violations that have no remaining nodes.
+  // `totalInstances` is the TRUE verified count; `nodes` is display-capped.
   const verified: RawAxeViolation[] = [];
   for (const [ruleId, violation] of byId) {
     const staleIndices = toRemove.get(ruleId) ?? new Set<number>();
@@ -517,7 +638,11 @@ async function normaliseViolations(
       (_, idx) => !staleIndices.has(idx)
     );
     if (liveNodes.length > 0) {
-      verified.push({ ...violation, nodes: liveNodes });
+      verified.push({
+        ...violation,
+        totalInstances: liveNodes.length,
+        nodes: liveNodes.slice(0, MAX_DISPLAY_NODES),
+      });
     }
   }
 
@@ -585,15 +710,15 @@ export async function runScan(
       // This is intentional: some SPAs never reach true network idle.
     }
 
-    // ── Let the page fully render before screenshot ───────────────────────────
-    // Wait for the load event (all initial resources ready), then a fixed
-    // settle buffer so hero animations, lazy images, and JS transitions
-    // complete before the screenshot is taken.
-    // Multi-page scans use a shorter wait to fit the 45s total budget.
-    const settleMs = options.scanInternalLinks ? 4_000 : 8_000;
+    // ── Stabilise + settle the page for a DETERMINISTIC scan ──────────────────
+    // Wait for load, freeze animations, force lazy content to mount (scroll),
+    // then a fixed settle buffer. A frozen, fully-mounted DOM is what makes
+    // axe's (already deterministic) output reproducible run-to-run.
+    const settleMs = options.scanInternalLinks ? 3_000 : 5_000;
     try {
       await page.waitForLoadState("load", { timeout: 4_000 });
     } catch { /* non-fatal — fires quickly after networkidle */ }
+    await stabilisePage(page);
     await page.waitForTimeout(settleMs);
 
     // ── Screenshot ──────────────────────────────────────────────────────────
@@ -613,7 +738,6 @@ export async function runScan(
     // ── Run axe-core ─────────────────────────────────────────────────────────
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let axeResults: any;
-    let isPartialScan = false;
 
     /**
      * Builds an AxeBuilder for the given rule tags.
@@ -666,7 +790,11 @@ export async function runScan(
         // ── Cookie consent banners ────────────────────────────────────────
         .exclude("iframe[src*='cookiebot']")
         .exclude("iframe[src*='onetrust']")
-        .exclude("iframe[src*='cookiepro']");
+        .exclude("iframe[src*='cookiepro']")
+        // Only collect violations — we discard passes/incomplete anyway, and
+        // skipping their serialisation shaves analysis time WITHOUT changing
+        // which violations are found (so results stay deterministic).
+        .options({ resultTypes: ["violations"] });
 
     const makeTimeout = (ms: number) =>
       new Promise<never>((_, reject) =>
@@ -674,7 +802,12 @@ export async function runScan(
       );
 
     try {
-      // ── Pass 1: full rule set ──────────────────────────────────────────────
+      // ── Single full-ruleset pass — NEVER degrade the ruleset ──────────────
+      // Determinism contract: we run the IDENTICAL full ruleset every time. On
+      // timeout we FAIL honestly (SCAN_TIMEOUT) rather than silently switching
+      // to a reduced ruleset, because a reduced ruleset finds fewer violations
+      // and would make the SAME site score differently between runs. Returning
+      // "no score" is honest; returning a "different score" is not.
       axeResults = await Promise.race([
         buildAxe(AXE_TAGS).analyze(),
         makeTimeout(AXE_ANALYSIS_TIMEOUT_MS),
@@ -682,36 +815,21 @@ export async function runScan(
     } catch (axeErr) {
       const msg = axeErr instanceof Error ? axeErr.message : String(axeErr);
 
-      if (!msg.includes("timeout")) {
-        // Non-timeout engine error — surface immediately.
-        throw new AppError(
-          "SCAN_ENGINE_ERROR",
-          `axe-core analysis failed: ${msg}`,
-          500
-        );
-      }
-
-      // ── Pass 2: fallback — reduced rule set ────────────────────────────────
-      // Full scan timed out (complex SPA / huge DOM). Retry with only the
-      // WCAG 2.0 A + AA rules — the legal ADA minimum. This covers ~80 % of
-      // real-world violations in a fraction of the time.
-      // We return a partial result rather than a hard failure.
-      try {
-        axeResults = await Promise.race([
-          buildAxe(["wcag2a", "wcag2aa"]).analyze(),
-          makeTimeout(AXE_FALLBACK_TIMEOUT_MS),
-        ]);
-        isPartialScan = true; // flag so the UI can show a notice
-      } catch {
-        // Both passes timed out. The site DOM is genuinely too large for the
-        // serverless function budget. Return a clear, actionable error.
+      if (msg.includes("timeout")) {
         throw new AppError(
           "SCAN_TIMEOUT",
-          "The page DOM is too large to analyse within the allowed time. " +
-            "Try disabling heavy third-party scripts or scanning a simpler page.",
+          "The page took too long to analyse within the allowed time. " +
+            "Please try again; very large pages may need a few attempts.",
           504
         );
       }
+
+      // Non-timeout engine error — surface immediately.
+      throw new AppError(
+        "SCAN_ENGINE_ERROR",
+        `axe-core analysis failed: ${msg}`,
+        500
+      );
     }
 
     // ── Normalise violations + second-pass verification ──────────────────────
@@ -744,6 +862,19 @@ export async function runScan(
       extractedLinks = await extractSameDomainLinks(page, url, 3);
     }
 
+    // ── Provenance (engine_meta) ──────────────────────────────────────────────
+    // axe reports the exact engine version in its results; fall back gracefully.
+    const axeVersion: string =
+      (axeResults?.testEngine?.version as string | undefined) ?? "unknown";
+    const contentHash = await computePageContentHash(page);
+    const engineMeta: EngineMeta = {
+      axeVersion,
+      engineVersion: ENGINE_VERSION,
+      scoringModelVersion: SCORING_MODEL_VERSION,
+      rulesetHash: buildRulesetHash(axeVersion),
+      contentHash,
+    };
+
     const durationMs = Date.now() - startTime;
 
     return {
@@ -754,8 +885,8 @@ export async function runScan(
       javascriptRendered: true,
       durationMs,
       extractedLinks,
-      isPartialScan: isPartialScan || undefined,
       screenshot,
+      engineMeta,
     };
   } catch (err) {
     if (err instanceof AppError) throw err;

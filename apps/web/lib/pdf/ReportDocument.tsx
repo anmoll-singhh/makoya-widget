@@ -67,6 +67,31 @@ const s = StyleSheet.create({
   disclaimer: { borderWidth: 1, borderColor: LINE, backgroundColor: "#f8fafc", borderRadius: 6, padding: 12, fontSize: 9, color: MUTED },
   disclaimerLabel: { fontFamily: "Helvetica-Bold", color: INK, fontSize: 9.5, marginBottom: 3 },
   footer: { position: "absolute", left: 48, right: 48, bottom: 28, borderTopWidth: 1, borderTopColor: LINE, paddingTop: 8, fontSize: 8, color: FAINT, textAlign: "center" },
+  // Diagonal brand watermark, repeated on EVERY page via `fixed`. Faint enough
+  // not to impair reading, present enough to mark provenance on every sheet.
+  watermark: {
+    position: "absolute",
+    top: "42%",
+    left: -40,
+    right: -40,
+    textAlign: "center",
+    transform: "rotate(-28deg)",
+    fontFamily: "Helvetica-Bold",
+    fontSize: 96,
+    letterSpacing: 6,
+    color: BRAND,
+    opacity: 0.06,
+  },
+  watermarkFoot: {
+    position: "absolute",
+    left: 48,
+    right: 48,
+    bottom: 14,
+    textAlign: "center",
+    fontSize: 7,
+    color: FAINT,
+    opacity: 0.8,
+  },
 });
 
 export function ReportDocument({ content }: { content: ReportContent }) {
@@ -74,6 +99,14 @@ export function ReportDocument({ content }: { content: ReportContent }) {
   return (
     <Document title={`Accessibility report — ${c.host}`} author="Makoya">
       <Page size="A4" style={s.page}>
+        {/* Brand watermark — `fixed` repeats it on every page */}
+        <Text style={s.watermark} fixed>
+          Makoya
+        </Text>
+        <Text style={s.watermarkFoot} fixed>
+          Makoya — honest web accessibility · makoya
+        </Text>
+
         {/* Brand header */}
         <View style={s.header}>
           <View>

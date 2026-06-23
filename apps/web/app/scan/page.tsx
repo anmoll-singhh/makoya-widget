@@ -226,6 +226,14 @@ function Results({ result }: { result: ScanResult }) {
   const tone = scoreTone(result.score);
   const severities: Severity[] = ["critical", "serious", "moderate", "minor"];
 
+  // The PDF is gated behind email: it unlocks only once the visitor submits the
+  // email-capture form below. `capturedEmail` is the unlock token; until then
+  // the download button nudges the visitor to the gate.
+  const [capturedEmail, setCapturedEmail] = useState<string | null>(null);
+  const gateRef = useRef<HTMLDivElement>(null);
+  const scrollToGate = () =>
+    gateRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+
   return (
     <div className="mt-12 space-y-8">
       {/* Score + breakdown */}
@@ -236,7 +244,12 @@ function Results({ result }: { result: ScanResult }) {
               Results for{" "}
               <span className="font-medium text-neutral-700">{result.finalUrl}</span>
             </CardDescription>
-            <DownloadReportButton result={result} url={result.finalUrl} />
+            <DownloadReportButton
+              result={result}
+              url={result.finalUrl}
+              capturedEmail={capturedEmail}
+              onNeedEmail={scrollToGate}
+            />
           </div>
         </CardHeader>
         <CardContent>
@@ -325,10 +338,48 @@ function Results({ result }: { result: ScanResult }) {
         </Card>
       )}
 
-      {/* Email gate */}
-      <EmailGate url={result.finalUrl} score={result.score} totals={result.totals} />
+      {/* Email gate — also the only path to the PDF download */}
+      <div ref={gateRef}>
+        <EmailGate result={result} onCaptured={setCapturedEmail} />
+      </div>
     </div>
   );
+}
+
+// ---------------------------------------------------------------------------
+// Shared: build + trigger the branded PDF download (requires a captured email).
+// Returns true on success. The server (/api/report-pdf) re-checks the email, so
+// this gate cannot be bypassed by calling the API directly.
+// ---------------------------------------------------------------------------
+
+async function triggerPdfDownload(opts: {
+  url: string;
+  email: string;
+  result: ScanResult;
+}): Promise<boolean> {
+  const res = await fetch("/api/report-pdf", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      url: opts.url,
+      email: opts.email,
+      score: opts.result.score,
+      totals: opts.result.totals,
+      topIssues: opts.result.topIssues,
+      isPartialScan: opts.result.isPartialScan,
+    }),
+  });
+  if (!res.ok) return false;
+  const blob = await res.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = objectUrl;
+  a.download = `makoya-report-${hostSlug(opts.url)}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(objectUrl);
+  return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -336,39 +387,34 @@ function Results({ result }: { result: ScanResult }) {
 // The report is built from data the page already has (no re-scan).
 // ---------------------------------------------------------------------------
 
-function DownloadReportButton({ result, url }: { result: ScanResult; url: string }) {
+function DownloadReportButton({
+  result,
+  url,
+  capturedEmail,
+  onNeedEmail,
+}: {
+  result: ScanResult;
+  url: string;
+  capturedEmail: string | null;
+  onNeedEmail: () => void;
+}) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [nudge, setNudge] = useState(false);
 
   async function download() {
+    // Gate: no email captured yet → send the visitor to the email form.
+    if (!capturedEmail) {
+      setNudge(true);
+      onNeedEmail();
+      return;
+    }
     if (busy) return;
     setBusy(true);
     setErr(null);
     try {
-      const res = await fetch("/api/report-pdf", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          url,
-          score: result.score,
-          totals: result.totals,
-          topIssues: result.topIssues,
-          isPartialScan: result.isPartialScan,
-        }),
-      });
-      if (!res.ok) {
-        setErr("Couldn't build the PDF. Try again.");
-        return;
-      }
-      const blob = await res.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = objectUrl;
-      a.download = `makoya-report-${hostSlug(url)}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(objectUrl);
+      const ok = await triggerPdfDownload({ url, email: capturedEmail, result });
+      if (!ok) setErr("Couldn't build the PDF. Try again.");
     } catch {
       setErr("Couldn't build the PDF. Try again.");
     } finally {
@@ -379,8 +425,11 @@ function DownloadReportButton({ result, url }: { result: ScanResult; url: string
   return (
     <div className="flex shrink-0 flex-col items-end gap-1">
       <Button type="button" variant="outline" size="sm" onClick={download} disabled={busy}>
-        {busy ? "Preparing…" : "Download PDF"}
+        {busy ? "Preparing…" : capturedEmail ? "Download PDF" : "Download PDF report"}
       </Button>
+      {nudge && !capturedEmail && (
+        <span className="text-xs text-neutral-400">Enter your email below to unlock the PDF.</span>
+      )}
       {err && <span className="text-xs text-red-600">{err}</span>}
     </div>
   );
@@ -392,18 +441,18 @@ function DownloadReportButton({ result, url }: { result: ScanResult; url: string
 // ---------------------------------------------------------------------------
 
 function EmailGate({
-  url,
-  score,
-  totals,
+  result,
+  onCaptured,
 }: {
-  url: string;
-  score: number;
-  totals: ScanTotals;
+  result: ScanResult;
+  onCaptured: (email: string) => void;
 }) {
+  const { finalUrl: url, score, totals } = result;
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [reDownloading, setReDownloading] = useState(false);
 
   const highRisk = totals.critical > 0 || totals.serious > 2;
 
@@ -415,20 +464,39 @@ function EmailGate({
     setBusy(true);
     setErr(null);
     try {
+      // 1) Capture the lead + queue the emailed report.
       const res = await fetch("/api/scan-ingest", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ url, email: value, score, totals }),
       });
       if (!res.ok) {
-        setErr("We couldn't send the report just now. Please try again.");
+        setErr("We couldn't process that just now. Please try again.");
         return;
       }
+      // 2) Unlock the PDF for this session and deliver it immediately.
+      onCaptured(value);
       setDone(true);
+      const ok = await triggerPdfDownload({ url, email: value, result });
+      if (!ok) {
+        setErr("Your report was emailed, but the PDF download didn't start. Use the button below.");
+      }
     } catch {
-      setErr("We couldn't send the report just now. Please try again.");
+      setErr("We couldn't process that just now. Please try again.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function reDownload() {
+    if (reDownloading) return;
+    setReDownloading(true);
+    setErr(null);
+    try {
+      const ok = await triggerPdfDownload({ url, email: email.trim(), result });
+      if (!ok) setErr("Couldn't build the PDF. Try again.");
+    } finally {
+      setReDownloading(false);
     }
   }
 
@@ -436,17 +504,32 @@ function EmailGate({
     return (
       <Card className="border-emerald-200 bg-emerald-50/60">
         <CardContent>
-          <div className="flex items-center gap-3 py-2">
-            <span className="grid h-9 w-9 place-items-center rounded-full bg-emerald-500 text-white">
-              ✓
-            </span>
-            <div>
-              <p className="text-sm font-semibold text-emerald-800">Report on its way.</p>
-              <p className="text-sm text-emerald-700">
-                Check your inbox — we&apos;ll follow up with the full breakdown and how we can help.
-              </p>
+          <div className="flex flex-col gap-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-emerald-500 text-white">
+                ✓
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-emerald-800">
+                  Your PDF is downloading — and it&apos;s in your inbox too.
+                </p>
+                <p className="text-sm text-emerald-700">
+                  We&apos;ll follow up with the full breakdown and how we can help.
+                </p>
+              </div>
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={reDownload}
+              disabled={reDownloading}
+              className="shrink-0 border-emerald-300 text-emerald-800"
+            >
+              {reDownloading ? "Preparing…" : "Download PDF again"}
+            </Button>
           </div>
+          {err && <p className="mt-2 text-sm text-red-600">{err}</p>}
         </CardContent>
       </Card>
     );
@@ -455,11 +538,11 @@ function EmailGate({
   return (
     <Card className="bg-neutral-900 text-white ring-0">
       <CardHeader>
-        <CardTitle className="text-lg font-bold text-white">Get the full report</CardTitle>
+        <CardTitle className="text-lg font-bold text-white">Get your full report (PDF)</CardTitle>
         <CardDescription className="text-neutral-300">
           {highRisk
-            ? "We found critical issues blocking some visitors. We'll send the full list and show you exactly how to fix them."
-            : "We'll email you the complete breakdown of every issue and how to fix each one."}
+            ? "We found critical issues blocking some visitors. Enter your email and we'll download your full PDF report and email you a copy with exactly how to fix each one."
+            : "Enter your email to download your full PDF report — the complete breakdown of every issue and how to fix it. We'll email you a copy too."}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -475,7 +558,7 @@ function EmailGate({
             className="h-11 flex-1 border-neutral-700 bg-neutral-800 text-base text-white placeholder:text-neutral-500"
           />
           <Button type="submit" size="lg" disabled={busy || !email.trim()} className="h-11 px-6">
-            {busy ? "Sending…" : "Email me the report"}
+            {busy ? "Preparing…" : "Email & download report"}
           </Button>
         </form>
         {err && <p className="mt-2 text-sm text-red-300">{err}</p>}

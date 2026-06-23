@@ -9,7 +9,15 @@ export async function saveScan(
 ): Promise<ScanRecord> {
   const { data, error } = await client
     .from("scans")
-    .insert({ site_id: siteId, url, score: report.score, totals: report.totals, issues: report.issues })
+    .insert({
+      site_id: siteId,
+      url,
+      score: report.score,
+      totals: report.totals,
+      issues: report.issues,
+      score_breakdown: report.scoreBreakdown ?? null,
+      engine_meta: report.engineMeta ?? null,
+    })
     .select("*")
     .single();
   if (error) throw error;

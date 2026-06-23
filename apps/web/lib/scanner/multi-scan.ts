@@ -103,12 +103,16 @@ export function mergeViolations(results: RawScanResult[]): RawAxeViolation[] {
           tags: violation.tags,
           helpUrl: violation.helpUrl,
           nodes: [],
+          totalInstances: 0,
         });
         seenNodes.set(violation.id, new Set<string>());
       }
 
       const merged = byId.get(violation.id)!;
       const nodeSeen = seenNodes.get(violation.id)!;
+      // Sum true instance counts across pages (an upper bound on the unique
+      // total; shared elements like a navbar may be counted on each page).
+      merged.totalInstances += violation.totalInstances;
 
       // Append only nodes we haven't seen before (cross-page dedup).
       for (const node of violation.nodes) {
