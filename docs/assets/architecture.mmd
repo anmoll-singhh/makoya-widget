@@ -1,0 +1,10 @@
+graph TD
+  DASH["Dashboard<br/>(owner customizes)"] -->|"writes config"| CDN["Config JSON<br/>(public, read-only)"]
+  CDN -->|"loader reads"| WID["Widget<br/>(15 prefs, Shadow DOM)"]
+  WID --> SITE["Runs on the<br/>client's website"]
+  SCAN["Scanner<br/>Playwright + axe-core"] -->|"score + issues"| DASH
+  SCAN -->|"public scan"| PUB["/scan funnel"]
+  PUB -->|"service-role write"| LEADS["leads table<br/>(operator-only, RLS no-policy)"]
+  DASH --> DB["Supabase<br/>Postgres + Auth + RLS"]
+  LEADS --> DB
+  DB -->|"worst-first"| ADMIN["Admin CRM"]

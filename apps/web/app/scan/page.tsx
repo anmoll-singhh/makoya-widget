@@ -20,6 +20,7 @@
 "use client";
 
 import { useState } from "react";
+import { hostSlug } from "@/lib/utils/url";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -184,9 +185,7 @@ export default function PublicScanPage() {
         )}
 
         {/* Result */}
-        {result && !scanning && (
-          <Results result={result} originalUrl={url.trim()} />
-        )}
+        {result && !scanning && <Results result={result} />}
       </div>
     </main>
   );
@@ -196,7 +195,7 @@ export default function PublicScanPage() {
 // Result block: score, severity breakdown, top issues, email gate.
 // ---------------------------------------------------------------------------
 
-function Results({ result, originalUrl }: { result: ScanResult; originalUrl: string }) {
+function Results({ result }: { result: ScanResult }) {
   const tone = scoreTone(result.score);
   const severities: Severity[] = ["critical", "serious", "moderate", "minor"];
 
@@ -205,10 +204,13 @@ function Results({ result, originalUrl }: { result: ScanResult; originalUrl: str
       {/* Score + breakdown */}
       <Card>
         <CardHeader>
-          <CardDescription className="truncate">
-            Results for{" "}
-            <span className="font-medium text-neutral-700">{result.finalUrl}</span>
-          </CardDescription>
+          <div className="flex items-start justify-between gap-3">
+            <CardDescription className="min-w-0 flex-1 truncate">
+              Results for{" "}
+              <span className="font-medium text-neutral-700">{result.finalUrl}</span>
+            </CardDescription>
+            <DownloadReportButton result={result} url={result.finalUrl} />
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:gap-8">
@@ -297,11 +299,62 @@ function Results({ result, originalUrl }: { result: ScanResult; originalUrl: str
       )}
 
       {/* Email gate */}
-      <EmailGate
-        url={originalUrl || result.finalUrl}
-        score={result.score}
-        totals={result.totals}
-      />
+      <EmailGate url={result.finalUrl} score={result.score} totals={result.totals} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Download PDF report → POST /api/report-pdf → triggers a file download.
+// The report is built from data the page already has (no re-scan).
+// ---------------------------------------------------------------------------
+
+function DownloadReportButton({ result, url }: { result: ScanResult; url: string }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function download() {
+    if (busy) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      const res = await fetch("/api/report-pdf", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          url,
+          score: result.score,
+          totals: result.totals,
+          topIssues: result.topIssues,
+          isPartialScan: result.isPartialScan,
+        }),
+      });
+      if (!res.ok) {
+        setErr("Couldn't build the PDF. Try again.");
+        return;
+      }
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = `makoya-report-${hostSlug(url)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      setErr("Couldn't build the PDF. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex shrink-0 flex-col items-end gap-1">
+      <Button type="button" variant="outline" size="sm" onClick={download} disabled={busy}>
+        {busy ? "Preparing…" : "Download PDF"}
+      </Button>
+      {err && <span className="text-xs text-red-600">{err}</span>}
     </div>
   );
 }

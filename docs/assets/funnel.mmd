@@ -1,0 +1,8 @@
+graph LR
+  A["Visitor lands<br/>on /scan"] --> B["Pastes a URL"]
+  B --> C["Real WCAG scan<br/>score + plain-English issues"]
+  C --> D["Email gate<br/>get the full report"]
+  D --> E["Lead saved in<br/>admin CRM (worst-first)"]
+  E --> F["Self-serve<br/>signup"]
+  F --> G["Widget customizer<br/>+ install one line"]
+  E -.->|"our call list"| H["Operator follow-up"]

@@ -156,3 +156,31 @@ export function sanitiseUrl(url: URL): string {
   clean.hash = "";
   return clean.toString();
 }
+
+// ---------------------------------------------------------------------------
+// Display/label helpers (never throw — for headings, filenames, emails)
+// ---------------------------------------------------------------------------
+
+/**
+ * Best-effort host for display (PDF heading, email subject, etc.). Tolerates
+ * bare domains by retrying with an https:// prefix, and falls back to the raw
+ * string. Never throws. Single source of truth so the email, PDF header, and
+ * PDF filename agree on the host shown for a given scan.
+ */
+export function hostOf(raw: string): string {
+  try {
+    return new URL(raw).host || raw;
+  } catch {
+    try {
+      return new URL(`https://${raw}`).host || raw;
+    } catch {
+      return raw;
+    }
+  }
+}
+
+/** Filesystem-safe host slug for download filenames (e.g. `shop.example`). */
+export function hostSlug(raw: string): string {
+  const host = hostOf(raw);
+  return host.replace(/[^a-z0-9.-]+/gi, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "site";
+}

@@ -9,6 +9,7 @@
  * Pure function (no I/O) so it is trivially unit-testable.
  */
 
+import { hostOf } from "@/lib/utils/url";
 import type { OutboundEmail } from "./types";
 
 export interface ReportTotals {
@@ -28,14 +29,6 @@ export interface ReportEmailInput {
   totals: ReportTotals;
   /** Base app URL for the CTA link. */
   appUrl: string;
-}
-
-function hostOf(url: string): string {
-  try {
-    return new URL(url).host;
-  } catch {
-    return url;
-  }
 }
 
 function sumTotals(t: ReportTotals): number {
