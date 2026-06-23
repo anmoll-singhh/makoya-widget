@@ -16,9 +16,9 @@
 
 | | |
 |---|---|
-| **Current phase** | Phase 3 (demo polish) in progress · Phase 2 (billing) blocked on founder |
+| **Current phase** | **Phase H — bulletproofing (NEXT, founder directive)** · then Phase 2 billing = **Stripe** |
 | **Prod URL** | https://makoya-gamma.vercel.app (deployed from `main`, manual `vercel --prod`) |
-| **Prod = which branch** | `main` — now includes scanner-v2 (merged `ac82c9e`, CI-verified). ⚠️ **deployed artifact predates the merge** until next `vercel --prod` from `apps/web` |
+| **Prod = which branch** | `main` @ `ac82c9e` — **scanner-v2 LIVE** (deployed 2026-06-24 dpl_7QD4ri…, verified example.com→87/100) |
 | **You are reading from** | this repo checkout → see the agent board below for which branch |
 | **Biggest risk right now** | Dashboard UI WIP still unmerged + ~13 stale branches to prune (all backed up to origin, so safe to act) |
 | **Next founder unblock** | Lemon Squeezy account (billing) · Calendly link · PostHog project · rotate leaked keys |
@@ -71,24 +71,29 @@
 
 ## ⛔ Blocked on founder (access / accounts)
 
-| Blocker | Unblocks |
-|---|---|
-| Lemon Squeezy account (test mode ok) | Phase 2 — checkout + webhook → plan gating |
-| Calendly link | Phase 3 — book-a-call CTA |
-| PostHog project | Phase 3 — funnel analytics dashboard |
-| Anthropic API key (confirm/rotate) | Phase 4 — AI remediation suggestions |
-| **Rotate keys shared in chat** | Security — `ANTHROPIC_API_KEY`, `RESEND_API_KEY` were pasted in chat earlier |
+| Blocker | Unblocks | Free? |
+|---|---|---|
+| **Stripe account** (test mode ok) | Phase 2 — checkout + webhook → plan gating. ⚠️ Stripe is a *processor, not* a Merchant-of-Record → founder owns sales-tax/VAT (Stripe Tax add-on = +0.5%/txn, or handle manually). | Free acct; ~2.9%+30¢/txn |
+| Sentry project (DSN) | Hardening — error monitoring | Free (5k err/mo) |
+| PostHog project (key+host) | Hardening/Phase 3 — funnel analytics | Free (1M ev/mo) |
+| Upstash Redis (REST url+token) | Hardening — durable cross-instance rate limit | Free tier |
+| Inngest account (keys) | Phase 4 — scan queue + scheduled monitoring | Free tier |
+| Anthropic API key (rotate) | Phase 4 — AI remediation suggestions | Paid (usage) |
+| **Rotate keys shared in chat** | Security — `ANTHROPIC_API_KEY`, `RESEND_API_KEY` were pasted in chat | — |
+| ~~Calendly~~ | Dropped — founder uses own booking system; embed code added later (placeholder for now) | — |
 
 ---
 
 ## 🎯 Up next (recommended order)
 
-1. **Decide the two in-flight merges** (scanner v2 + dashboard UI) — unblocks a clean `main`.
-2. **Prune stale branches** once merges are decided.
-3. **Backend-first push (your stated direction):** Phase 2 billing (needs Lemon Squeezy) → Phase 4 hardening (Inngest queue, scheduled monitoring + "score dropped" alerts, AI remediation).
-4. **Then** the strategic frontend rebuild — research-led, every screen placed intentionally (your new rule: no ad-hoc frontend; design after research).
+1. ✅ Scanner-v2 merged + **deployed to prod** (2026-06-24, dpl_7QD4ri…, verified: example.com → 87/100 v2 model).
+2. **Phase H — Bulletproofing pass (DO THIS FIRST, founder directive 2026-06-24):** make everything already built solid/trustworthy/industry-grade — close every gap/loophole. See `## Phase H` in SESSION.md for the full checklist + tool list. Free tools wired directly; paid ones listed for founder approval.
+3. **Phase 2 — Billing (Stripe):** Checkout + webhook (signature-verified, idempotent) → plan; server-side plan gating. Test mode first.
+4. **Phase 4 — Features:** Inngest scan queue · scheduled monitoring + "score dropped" alerts · AI remediation (Claude, human-confirmed) · WordPress plugin.
+5. **Booking:** founder's own system — leave a placeholder/demo embed slot; drop the real embed code in later. (Not Calendly.)
+6. **Then** the strategic frontend rebuild — research-led, every screen placed intentionally.
 
-> **Strategy note (locked 2026-06-24):** Build backend + features first behind a *minimal, beautiful* demo frontend. Once the backend is complete, redo the whole frontend strategically. Any new frontend = research first, placed deliberately.
+> **Strategy note (locked 2026-06-24):** Build backend + features first behind a *minimal, beautiful* demo frontend, then redo the whole frontend strategically (research first). **Hardening priority (2026-06-24):** before adding new features, prove everything built is bulletproof — no gaps/loopholes, best achievable state.
 
 ---
 
@@ -96,9 +101,10 @@
 
 - **Phase 0 — Foundation:** ✅ done (docs, shared-config drift guard, CI, observability seam).
 - **Phase 1 — Revenue loop:** ✅ live (scan → email → lead → admin) + PDF.
-- **Phase 2 — Money:** ⛔ Lemon Squeezy checkout + webhook → plan gating. *Blocked on account.*
-- **Phase 3 — Demo polish:** 🔶 landing ✅; remaining = Calendly + PostHog.
-- **Phase 4 — V1 hardening:** Inngest queue · scheduled monitoring + alerts · AI remediation · WordPress plugin.
+- **Phase H — Bulletproofing:** 🔶 NEXT (founder directive). Test depth (E2E/coverage), RLS-isolation proofs, SSRF hardening, durable rate limit, runtime input validation (Zod), error monitoring (Sentry), uptime, dependency/secret/static scanning in CI, Lighthouse + our-own-a11y gate. Full checklist in SESSION.md.
+- **Phase 2 — Money:** ⛔ **Stripe** checkout + webhook → plan gating. *Blocked on Stripe account.* (Was Lemon Squeezy — founder switched to Stripe; note: Stripe ≠ MoR, founder owns tax.)
+- **Phase 3 — Demo polish:** 🔶 landing ✅; remaining = booking embed placeholder (founder's own system) + PostHog.
+- **Phase 4 — Features:** Inngest queue · scheduled monitoring + alerts · AI remediation · WordPress plugin.
 - **Phase 5 — V2/Enterprise:** white-label portal · human-audit · VPAT/ACR · SSO · CI/CD axe gate.
 
 ---
