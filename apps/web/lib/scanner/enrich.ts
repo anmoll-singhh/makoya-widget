@@ -14,7 +14,7 @@
  * criterion.
  */
 
-import type { AccessibilityIssue, WcagInfo } from "@/types";
+import type { AccessibilityIssue, WcagInfo, DisabilityGroup } from "@/types";
 import { resolveWcag } from "./wcag-criteria";
 import { toPlainIssue } from "./plain-language";
 
@@ -22,6 +22,8 @@ export interface IssueEvidence {
   wcag: WcagInfo;
   whyItMatters: string;
   whoItAffects: string;
+  disabilityGroups: DisabilityGroup[];
+  howToFix: string;
 }
 
 /** Derives the evidence fields for a rule from its id, axe tags, and copy. */
@@ -56,5 +58,7 @@ export function deriveEvidence(
     wcag,
     whyItMatters: plain.whatItMeans,
     whoItAffects: plain.whoItAffects,
+    disabilityGroups: plain.disabilityGroups,
+    howToFix: plain.howToFix,
   };
 }

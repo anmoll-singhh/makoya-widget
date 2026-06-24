@@ -23,6 +23,33 @@ export type SeverityLevel = "critical" | "serious" | "moderate" | "minor";
  */
 export type WcagLevel = "A" | "AA" | "AAA";
 
+/**
+ * The disability groups an accessibility issue affects. Lets the UI show
+ * concrete "who this hurts" badges/icons per issue instead of only a sentence,
+ * and lets reports be filtered by audience. Derived from the rule, not guessed.
+ */
+export type DisabilityGroup =
+  | "blind"                 // no vision — relies on a screen reader
+  | "low-vision"            // partial vision — magnification, high contrast
+  | "color-blind"           // cannot rely on colour to convey meaning
+  | "deaf-hard-of-hearing"  // needs captions/transcripts for audio
+  | "motor"                 // limited fine motor control — keyboard, large targets
+  | "cognitive"             // memory/attention/learning — clarity, consistency
+  | "vestibular"            // motion sensitivity — animation/parallax triggers
+  | "speech";               // cannot use voice input/commands
+
+/** Human-readable label for each disability group (for badges/legends). */
+export const DISABILITY_GROUP_LABELS: Record<DisabilityGroup, string> = {
+  "blind": "Blind",
+  "low-vision": "Low vision",
+  "color-blind": "Colour blindness",
+  "deaf-hard-of-hearing": "Deaf / hard of hearing",
+  "motor": "Motor / dexterity",
+  "cognitive": "Cognitive",
+  "vestibular": "Motion sensitivity",
+  "speech": "Speech",
+};
+
 // ---------------------------------------------------------------------------
 // Evidence + scoring value objects
 // ---------------------------------------------------------------------------
@@ -144,6 +171,26 @@ export interface AccessibilityIssue {
 
   /** Plain-language: which disability groups are affected. */
   whoItAffects?: string;
+
+  /**
+   * Structured disability groups this issue affects (for badges/filtering).
+   * Derived from the rule's WCAG criterion + category — never fabricated.
+   */
+  disabilityGroups?: DisabilityGroup[];
+
+  /**
+   * Plain-language, concrete "how to fix this" guidance — curated per rule,
+   * falling back to axe's `help` for unmapped rules. Distinct from `help`
+   * (axe's terse text) by being action-oriented and jargon-light.
+   */
+  howToFix?: string;
+
+  /**
+   * The measured fact behind the failure, when the engine can extract one
+   * (e.g. "Contrast 2.3:1 — needs 4.5:1"). Makes the issue visibly
+   * fact-backed. Absent for rules with no measurable value.
+   */
+  measuredEvidence?: string;
 
   /**
    * TRUE number of offending instances (post-dedup, post-verification),

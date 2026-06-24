@@ -70,8 +70,32 @@ function violationToIssue(violation: RawAxeViolation): AccessibilityIssue {
     wcag:          evidence.wcag,
     whyItMatters:  evidence.whyItMatters,
     whoItAffects:  evidence.whoItAffects,
+    disabilityGroups: evidence.disabilityGroups,
+    howToFix:      evidence.howToFix,
+    measuredEvidence: extractMeasuredEvidence(violation),
     instanceCount: violation.totalInstances,
   };
+}
+
+/**
+ * Pulls a measured fact out of a violation's first node when one is available,
+ * so the issue is visibly evidence-backed. Today this parses axe's
+ * colour-contrast failure summary (which states the actual vs required ratio);
+ * other rules return undefined (no fabricated numbers). Pure + best-effort.
+ */
+function extractMeasuredEvidence(violation: RawAxeViolation): string | undefined {
+  const summary = violation.nodes?.[0]?.failureSummary ?? "";
+  if (!summary) return undefined;
+
+  // axe colour-contrast summary contains e.g. "contrast of 2.3:1" and
+  // "Expected contrast ratio of 4.5:1".
+  if (violation.id === "color-contrast" || violation.id === "color-contrast-enhanced") {
+    const actual = summary.match(/contrast of ([\d.]+):1/i)?.[1];
+    const required = summary.match(/Expected contrast ratio of ([\d.]+):1/i)?.[1];
+    if (actual && required) return `Measured contrast ${actual}:1 — needs at least ${required}:1`;
+    if (actual) return `Measured contrast ${actual}:1`;
+  }
+  return undefined;
 }
 
 /**
