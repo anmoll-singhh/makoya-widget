@@ -46,16 +46,28 @@ const HTMLCS_ERROR = 1;
  */
 async function loadHtmlcsSource(): Promise<string | null> {
   try {
-    // Dynamic, guarded — never part of the static bundle graph.
-    const { readFileSync } = await import("node:fs");
-    const { createRequire } = await import("node:module");
-    const require = createRequire(import.meta.url);
-    // Common build locations across html_codesniffer versions.
-    const candidates = ["html_codesniffer/build/HTMLCS.js"];
-    for (const c of candidates) {
+    const { readFileSync, existsSync } = await import("node:fs");
+    const nodePath = await import("node:path");
+
+    // Attempt 1: standard module resolution (works in dev + when nft traces it).
+    try {
+      const { createRequire } = await import("node:module");
+      const require = createRequire(import.meta.url);
+      const p = require.resolve("html_codesniffer/build/HTMLCS.js");
+      if (existsSync(p)) return readFileSync(p, "utf8");
+    } catch {
+      /* fall through to path probing */
+    }
+
+    // Attempt 2: probe well-known locations relative to the Vercel function cwd
+    // (the traced node_modules is placed under the function root). Belt-and-
+    // braces so a resolution quirk in the bundled Lambda still finds the file.
+    const rel = nodePath.join("node_modules", "html_codesniffer", "build", "HTMLCS.js");
+    const roots = [process.cwd(), nodePath.join(process.cwd(), "apps", "web")];
+    for (const root of roots) {
+      const p = nodePath.join(root, rel);
       try {
-        const path = require.resolve(c);
-        return readFileSync(path, "utf8");
+        if (existsSync(p)) return readFileSync(p, "utf8");
       } catch {
         /* try next */
       }
@@ -73,12 +85,18 @@ async function loadHtmlcsSource(): Promise<string | null> {
  * @param page       Live, stabilised Playwright page (post-axe is fine).
  * @param timeoutMs  Hard cap so a hung engine can't eat the scan budget.
  */
+export interface SecondEngineResult {
+  /** True if the HTMLCS source loaded AND the in-page run completed. */
+  loaded: boolean;
+  findings: SecondEngineFinding[];
+}
+
 export async function runSecondEngine(
   page: Page,
   timeoutMs = 8_000
-): Promise<SecondEngineFinding[]> {
+): Promise<SecondEngineResult> {
   const source = await loadHtmlcsSource();
-  if (!source) return [];
+  if (!source) return { loaded: false, findings: [] };
 
   try {
     await page.addScriptTag({ content: source });
@@ -132,8 +150,8 @@ export async function runSecondEngine(
         totalInstances: 1,
       });
     }
-    return [...byCode.values()];
+    return { loaded: true, findings: [...byCode.values()] };
   } catch {
-    return [];
+    return { loaded: false, findings: [] };
   }
 }

@@ -120,4 +120,17 @@ export interface RawScanResult {
    * Lets a score change be attributed to the site vs the engine.
    */
   engineMeta?: EngineMeta;
+
+  /**
+   * Second-engine (HTML_CodeSniffer) telemetry — present only when
+   * `useSecondEngine` was set. `loaded` distinguishes "engine ran" from
+   * "engine couldn't load in this environment" (the key signal for verifying
+   * the in-Lambda integration). Cross-validation promotes agreed issues to
+   * "high" confidence.
+   */
+  secondEngineMeta?: {
+    loaded: boolean;
+    findings: number;
+    highConfidence: number;
+  };
 }

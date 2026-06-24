@@ -860,14 +860,23 @@ export async function runScan(
     // Runs HTML_CodeSniffer in the same page and cross-validates against axe so
     // agreed issues become "high confidence" and second-engine-only findings
     // widen coverage. Best-effort: any failure leaves the axe+custom list as-is.
+    let secondEngineMeta: RawScanResult["secondEngineMeta"];
     if (options.useSecondEngine) {
       try {
-        const secondFindings = await runSecondEngine(page);
-        if (secondFindings.length > 0) {
-          violations = crossValidate(violations, secondFindings);
+        const { loaded, findings } = await runSecondEngine(page);
+        if (loaded && findings.length > 0) {
+          const merged = crossValidate(violations, findings);
+          violations = merged;
+          secondEngineMeta = {
+            loaded,
+            findings: findings.length,
+            highConfidence: merged.filter((v) => v.confidence === "high").length,
+          };
+        } else {
+          secondEngineMeta = { loaded, findings: findings.length, highConfidence: 0 };
         }
       } catch {
-        // Non-fatal — axe remains the source of truth.
+        secondEngineMeta = { loaded: false, findings: 0, highConfidence: 0 };
       }
     }
 
@@ -904,6 +913,7 @@ export async function runScan(
       extractedLinks,
       screenshot,
       engineMeta,
+      secondEngineMeta,
     };
   } catch (err) {
     if (err instanceof AppError) throw err;

@@ -149,6 +149,10 @@ export async function POST(req: Request): Promise<NextResponse> {
       wcagLevel: "AA",
       timeoutMs: 30_000,
       scanInternalLinks: false,
+      // Second engine (HTML_CodeSniffer) ON unless explicitly disabled. It
+      // degrades gracefully (axe stays the source of truth), so enabling it can
+      // only add cross-validation/coverage, never break the scan.
+      useSecondEngine: process.env.DISABLE_SECOND_ENGINE !== "1",
     });
     const report = buildReport(raw, url);
 
@@ -177,6 +181,10 @@ export async function POST(req: Request): Promise<NextResponse> {
       totals: report.totals,
       finalUrl: report.url,
       isPartialScan: report.isPartialScan ?? false,
+      // Engine telemetry — lets the UI/QA see when a finding is cross-validated
+      // by a second independent engine. Present only when the second engine ran.
+      engines: raw.secondEngineMeta?.loaded ? ["axe", "htmlcs"] : ["axe"],
+      secondEngine: raw.secondEngineMeta ?? null,
       // Top 5 worst issues, already plain-English and severity-ordered.
       topIssues: topPlainIssues(report, 5).map((i) => ({
         id: i.id,
