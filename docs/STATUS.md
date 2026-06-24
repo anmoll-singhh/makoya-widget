@@ -3,7 +3,7 @@
 > **This is the single glance-able source of truth.** Read this first; it answers "where are we, what's in flight, what's blocked, what's next."
 > Detailed narrative history lives in [`SESSION.md`](./SESSION.md) (append-only log). This file is the *dashboard view* on top of it.
 >
-> **Last updated:** 2026-06-25 · **Updated by:** Claude (block 10 — Phase 1 widget licensing gate, on branch)
+> **Last updated:** 2026-06-25 · **Updated by:** Claude (block 11 — Phase 1.5 + delivery merged; ⛔ deploy blocked by scanner config)
 >
 > **Backup status:** ✅ All branches pushed to `origin` (github.com/anmoll-singhh/makoya-widget). No work is local-only.
 >
@@ -18,9 +18,9 @@
 |---|---|
 | **Current phase** | **Phase H — bulletproofing (code+DB+CI DONE; rest founder-gated)** · then Phase 2 billing = **Stripe** |
 | **Prod URL** | https://makoya-gamma.vercel.app (deployed from `main`, manual `vercel --prod`) |
-| **Prod = state** | `main` — **scanner-v2 + security hardening LIVE** (deployed 2026-06-25; example.com→87/100; SSRF+Zod verified live) |
-| **Canonical branch** | `main` — all docs, migrations, hardening now live here (the source-of-truth split is fixed) |
-| **Biggest risk right now** | Dashboard UI WIP still unmerged + stale branches to prune (all backed up to origin → safe to act) |
+| **Prod = state** | ⚠️ **Prod is STUCK at `e54b684` (Phase 1 deploy).** `main` is ahead (Phase 1.5 + scanner second-engine) but **un-deployable** — see blocker below. Scanner-v2 + Phase 1 licensing (monitor) are live; **Phase 1.5 + delivery are merged but NOT yet on prod.** |
+| **Canonical branch** | `main` (`c8d2699`) — all code merged + QA-green here; deploy blocked |
+| **⛔ Biggest risk right now** | **`vercel --prod` is BROKEN for all of main.** Scanner commit `2c02b03` added `outputFileTracingRoot: ../../` to `apps/web/next.config.mjs` → doubled deploy path (`/vercel/path0/vercel/path0/.next/routes-manifest.json`). Blocks deploying everything. **Scanner session owns the fix** (founder chose: coordinate). Note: Vercel uploads only `apps/web`, so the `../../node_modules/html_codesniffer` include can't resolve there either — the second-engine deploy config looks incomplete. |
 | **Next founder unblock** | Stripe account · enable Supabase leaked-password toggle · free accounts (Sentry/PostHog/Upstash/Inngest) · rotate leaked keys |
 
 ---
@@ -31,12 +31,15 @@
 
 | Worktree | Branch | Owner / purpose | Status |
 |---|---|---|---|
-| `C:\Users\ANMOL\Desktop\makoya` | `feat/phase-1-licensing` | **Widget license + domain gate (Phase 1)** | ✅ MERGED to main + **DEPLOYED LIVE** (monitor mode); branch can be pruned |
-| `C:\Users\ANMOL\Desktop\makoya-scanner-v3` | `feat/scanner-evidence-v3` | Scanner evidence v3 (other session) | 🔶 active — `7fab09f` fast-forwarded onto `main` |
+| `C:\Users\ANMOL\Desktop\makoya` | `feat/phase-1-licensing` | **Widget license + domain gate (Phase 1)** | ✅ MERGED + **DEPLOYED LIVE** (monitor); branch prunable |
+| `C:\Users\ANMOL\Desktop\makoya` | `feat/phase-1.5-and-delivery` | **Phase 1.5 token wall + core-bypass close + WP/Shopify delivery** | ✅ MERGED to main (`c8d2699`) + QA-before/after green; ⛔ **NOT on prod** (blocked by scanner deploy config) |
+| `C:\Users\ANMOL\Desktop\makoya-scanner-v3` | `feat/scanner-evidence-v3` | Scanner evidence v3 (other session) | 🔶 active — ⛔ **its `2c02b03` next.config change BREAKS `vercel --prod`; please fix the Vercel monorepo deploy config** |
 | `C:\Users\ANMOL\Desktop\makoya` | `feat/dashboards-ui-wip` | Dashboard/admin/CRM UI elevation | 🔶 WIP, unmerged — decide: finish→merge or fold into strategic frontend rebuild |
 | `.claude/worktrees/agent-*` | `harden/*` | Phase H parallel agents (A/B/C) | ✅ MERGED to main — worktrees + branches can be pruned |
 
 > **Block 10 note (data + licensing — ✅ SHIPPED):** Founder **deleted all `sites`** (clean slate; `leads` untouched) — new sites onboarded fresh. **Phase 1 widget licensing gate** is **LIVE** (config endpoint enforces per-site `license_status` + `allowed_domains`; `no-store`; fail-open infra / fail-closed not-found; monitor→enforce via `WIDGET_ENFORCE`). Migration `widget_licensing` applied to prod; merged to main (`e54b684`); deployed (`dpl_9Qpw1etTxRXtapJ7VbbsKkQ3y1mc`, makoya-gamma); verified live (unknown siteId → 200, `no-store`, `active:true` monitor-mode). **Ships OFF** — `WIDGET_ENFORCE` unset, so nothing is blocked yet; flip it only after **Phase 1.5** (signed-token wall + close direct-`core.js` bypass — Origin-lock alone is a deterrent, spoofable). Plan + threat-model: `docs/plans/PHASE-1-LICENSING.md`.
+
+> **Block 11 note (Phase 1.5 + delivery — ✅ MERGED, ⛔ DEPLOY BLOCKED):** Built multi-agent (3 lanes) + 2 reviews + QA-before/after (all green), merged to `main` (`c8d2699`). **Lane A (gate hardening):** versioned HMAC site token (`v1.<hmac>`, `WIDGET_SIGNING_SECRET` server-only) folded into the config-endpoint verdict with a **grace rule** (missing token passes → legacy installs never break; only a *wrong* token fails); closed the direct-`core.js` auto-init bypass (now fetch-gated, never throws, `data-demo` escape hatch); built the real dashboard install surface (token minted server-side). **Lane B (delivery):** WordPress plugin (`wordpress-plugin/`), Shopify theme-app-extension scaffold + runbook (`shopify-app/`, founder-gated on Partner account), `docs/INSTALL.md`. **Build fix:** `build:widget:deploy` + `scripts/copy-widget-bundles.mjs` + widget tests wired into `ci` (closes the silent-stale-bundle gap — even Phase 1's loader.js had never been copied). Both kill-switches ship OFF (`WIDGET_ENFORCE` + secret unset = monitor). Plan: `docs/plans/PHASE-1.5-AND-DELIVERY.md`. **⛔ Cannot reach prod until the scanner `2c02b03` next.config deploy blocker is fixed (scanner session).** Set `WIDGET_SIGNING_SECRET` in Vercel + watch monitor logs before ever flipping `WIDGET_ENFORCE` (see plan A2 truth table).
 
 **Rules:** one worktree = one branch = one agent · don't develop two features in one checkout · if two lanes need the same shared file (`packages/shared`, `package.json`, `lib/email`), STOP and coordinate · deploy only from clean `main` (`vercel --prod` from `apps/web`; no GitHub auto-deploy) · update this board when a lane merges/ends.
 
