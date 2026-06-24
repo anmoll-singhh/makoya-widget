@@ -7,7 +7,12 @@
     "build": "next build",
     "start": "next start -p 3000",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint .",
+    "lint:strict": "eslint . --max-warnings=0",
+    "format:check": "prettier --check .",
+    "format": "prettier --write ."
   },
   "dependencies": {
     "@axe-core/playwright": "^4.11.3",

@@ -1,0 +1,38 @@
+# Dependabot — automated weekly dependency + GitHub Actions updates.
+#
+# This is an npm-workspaces monorepo. Dependabot's npm ecosystem understands
+# workspaces when pointed at the directory that holds the root package-lock.json,
+# so a single "/" entry covers the root + every workspace (packages/*, apps/web).
+# We additionally pin a directory entry for apps/web so app-specific updates are
+# grouped and easy to review (Vercel only deploys apps/web).
+version: 2
+updates:
+  # Root + all workspaces (resolved via the single root package-lock.json).
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    groups:
+      # Batch low-risk dev/test tooling into one PR to cut noise.
+      dev-dependencies:
+        dependency-type: "development"
+      production-dependencies:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+    labels:
+      - "dependencies"
+
+  # GitHub Actions used by the workflows in .github/workflows.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"

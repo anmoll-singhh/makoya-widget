@@ -1,0 +1,12 @@
+# Build output & deps
+node_modules/
+dist/
+.next/
+coverage/
+
+# Generated artifacts — never format
+apps/web/lib/shared/index.ts
+package-lock.json
+
+# Lockfiles / data
+*.tsbuildinfo
