@@ -20,6 +20,7 @@ import { createLead, type LeadTotals } from "@/lib/leads";
 import { getEmailProvider, buildReportEmail } from "@/lib/email";
 import { env } from "@/lib/env";
 import { track, captureError } from "@/lib/observability";
+import { parseBody, scanIngestBodySchema } from "@/lib/validation/api";
 
 export const runtime = "nodejs";
 
@@ -51,20 +52,6 @@ function rateLimited(key: string): boolean {
   return cur.n > RATE_MAX;
 }
 
-function isEmail(v: unknown): v is string {
-  return typeof v === "string" && v.length <= 254 && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v);
-}
-
-function isHttpUrl(v: unknown): v is string {
-  if (typeof v !== "string" || v.length > 2048) return false;
-  try {
-    const u = new URL(v);
-    return u.protocol === "http:" || u.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
 function normalizeTotals(raw: unknown): LeadTotals {
   const t = (raw ?? {}) as Record<string, unknown>;
   const n = (x: unknown) => (Number.isFinite(x) ? Math.max(0, Math.trunc(x as number)) : 0);
@@ -85,20 +72,20 @@ export async function POST(req: Request): Promise<NextResponse> {
     return NextResponse.json({ error: "rate_limited" }, { status: 429, headers: CORS });
   }
 
-  let body: Record<string, unknown>;
+  let json: unknown;
   try {
-    body = (await req.json()) as Record<string, unknown>;
+    json = await req.json();
   } catch {
     return NextResponse.json({ error: "bad json" }, { status: 400, headers: CORS });
   }
 
-  const { url, email, score, totals } = body ?? {};
-  if (!isEmail(email)) {
-    return NextResponse.json({ error: "valid email required" }, { status: 400, headers: CORS });
+  // Schema gate: rejects bad email/url early; score/totals stay loose and are
+  // re-normalised below. Generic error only (CORS preserved for the funnel).
+  const parsed = parseBody(scanIngestBodySchema, json);
+  if (!parsed.ok) {
+    return NextResponse.json({ error: "invalid request" }, { status: 400, headers: CORS });
   }
-  if (!isHttpUrl(url)) {
-    return NextResponse.json({ error: "valid url required" }, { status: 400, headers: CORS });
-  }
+  const { url, email, score, totals } = parsed.data;
 
   const safeTotals = normalizeTotals(totals);
   const safeScore = normalizeScore(score);
