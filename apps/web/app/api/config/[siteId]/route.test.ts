@@ -11,6 +11,7 @@
  * Supabase, no network. `WIDGET_ENFORCE` is toggled per-test and restored.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { createHmac } from "node:crypto";
 
 const getSiteLicense = vi.fn();
 const getConfig = vi.fn();
@@ -70,6 +71,7 @@ function license(over: Partial<{ licenseStatus: string; trialEndsAt: string | nu
 }
 
 let originalEnforce: string | undefined;
+let originalSecret: string | undefined;
 
 beforeEach(() => {
   getSiteLicense.mockReset();
@@ -77,16 +79,53 @@ beforeEach(() => {
   logWidgetGate.mockReset();
   getConfig.mockResolvedValue(sampleConfig);
   originalEnforce = process.env.WIDGET_ENFORCE;
+  originalSecret = process.env.WIDGET_SIGNING_SECRET;
+  // Default every test to NO signing secret (monitor-safe token check) so the
+  // pre-existing license/domain tests are unaffected by the new grace logging.
+  // The token-specific tests opt in via secret(...).
+  delete process.env.WIDGET_SIGNING_SECRET;
 });
 
 afterEach(() => {
   if (originalEnforce === undefined) delete process.env.WIDGET_ENFORCE;
   else process.env.WIDGET_ENFORCE = originalEnforce;
+  if (originalSecret === undefined) delete process.env.WIDGET_SIGNING_SECRET;
+  else process.env.WIDGET_SIGNING_SECRET = originalSecret;
 });
 
 function enforce(on: boolean) {
   if (on) process.env.WIDGET_ENFORCE = "true";
   else delete process.env.WIDGET_ENFORCE;
+}
+
+function secret(value: string | null) {
+  if (value === null) delete process.env.WIDGET_SIGNING_SECRET;
+  else process.env.WIDGET_SIGNING_SECRET = value;
+}
+
+/**
+ * Re-mint a valid token the same way token.ts does, so the route's recomputation
+ * matches. Mirrors mintSiteToken: "v1." + base64url(HMAC_SHA256(secret, siteId)).
+ */
+function validToken(siteId: string, sec: string): string {
+  const sig = createHmac("sha256", sec)
+    .update(siteId)
+    .digest("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+  return `v1.${sig}`;
+}
+
+/** Calls the route with a token forwarded as the `?t=` query param. */
+function callWithToken(origin: string | undefined, token: string) {
+  const headers: Record<string, string> = {};
+  if (origin) headers["origin"] = origin;
+  const req = new Request(
+    `https://app.test/api/config/${SITE_ID}?t=${encodeURIComponent(token)}`,
+    { method: "GET", headers }
+  );
+  return GET(req, { params: Promise.resolve({ siteId: SITE_ID }) });
 }
 
 describe("GET /api/config/[siteId] — enforce mode verdicts", () => {
@@ -101,7 +140,7 @@ describe("GET /api/config/[siteId] — enforce mode verdicts", () => {
     expect(json.active).toBe(false);
     expect(json.primaryColor).toBeUndefined();
     expect(logWidgetGate).toHaveBeenCalledWith(
-      expect.objectContaining({ siteId: SITE_ID, status: "no-site", enforced: true })
+      expect.objectContaining({ siteId: SITE_ID, status: "no-site", enforced: true, reason: "no-site" })
     );
   });
 
@@ -162,7 +201,7 @@ describe("GET /api/config/[siteId] — enforce mode verdicts", () => {
     const json = (await (await call("https://evil.example")).json()) as Record<string, unknown>;
     expect(json.active).toBe(false);
     expect(logWidgetGate).toHaveBeenCalledWith(
-      expect.objectContaining({ host: "evil.example", status: "active", enforced: true })
+      expect.objectContaining({ host: "evil.example", status: "active", enforced: true, reason: "domain" })
     );
   });
 
@@ -194,7 +233,7 @@ describe("GET /api/config/[siteId] — monitor mode (WIDGET_ENFORCE unset)", () 
     expect(json.active).toBe(true);
     expect(json.primaryColor).toBe("#123456");
     expect(logWidgetGate).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "suspended", enforced: false })
+      expect.objectContaining({ status: "suspended", enforced: false, reason: "license" })
     );
   });
 });
@@ -232,5 +271,80 @@ describe("GET /api/config/[siteId] — caching contract", () => {
     const res = await call("https://shop.example");
     expect(res.headers.get("cache-control")).toBe("no-store");
     expect(res.headers.get("access-control-allow-origin")).toBe("*");
+  });
+});
+
+describe("GET /api/config/[siteId] — signed-token wall (Phase 1.5)", () => {
+  const SECRET = "test-signing-secret";
+
+  it("secret set + enforce + VALID token → active:true, no denial logged", async () => {
+    enforce(true);
+    secret(SECRET);
+    getSiteLicense.mockResolvedValue(license());
+
+    const res = await callWithToken("https://shop.example", validToken(SITE_ID, SECRET));
+    const json = (await res.json()) as Record<string, unknown>;
+
+    expect(json.active).toBe(true);
+    expect(json.primaryColor).toBe("#123456");
+    expect(logWidgetGate).not.toHaveBeenCalled();
+  });
+
+  it("secret set + enforce + MISSING token → active:true (grace) + logged reason:'token'", async () => {
+    enforce(true);
+    secret(SECRET);
+    getSiteLicense.mockResolvedValue(license());
+
+    // call() sends no `t=` query and no x-makoya-token header.
+    const res = await call("https://shop.example");
+    const json = (await res.json()) as Record<string, unknown>;
+
+    expect(json.active).toBe(true); // legacy install never hard-breaks
+    expect(json.primaryColor).toBe("#123456");
+    expect(logWidgetGate).toHaveBeenCalledWith(
+      expect.objectContaining({ siteId: SITE_ID, enforced: true, reason: "token" })
+    );
+  });
+
+  it("secret set + enforce + WRONG token → active:false + logged reason:'token'", async () => {
+    enforce(true);
+    secret(SECRET);
+    getSiteLicense.mockResolvedValue(license());
+
+    const res = await callWithToken("https://shop.example", "v1.totally-wrong-signature");
+    const json = (await res.json()) as Record<string, unknown>;
+
+    expect(json.active).toBe(false);
+    expect(json.primaryColor).toBeUndefined();
+    expect(logWidgetGate).toHaveBeenCalledWith(
+      expect.objectContaining({ siteId: SITE_ID, enforced: true, reason: "token" })
+    );
+  });
+
+  it("MONITOR mode + secret set + WRONG token → active:true but logged reason:'token'", async () => {
+    enforce(false); // monitor mode never blocks
+    secret(SECRET);
+    getSiteLicense.mockResolvedValue(license());
+
+    const res = await callWithToken("https://shop.example", "v1.totally-wrong-signature");
+    const json = (await res.json()) as Record<string, unknown>;
+
+    expect(json.active).toBe(true);
+    expect(json.primaryColor).toBe("#123456");
+    expect(logWidgetGate).toHaveBeenCalledWith(
+      expect.objectContaining({ enforced: false, reason: "token" })
+    );
+  });
+
+  it("secret UNSET + enforce + any token → token check is a no-op (license+domain only)", async () => {
+    enforce(true);
+    secret(null); // WIDGET_SIGNING_SECRET cleared → verify returns reason:'ok'
+    getSiteLicense.mockResolvedValue(license());
+
+    const res = await callWithToken("https://shop.example", "v1.totally-wrong-signature");
+    const json = (await res.json()) as Record<string, unknown>;
+
+    expect(json.active).toBe(true);
+    expect(logWidgetGate).not.toHaveBeenCalled();
   });
 });

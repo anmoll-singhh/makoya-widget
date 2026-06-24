@@ -1,0 +1,62 @@
+{% comment %}
+  Makoya Accessibility — Shopify app embed block
+  ------------------------------------------------------------------------------
+  This is an APP EMBED block (target: head). When the merchant enables the embed
+  in the theme editor (Theme settings → App embeds → Makoya Accessibility) and
+  fills in their Site ID, this injects the Makoya loader script into the
+  storefront <head> on every page.
+
+  THE SNIPPET CONTRACT (must match every other Makoya install path byte-for-byte):
+    <script src="https://makoya-gamma.vercel.app/widget/loader.js"
+            data-site="SITE_ID" data-token="SITE_TOKEN" defer></script>
+
+  - data-site  : the site UUID the merchant copies from their Makoya dashboard.
+  - data-token : the optional signature from the same dashboard. We only render
+                 data-token when it is non-empty (back-compat with token-less
+                 monitor-mode installs).
+
+  Liquid escaping: `| escape` HTML-escapes the merchant-entered values before
+  they go into the attribute. `| default:` supplies the production loader URL.
+{% endcomment %}
+
+{%- liquid
+  assign makoya_site_id = block.settings.site_id | strip
+  assign makoya_token = block.settings.token | strip
+  assign makoya_loader_url = block.settings.loader_url | strip | default: 'https://makoya-gamma.vercel.app/widget/loader.js'
+-%}
+
+{%- if makoya_site_id != blank -%}
+  {%- if makoya_token != blank -%}
+    <script src="{{ makoya_loader_url | escape }}" data-site="{{ makoya_site_id | escape }}" data-token="{{ makoya_token | escape }}" defer></script>
+  {%- else -%}
+    <script src="{{ makoya_loader_url | escape }}" data-site="{{ makoya_site_id | escape }}" defer></script>
+  {%- endif -%}
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Makoya Accessibility",
+  "target": "head",
+  "settings": [
+    {
+      "type": "text",
+      "id": "site_id",
+      "label": "Site ID",
+      "info": "Required. Your site UUID from the Makoya dashboard. The widget will not load until this is set."
+    },
+    {
+      "type": "text",
+      "id": "token",
+      "label": "Token",
+      "info": "Optional but recommended. The signed token from your Makoya dashboard. Leave blank to run in monitor mode."
+    },
+    {
+      "type": "text",
+      "id": "loader_url",
+      "label": "Loader URL",
+      "default": "https://makoya-gamma.vercel.app/widget/loader.js",
+      "info": "Advanced. Leave as the default unless Makoya support tells you otherwise."
+    }
+  ]
+}
+{% endschema %}

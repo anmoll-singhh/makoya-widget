@@ -20,6 +20,7 @@ import { NextResponse } from "next/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { getConfig, getSiteLicense, type SiteLicense } from "@/lib/sites";
 import { logWidgetGate } from "@/lib/observability";
+import { verifySiteToken } from "@/lib/licensing/token";
 import { DEFAULT_CONFIG } from "@makoya/shared";
 
 /** Origin header → bare lowercase hostname, null-safe. */
@@ -60,6 +61,25 @@ export async function GET(req: Request, { params }: { params: Promise<{ siteId: 
   const host = hostFromOrigin(origin);
   const enforce = process.env.WIDGET_ENFORCE === "true"; // monitor → enforce flag
 
+  // Signed-token check (Phase 1.5 §A2). The loader forwards the snippet's
+  // data-token as `?t=` (or the `x-makoya-token` header). GRACE: a *missing*
+  // token must NOT fail the verdict — legacy token-less installs keep working;
+  // only a *wrong* token fails. With no secret configured verify returns
+  // reason "ok", so tokenOk is true and nothing changes.
+  //
+  // Two-flag truth table (spec §A2 — keep in sync with INSTALL/SETUP docs):
+  //   WIDGET_ENFORCE | secret set | token on snippet | result
+  //   ---------------|------------|------------------|-------------------------------
+  //   unset (monitor)| any        | any              | active (verdict only logged)
+  //   true           | unset      | any              | gated by license+domain only
+  //   true           | set        | valid            | active (if license+domain ok)
+  //   true           | set        | missing          | active (grace) + log reason "token"
+  //   true           | set        | wrong            | blocked
+  const url = new URL(req.url);
+  const token = url.searchParams.get("t") ?? req.headers.get("x-makoya-token");
+  const tok = verifySiteToken(siteId, token);
+  const tokenOk = tok.reason !== "bad"; // grace: only a WRONG token fails
+
   // The verdict is computed per-request from Origin and must NOT be cached/shared
   // on a CDN. No Vary, no s-maxage — every origin gets its own fresh decision.
   const headers = {
@@ -78,14 +98,45 @@ export async function GET(req: Request, { params }: { params: Promise<{ siteId: 
     infraError = true; // DB/transport failure → fail OPEN below
   }
 
-  const pass = !!site && licenseActive(site) && isAllowedDomain(host, site.allowedDomains);
+  const pass =
+    !!site && licenseActive(site) && isAllowedDomain(host, site.allowedDomains) && tokenOk;
 
   // Fail OPEN on our own outage; monitor mode never blocks; otherwise honor verdict.
   const active = infraError ? true : enforce ? pass : true;
 
-  // Log every would-be denial (including monitor mode) via the observability seam.
-  if (!infraError && !pass) {
-    logWidgetGate({ siteId, host, status: site?.licenseStatus ?? "no-site", enforced: enforce });
+  // Observe the gate (CLAUDE.md: never raw console here). Two cases are logged:
+  //  1. A real would-be denial (`!pass`) — including monitor mode — tagged with the
+  //     first failing check so the founder can watch the funnel before enforcing.
+  //  2. The missing-token GRACE case — a configured secret saw a token-less request
+  //     that otherwise passes. It stays active (legacy installs never break) but is
+  //     logged `reason:"token"` so the founder can confirm every live snippet carries
+  //     a token BEFORE flipping enforcement (truth-table row 4).
+  if (!infraError) {
+    if (!pass) {
+      const reason: "domain" | "license" | "token" | "no-site" = !site
+        ? "no-site"
+        : !licenseActive(site)
+          ? "license"
+          : !isAllowedDomain(host, site.allowedDomains)
+            ? "domain"
+            : "token"; // remaining cause: !tokenOk → a WRONG token
+      logWidgetGate({
+        siteId,
+        host,
+        status: site?.licenseStatus ?? "no-site",
+        enforced: enforce,
+        reason,
+      });
+    } else if (tok.reason === "missing" && !!site && licenseActive(site)) {
+      // Grace: secret is set, license+domain ok, but the snippet sent no token.
+      logWidgetGate({
+        siteId,
+        host,
+        status: site.licenseStatus,
+        enforced: enforce,
+        reason: "token",
+      });
+    }
   }
 
   if (!active) {

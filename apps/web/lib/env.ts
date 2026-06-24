@@ -32,4 +32,8 @@ export const env = {
   RESEND_API_KEY: process.env.RESEND_API_KEY ?? "",
   // Must be a Resend-verified sending domain. Today: mailer.jewlx.ai.
   EMAIL_FROM: process.env.EMAIL_FROM ?? "Makoya <reports@mailer.jewlx.ai>",
+  // Widget signed-token secret (Phase 1.5). Server-only — like RESEND_API_KEY it
+  // must NEVER reach the client bundle and must NOT fail-fast (empty = monitor-safe:
+  // lib/licensing/token.ts then treats verification as a no-op). Read it from here.
+  WIDGET_SIGNING_SECRET: process.env.WIDGET_SIGNING_SECRET ?? "",
 };
