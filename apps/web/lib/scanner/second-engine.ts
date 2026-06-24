@@ -24,6 +24,7 @@
 
 import type { Page } from "playwright-core";
 import type { SecondEngineFinding } from "./cross-validate";
+import { HTMLCS_SOURCE } from "./vendor/htmlcs-source";
 
 /** Map an HTMLCS code's embedded SC ("1_4_3") to a dotted criterion ("1.4.3"). */
 export function htmlcsCodeToCriterion(code: string): string | null {
@@ -44,35 +45,13 @@ const HTMLCS_ERROR = 1;
  * a runtime require of `fs`; on any failure returns null (→ no second engine).
  * Kept out of the static import graph on purpose (see file header).
  */
-async function loadHtmlcsSource(): Promise<string | null> {
+function loadHtmlcsSource(): string | null {
+  // The source is vendored as a string module (see vendor/htmlcs-source.ts), so
+  // it's bundled into the function reliably — no fs reads, no monorepo file-
+  // tracing (an earlier tracing approach broke the Vercel build). Guarded so a
+  // missing/empty vendor file simply yields no second engine.
   try {
-    const { readFileSync, existsSync } = await import("node:fs");
-    const nodePath = await import("node:path");
-
-    // Attempt 1: standard module resolution (works in dev + when nft traces it).
-    try {
-      const { createRequire } = await import("node:module");
-      const require = createRequire(import.meta.url);
-      const p = require.resolve("html_codesniffer/build/HTMLCS.js");
-      if (existsSync(p)) return readFileSync(p, "utf8");
-    } catch {
-      /* fall through to path probing */
-    }
-
-    // Attempt 2: probe well-known locations relative to the Vercel function cwd
-    // (the traced node_modules is placed under the function root). Belt-and-
-    // braces so a resolution quirk in the bundled Lambda still finds the file.
-    const rel = nodePath.join("node_modules", "html_codesniffer", "build", "HTMLCS.js");
-    const roots = [process.cwd(), nodePath.join(process.cwd(), "apps", "web")];
-    for (const root of roots) {
-      const p = nodePath.join(root, rel);
-      try {
-        if (existsSync(p)) return readFileSync(p, "utf8");
-      } catch {
-        /* try next */
-      }
-    }
-    return null;
+    return HTMLCS_SOURCE && HTMLCS_SOURCE.length > 0 ? HTMLCS_SOURCE : null;
   } catch {
     return null;
   }
@@ -95,7 +74,7 @@ export async function runSecondEngine(
   page: Page,
   timeoutMs = 8_000
 ): Promise<SecondEngineResult> {
-  const source = await loadHtmlcsSource();
+  const source = loadHtmlcsSource();
   if (!source) return { loaded: false, findings: [] };
 
   try {
