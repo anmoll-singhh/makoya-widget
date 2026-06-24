@@ -40,6 +40,15 @@ export interface ResolvedScanOptions {
    * inside the engine, to keep resource usage predictable.
    */
   scanInternalLinks?: boolean;
+
+  /**
+   * When true the engine ALSO runs a second independent engine
+   * (HTML_CodeSniffer) and cross-validates findings against axe-core, tagging
+   * agreed issues "high confidence" and adding second-engine-only coverage.
+   * Defaults OFF — the in-browser runner needs a live Lambda verification pass
+   * before it's enabled in prod (the merge logic is already unit-tested).
+   */
+  useSecondEngine?: boolean;
 }
 
 // ---------------------------------------------------------------------------

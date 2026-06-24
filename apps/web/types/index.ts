@@ -100,6 +100,20 @@ export interface ScoreBreakdown {
   lineItems: ScoreLineItem[];
   /** Scoring model version that produced this breakdown. */
   scoringModelVersion: number;
+
+  /**
+   * Penalty from issues that map to a real WCAG success criterion (the legal
+   * baseline). Separated from best-practice so the report can say "X WCAG
+   * conformance issues" vs "Y best-practice recommendations". Optional for
+   * pre-split stored breakdowns.
+   */
+  wcagPenalty?: number;
+  /** Penalty from best-practice (non-normative) rules only. */
+  bestPracticePenalty?: number;
+  /** Count of distinct rules that map to a WCAG criterion. */
+  wcagIssueCount?: number;
+  /** Count of distinct best-practice (non-WCAG) rules. */
+  bestPracticeIssueCount?: number;
 }
 
 /**

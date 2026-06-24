@@ -50,7 +50,22 @@ interface TopIssue {
   help: string; // plain-English title
   whatItMeans: string;
   whoItAffects: string;
+  disabilityGroups?: string[];
+  howToFix?: string;
+  measuredEvidence?: string;
 }
+
+/** Short, human labels for the structured disability groups (badge text). */
+const DISABILITY_LABELS: Record<string, string> = {
+  "blind": "Blind",
+  "low-vision": "Low vision",
+  "color-blind": "Colour blindness",
+  "deaf-hard-of-hearing": "Deaf / HoH",
+  "motor": "Motor",
+  "cognitive": "Cognitive",
+  "vestibular": "Motion sensitivity",
+  "speech": "Speech",
+};
 
 interface ScanResult {
   score: number;
@@ -330,7 +345,33 @@ function Results({ result }: { result: ScanResult }) {
                     )}
                   </div>
                   <p className="mt-1.5 text-sm text-neutral-600">{issue.whatItMeans}</p>
-                  <p className="mt-1 text-xs text-neutral-400">Affects: {issue.whoItAffects}</p>
+
+                  {issue.measuredEvidence && (
+                    <p className="mt-2 inline-block rounded-md bg-neutral-100 px-2 py-1 font-mono text-xs text-neutral-700">
+                      {issue.measuredEvidence}
+                    </p>
+                  )}
+
+                  {issue.disabilityGroups && issue.disabilityGroups.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {issue.disabilityGroups.map((g) => (
+                        <span
+                          key={g}
+                          className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700"
+                        >
+                          {DISABILITY_LABELS[g] ?? g}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {issue.howToFix && (
+                    <p className="mt-2 text-xs text-neutral-600">
+                      <span className="font-semibold text-neutral-800">How to fix:</span> {issue.howToFix}
+                    </p>
+                  )}
+
+                  <p className="mt-2 text-xs text-neutral-500">Affects: {issue.whoItAffects}</p>
                 </div>
               );
             })}

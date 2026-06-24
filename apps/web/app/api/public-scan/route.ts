@@ -184,6 +184,9 @@ export async function POST(req: Request): Promise<NextResponse> {
         help: i.title,
         whatItMeans: i.whatItMeans,
         whoItAffects: i.whoItAffects,
+        disabilityGroups: i.disabilityGroups,
+        howToFix: i.howToFix,
+        measuredEvidence: i.measuredEvidence,
       })),
     });
   } catch (e) {

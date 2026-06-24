@@ -59,6 +59,11 @@ function sanitizeIssues(raw: unknown): ReportPdfIssue[] {
       help: typeof o.help === "string" ? o.help : "",
       whatItMeans: typeof o.whatItMeans === "string" ? o.whatItMeans : "",
       whoItAffects: typeof o.whoItAffects === "string" ? o.whoItAffects : "",
+      disabilityGroups: Array.isArray(o.disabilityGroups)
+        ? o.disabilityGroups.filter((g): g is string => typeof g === "string")
+        : undefined,
+      howToFix: typeof o.howToFix === "string" ? o.howToFix : undefined,
+      measuredEvidence: typeof o.measuredEvidence === "string" ? o.measuredEvidence : undefined,
     };
   });
 }

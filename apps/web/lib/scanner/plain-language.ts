@@ -30,6 +30,8 @@ export interface PlainIssue {
   whoItAffects: string;
   disabilityGroups: DisabilityGroup[];
   howToFix: string;
+  /** Measured fact behind the failure (e.g. contrast ratio), when available. */
+  measuredEvidence?: string;
 }
 
 type Entry = {
@@ -423,7 +425,9 @@ export function inferDisabilityGroups(tags: string[]): DisabilityGroup[] {
 
 export function toPlainIssue(issue: AccessibilityIssue): PlainIssue {
   const entry = MAP[issue.id];
-  if (entry) return { id: issue.id, impact: issue.impact, ...entry };
+  if (entry) {
+    return { id: issue.id, impact: issue.impact, ...entry, measuredEvidence: issue.measuredEvidence };
+  }
 
   // Safe generic fallback built from axe's own fields + inferred audience.
   const title = humanizeId(issue.id);
@@ -435,6 +439,7 @@ export function toPlainIssue(issue: AccessibilityIssue): PlainIssue {
     whoItAffects: "Visitors using assistive technology such as screen readers or keyboard navigation.",
     disabilityGroups: inferDisabilityGroups(issue.tags ?? []),
     howToFix: issue.help || "Review this element against the linked WCAG guidance and apply the recommended fix.",
+    measuredEvidence: issue.measuredEvidence,
   };
 }
 

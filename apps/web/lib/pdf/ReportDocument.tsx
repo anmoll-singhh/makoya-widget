@@ -164,6 +164,22 @@ export function ReportDocument({ content }: { content: ReportContent }) {
                   )}
                 </View>
                 <Text style={s.issueBody}>{issue.whatItMeans}</Text>
+                {issue.measuredEvidence ? (
+                  <Text style={[s.issueBody, { fontFamily: "Courier", fontSize: 8, color: "#374151" }]}>
+                    {issue.measuredEvidence}
+                  </Text>
+                ) : null}
+                {issue.disabilityGroups && issue.disabilityGroups.length > 0 ? (
+                  <Text style={[s.issueAffects, { color: "#1d4ed8" }]}>
+                    Who: {issue.disabilityGroups.join(" · ")}
+                  </Text>
+                ) : null}
+                {issue.howToFix ? (
+                  <Text style={[s.issueBody, { marginTop: 2 }]}>
+                    <Text style={{ fontFamily: "Helvetica-Bold" }}>How to fix: </Text>
+                    {issue.howToFix}
+                  </Text>
+                ) : null}
                 {issue.whoItAffects ? (
                   <Text style={s.issueAffects}>Affects: {issue.whoItAffects}</Text>
                 ) : null}

@@ -123,12 +123,31 @@ export function computeScore(inputs: ScoreInput[]): ScoreBreakdown {
   const appliedPenalty = Math.max(0, Math.min(100, rawPenalty));
   const score = Math.round(100 - appliedPenalty);
 
+  // WCAG-conformance vs best-practice split. A line item is "best-practice"
+  // only when it maps to NO success criterion (level === "best-practice").
+  // Everything with a real criterion counts toward the WCAG (legal-baseline)
+  // tally. Attribution only — it does NOT change the score.
+  let wcagPenalty = 0, bestPracticePenalty = 0, wcagIssueCount = 0, bestPracticeIssueCount = 0;
+  for (const li of lineItems) {
+    if (li.level === "best-practice") {
+      bestPracticePenalty += li.pointsContributed;
+      bestPracticeIssueCount += 1;
+    } else {
+      wcagPenalty += li.pointsContributed;
+      wcagIssueCount += 1;
+    }
+  }
+
   return {
     score,
     rawPenalty,
     appliedPenalty,
     lineItems,
     scoringModelVersion: SCORING_MODEL_VERSION,
+    wcagPenalty,
+    bestPracticePenalty,
+    wcagIssueCount,
+    bestPracticeIssueCount,
   };
 }
 

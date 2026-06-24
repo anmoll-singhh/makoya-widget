@@ -44,6 +44,8 @@ import { launchBrowser, openPage } from "@/lib/browser/launcher";
 import { AppError } from "@/lib/utils/error";
 import { extractSameDomainLinks } from "@/lib/scanner/link-extractor";
 import { buildA11ySkeleton, computeContentHash } from "./content-hash";
+import { runSecondEngine } from "./second-engine";
+import { crossValidate } from "./cross-validate";
 import { SCORING_MODEL_VERSION } from "@/lib/utils/score";
 import type { EngineMeta, SeverityLevel } from "@/types";
 import type { ResolvedScanOptions, RawAxeViolation, RawAxeNode, RawScanResult } from "./types";
@@ -849,10 +851,25 @@ export async function runScan(
       // Non-fatal — custom checks are purely supplementary.
     }
     const axeIds = new Set(axeViolations.map(v => v.id));
-    const violations = [
+    let violations: RawAxeViolation[] = [
       ...axeViolations,
       ...customViolations.filter(v => !axeIds.has(v.id)),
     ];
+
+    // ── Second engine (optional, OFF by default) ──────────────────────────────
+    // Runs HTML_CodeSniffer in the same page and cross-validates against axe so
+    // agreed issues become "high confidence" and second-engine-only findings
+    // widen coverage. Best-effort: any failure leaves the axe+custom list as-is.
+    if (options.useSecondEngine) {
+      try {
+        const secondFindings = await runSecondEngine(page);
+        if (secondFindings.length > 0) {
+          violations = crossValidate(violations, secondFindings);
+        }
+      } catch {
+        // Non-fatal — axe remains the source of truth.
+      }
+    }
 
     // ── Extract internal links (optional, before browser closes) ─────────────
     // Runs inside the same browser session so no extra launch cost is paid.

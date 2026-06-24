@@ -7,7 +7,21 @@ interface PlainIssue {
   title: string;
   whatItMeans: string;
   whoItAffects: string;
+  disabilityGroups?: string[];
+  howToFix?: string;
+  measuredEvidence?: string;
 }
+
+const DISABILITY_LABELS: Record<string, string> = {
+  "blind": "Blind",
+  "low-vision": "Low vision",
+  "color-blind": "Colour blindness",
+  "deaf-hard-of-hearing": "Deaf / HoH",
+  "motor": "Motor",
+  "cognitive": "Cognitive",
+  "vestibular": "Motion sensitivity",
+  "speech": "Speech",
+};
 interface ScanResult {
   scanId: string;
   score: number;
@@ -159,7 +173,26 @@ export function ScanReport({ siteId }: { siteId: string }) {
                 <span className="font-semibold text-neutral-900">{p.title}</span>
               </div>
               <p className="mt-2 text-sm leading-relaxed text-neutral-600">{p.whatItMeans}</p>
-              <p className="mt-1 text-xs font-medium text-neutral-400">You&apos;re losing: {p.whoItAffects}</p>
+              {p.measuredEvidence && (
+                <p className="mt-2 inline-block rounded-md bg-neutral-100 px-2 py-1 font-mono text-xs text-neutral-700">
+                  {p.measuredEvidence}
+                </p>
+              )}
+              {p.disabilityGroups && p.disabilityGroups.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {p.disabilityGroups.map((g) => (
+                    <span key={g} className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">
+                      {DISABILITY_LABELS[g] ?? g}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {p.howToFix && (
+                <p className="mt-2 text-xs text-neutral-600">
+                  <span className="font-semibold text-neutral-800">How to fix:</span> {p.howToFix}
+                </p>
+              )}
+              <p className="mt-2 text-xs font-medium text-neutral-500">You&apos;re losing: {p.whoItAffects}</p>
             </li>
           ))}
         </ul>

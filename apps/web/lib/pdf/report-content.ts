@@ -24,6 +24,9 @@ export interface ReportPdfIssue {
   help: string;
   whatItMeans: string;
   whoItAffects: string;
+  disabilityGroups?: string[];
+  howToFix?: string;
+  measuredEvidence?: string;
 }
 
 export interface ReportPdfTotals {
@@ -51,6 +54,30 @@ export interface ReportContentIssue {
   title: string;
   whatItMeans: string;
   whoItAffects: string;
+  disabilityGroups: string[];
+  howToFix: string;
+  measuredEvidence: string;
+}
+
+/** Human labels for the structured disability groups (PDF badge text). */
+const DISABILITY_LABEL: Record<string, string> = {
+  "blind": "Blind",
+  "low-vision": "Low vision",
+  "color-blind": "Colour blindness",
+  "deaf-hard-of-hearing": "Deaf / hard of hearing",
+  "motor": "Motor / dexterity",
+  "cognitive": "Cognitive",
+  "vestibular": "Motion sensitivity",
+  "speech": "Speech",
+};
+
+/** Defensive: cap + label the disability groups from an untrusted payload. */
+function cleanGroups(v: unknown): string[] {
+  if (!Array.isArray(v)) return [];
+  return v
+    .filter((g): g is string => typeof g === "string")
+    .slice(0, 8)
+    .map((g) => DISABILITY_LABEL[g] ?? g);
 }
 
 export interface SeverityRow {
@@ -146,6 +173,9 @@ export function buildReportContent(input: ReportPdfInput): ReportContent {
         title: clip(i.help),
         whatItMeans: clip(i.whatItMeans),
         whoItAffects: clip(i.whoItAffects),
+        disabilityGroups: cleanGroups(i.disabilityGroups),
+        howToFix: clip(i.howToFix),
+        measuredEvidence: clip(i.measuredEvidence),
       };
     });
 
