@@ -98,6 +98,7 @@ Do **not** put WCAG/ADA/Section-508 "compliance" or "guaranteed accessible" clai
 
 ## Conventions
 
+- **QA gate around every merge (standing rule, founder directive 2026-06-25):** before merging any branch to `main`, run a **QA-before** (`npm run ci` green on the up-to-date `main` base + the branch) AND a **QA-after** (re-run `npm run ci` on `main` post-merge, plus a live smoke check if deployed). Never merge on a red or stale base. For larger lanes, dispatch a read-only verification agent for both passes.
 - Supabase + Resend are wired and live. Still to wire: **Stripe** (billing), Sentry/PostHog (route through `apps/web/lib/observability.ts` — the single seam). See `docs/SESSION.md` for phase status.
 - Source files carry thorough top-of-file doc comments explaining *why*; match that density when editing.
 - Auth is **real Supabase Auth** (`@supabase/ssr`; `lib/supabase/{server,client,middleware}.ts`; `app/auth/*`). Admin gating: `lib/auth/roles.ts` + `lib/auth/require-admin.ts` against `ADMIN_EMAILS`.
