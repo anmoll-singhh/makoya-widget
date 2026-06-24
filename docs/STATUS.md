@@ -3,12 +3,12 @@
 > **This is the single glance-able source of truth.** Read this first; it answers "where are we, what's in flight, what's blocked, what's next."
 > Detailed narrative history lives in [`SESSION.md`](./SESSION.md) (append-only log). This file is the *dashboard view* on top of it.
 >
-> **Last updated:** 2026-06-24 · **Updated by:** Claude (memory-system block)
+> **Last updated:** 2026-06-25 · **Updated by:** Claude (block 9 — Phase H bulletproofing)
 >
-> **Backup status:** ✅ All 16 branches pushed to `origin` (github.com/anmoll-singhh/makoya-widget) on 2026-06-24 — no work is local-only anymore.
+> **Backup status:** ✅ All branches pushed to `origin` (github.com/anmoll-singhh/makoya-widget). No work is local-only.
 >
 > **How to ask for an update:** open this file, or tell any agent *"read docs/STATUS.md and tell me the status."*
-> **How agents keep it true:** see [§ Update protocol](#-update-protocol) at the bottom. Update this file at the end of every work block — before SESSION.md.
+> **How agents keep it true:** see [§ Update protocol](#-update-protocol). Update this file at the end of every work block, before SESSION.md.
 
 ---
 
@@ -16,32 +16,29 @@
 
 | | |
 |---|---|
-| **Current phase** | Phase 3 (demo polish) in progress · Phase 2 (billing) blocked on founder |
+| **Current phase** | **Phase H — bulletproofing (code+DB+CI DONE; rest founder-gated)** · then Phase 2 billing = **Stripe** |
 | **Prod URL** | https://makoya-gamma.vercel.app (deployed from `main`, manual `vercel --prod`) |
-| **Prod = which branch** | `main` (clean: widget + provisioning + Resend email) |
-| **You are reading from** | this repo checkout → see the agent board below for which branch |
-| **Biggest risk right now** | Unmerged work across 2 worktrees + ~13 stale branches → decide merges & prune (all backed up to origin, so safe to act) |
-| **Next founder unblock** | Lemon Squeezy account (billing) · Calendly link · PostHog project · rotate leaked keys |
+| **Prod = state** | `main` — **scanner-v2 + security hardening LIVE** (deployed 2026-06-25; example.com→87/100; SSRF+Zod verified live) |
+| **Canonical branch** | `main` — all docs, migrations, hardening now live here (the source-of-truth split is fixed) |
+| **Biggest risk right now** | Dashboard UI WIP still unmerged + stale branches to prune (all backed up to origin → safe to act) |
+| **Next founder unblock** | Stripe account · enable Supabase leaked-password toggle · free accounts (Sentry/PostHog/Upstash/Inngest) · rotate leaked keys |
 
 ---
 
 ## 🤖 Agent / worktree coordination board
 
-> **You often run 2–3 Claude sessions at once. This board prevents collisions.** Before you start editing, claim your lane here. **Never edit files outside your worktree's lane.** The known past failure: the scanner agent wrote into the *main* checkout despite having its own worktree — that must not repeat.
+> **You often run 2–3 Claude sessions at once. This board prevents collisions.** Claim your lane before editing. **Never edit files outside your worktree's lane.** Past failure to never repeat: an agent wrote into the *main* checkout despite having its own worktree.
 
-| Worktree path | Branch | Owner / purpose | Status | Safe to touch |
-|---|---|---|---|---|
-| `C:\Users\ANMOL\Desktop\makoya` | `feat/dashboards-ui-wip` | **Dashboard/admin/CRM UI** elevation + scanner-evidence display | 🔶 1 commit ahead of main, WIP, unmerged | `apps/web/app/(dashboard)`, `apps/web/app/admin`, UI components |
-| `C:\Users\ANMOL\Desktop\makoya-scanner` | `feat/scanner-trustworthy-v2` | **Scanner v2** — deterministic evidence-based scoring + watermarked PDF | 🔶 Isolated, unmerged, **OFF prod**, awaiting founder blessing | `apps/web/lib/scanner`, scan routes, PDF |
-| *(none — `main` is for deploys only)* | `main` | Production source of truth | ✅ Clean, deployed | Deploy/merge only — don't develop directly on it |
+| Worktree | Branch | Owner / purpose | Status |
+|---|---|---|---|
+| `C:\Users\ANMOL\Desktop\makoya` | `main` (or a feature branch) | Production source of truth | ✅ Has scanner-v2 + Phase H hardening, deployed |
+| `C:\Users\ANMOL\Desktop\makoya` | `feat/dashboards-ui-wip` | Dashboard/admin/CRM UI elevation | 🔶 WIP, unmerged — decide: finish→merge or fold into strategic frontend rebuild |
+| `C:\Users\ANMOL\Desktop\makoya-scanner` | `feat/scanner-trustworthy-v2` | Scanner v2 | ✅ MERGED to main + deployed — **worktree can be removed** |
+| `.claude/worktrees/agent-*` | `harden/*` | Phase H parallel agents (A/B/C) | ✅ MERGED to main — worktrees + branches can be pruned |
 
-**Rules of the board**
-1. One worktree = one branch = one agent. Don't develop two features in one checkout.
-2. If two lanes both need to touch shared code (e.g. `packages/shared`, `lib/email`), **stop and coordinate via the founder** — don't race.
-3. Deploys happen only from a clean `main` worktree (`vercel --prod` from `apps/web`). There is **no GitHub auto-deploy.**
-4. When a lane's work merges to `main` or is abandoned, update its row here.
+**Rules:** one worktree = one branch = one agent · don't develop two features in one checkout · if two lanes need the same shared file (`packages/shared`, `package.json`, `lib/email`), STOP and coordinate · deploy only from clean `main` (`vercel --prod` from `apps/web`; no GitHub auto-deploy) · update this board when a lane merges/ends.
 
-**Stale branches to prune (no unique unmerged value / superseded):** `phase-1-foundation`, `phase-2-widget-customizer`, `phase-3-scanner`, `phase-4-admin-crm`, `phase-5-polish`, `ws2-client-dashboard`, `ws3-admin-dashboard`, `chore/phase-0-foundation`, `feat/landing-page`, `feat/pdf-report-export`, `feat/phase-1-scanner-funnel`, `fix/landing-auth-redirect`, `fix/widget-scroll-contain`. *(Confirm with founder before `git branch -D`.)*
+**Branches to prune (merged or superseded — all on origin, safe):** `harden/api-security`, `harden/ci-quality`, `harden/test-depth`, `feat/scanner-trustworthy-v2`, `phase-1-foundation`, `phase-2-widget-customizer`, `phase-3-scanner`, `phase-4-admin-crm`, `phase-5-polish`, `ws2-client-dashboard`, `ws3-admin-dashboard`, `chore/phase-0-foundation`, `feat/landing-page`, `feat/pdf-report-export`, `feat/phase-1-scanner-funnel`, `fix/landing-auth-redirect`, `fix/widget-scroll-contain`. *(Confirm before delete.)*
 
 ---
 
@@ -50,68 +47,79 @@
 | Area | What works | Verified |
 |---|---|---|
 | Widget | 15 a11y features · en/es/fr/de · 9 profiles · Shadow DOM · loader/core split · mobile sheet · scroll-containment | ✅ live |
-| Scanner | Real WCAG 2.0/2.1/2.2 A+AA · Playwright + axe-core + 6 custom checks · screenshot · multi-page (Lambda only) | ✅ live |
-| Public funnel | `/scan` → score + plain-English top issues → email capture → `leads` row → `/admin/leads` | ✅ end-to-end live |
-| PDF export | "Download PDF" on `/scan` → `/api/report-pdf` (no SSRF surface, honesty-guarded) | ✅ QA'd live |
-| Landing page | Honest-hybrid `/` with inline scan deep-link; scores 100/100 on our own scanner | ✅ QA'd live |
-| Auth / data | Supabase Auth (@supabase/ssr) · RLS multi-tenant · admin gating via `ADMIN_EMAILS` | ✅ live |
-| Email | Resend provider behind the seam (`mailer.jewlx.ai`, verified) | ✅ verified send |
-| Provisioned | Site for `anmols@wavesmvmnt.com` (domain `wavesmvmnt.com`, plan free) | ✅ config live |
+| Scanner v2 | Real WCAG engine · deterministic evidence-based scoring + auditable breakdown + provenance · Lambda | ✅ live (87/100 ex.) |
+| Public funnel | `/scan` → score + plain-English issues → email capture → `leads` row → `/admin/leads` | ✅ end-to-end live |
+| PDF export | "Download PDF" on `/scan` (no SSRF surface, honesty-guarded, input caps) | ✅ live |
+| Landing | Honest-hybrid `/`, scores 100/100 on our own scanner | ✅ live |
+| Auth / data | Supabase Auth · RLS multi-tenant · admin gating via `ADMIN_EMAILS` | ✅ live |
+| Email | Resend (`mailer.jewlx.ai`, verified); send failure never blocks lead | ✅ live + tested |
+| **Security (Phase H)** | DNS-rebinding/SSRF resolved-IP block · Zod at all API boundaries · hardened SECURITY DEFINER fn | ✅ live + QA'd |
 
 ---
 
-## 🔶 In flight (decisions needed)
+## 🛡️ Phase H — Bulletproofing status
 
-| Item | Where | What's needed from founder |
-|---|---|---|
-| Dashboard/admin/CRM UI elevation | `feat/dashboards-ui-wip` (here) | Review the WIP UI direction, then decide: finish → merge, or fold into the planned strategic frontend rebuild |
-| Scanner v2 (evidence-based scoring) | `feat/scanner-trustworthy-v2` worktree | Bless it → merge to main + redeploy, **or** keep iterating. It's better than what's on prod but currently rolled off. |
+| Item | Status |
+|---|---|
+| DB: harden SECURITY DEFINER fn (search_path + revoke rpc) | ✅ applied + verified (advisor clean) |
+| API: SSRF resolved-IP/DNS-rebinding defense | ✅ live (localhost/metadata → 400) |
+| API: Zod validation everywhere (safe generic errors) | ✅ live (malformed/bad-JSON → 400) |
+| Tests: 106 → **212** (determinism, email-no-block, PDF caps, RLS suite, E2E) | ✅ green |
+| CI: Gitleaks · Semgrep · CodeQL · Dependabot · Lighthouse(a11y=1.0) · axe-dogfood · coverage gate · eslint/prettier | ✅ added (run on push) |
+| Supabase leaked-password protection | ⛔ founder toggle (Auth settings) |
+| Sentry / PostHog / Upstash / Inngest wiring | ⛔ founder creates free accounts → I wire |
+| Rotate Anthropic + Resend keys (leaked in chat) | ⛔ founder |
+| PAID (optional, founder decides) | Vercel Pro · Supabase Pro · Snyk/Socket · BrowserStack · pen-test · Stripe Tax |
 
 ---
 
 ## ⛔ Blocked on founder (access / accounts)
 
-| Blocker | Unblocks |
-|---|---|
-| Lemon Squeezy account (test mode ok) | Phase 2 — checkout + webhook → plan gating |
-| Calendly link | Phase 3 — book-a-call CTA |
-| PostHog project | Phase 3 — funnel analytics dashboard |
-| Anthropic API key (confirm/rotate) | Phase 4 — AI remediation suggestions |
-| **Rotate keys shared in chat** | Security — `ANTHROPIC_API_KEY`, `RESEND_API_KEY` were pasted in chat earlier |
+| Blocker | Unblocks | Free? |
+|---|---|---|
+| **Stripe account** (test mode ok) | Phase 2 billing. ⚠️ Stripe ≠ MoR → founder owns tax/VAT | Free acct; ~2.9%+30¢/txn |
+| Enable Supabase leaked-password protection | Phase H security (Auth → toggle) | Free, 30 sec |
+| Sentry (DSN) · PostHog (key+host) · Upstash Redis (url+token) · Inngest (keys) | Monitoring · analytics · durable rate-limit · scan queue | Free tiers |
+| Rotate Anthropic + Resend keys | Security (pasted in chat earlier) | — |
+| Own booking-system embed code | Phase 3 book-a-call (placeholder slot for now) | — |
 
 ---
 
 ## 🎯 Up next (recommended order)
 
-1. **Decide the two in-flight merges** (scanner v2 + dashboard UI) — unblocks a clean `main`.
-2. **Prune stale branches** once merges are decided.
-3. **Backend-first push (your stated direction):** Phase 2 billing (needs Lemon Squeezy) → Phase 4 hardening (Inngest queue, scheduled monitoring + "score dropped" alerts, AI remediation).
-4. **Then** the strategic frontend rebuild — research-led, every screen placed intentionally (your new rule: no ad-hoc frontend; design after research).
+1. ✅ Scanner-v2 + Phase H code/DB/CI hardening — DONE + deployed + live-QA'd.
+2. **Cleanup:** remove merged agent worktrees + scanner worktree; prune merged/stale branches (all backed up).
+3. **Wire monitoring** once founder creates the free accounts (Sentry/PostHog/Upstash/Inngest).
+4. **Phase 2 — Stripe billing** (test mode): checkout + signature-verified idempotent webhook → plan gating.
+5. **Phase 4 — Features:** Inngest scan queue · scheduled monitoring + "score dropped" alerts · AI remediation (human-confirmed) · WordPress plugin.
+6. **Booking:** drop founder's real embed into the placeholder slot.
+7. **Strategic frontend rebuild** — research-led, deliberate (last, on a finished backend).
 
-> **Strategy note (locked 2026-06-24):** Build backend + features first behind a *minimal, beautiful* demo frontend. Once the backend is complete, redo the whole frontend strategically. Any new frontend = research first, placed deliberately.
+> **Strategy (locked 2026-06-24/25):** Backend + features first behind a minimal beautiful demo frontend; harden everything to bulletproof before new features; then redo the whole frontend strategically (research first). Decide the dashboard-UI-wip fate (finish vs fold into rebuild).
 
 ---
 
-## 🗺️ Roadmap phases (one-liners — full detail in SESSION.md)
+## 🗺️ Roadmap phases (one-liners — detail in SESSION.md)
 
-- **Phase 0 — Foundation:** ✅ done (docs, shared-config drift guard, CI, observability seam).
+- **Phase 0 — Foundation:** ✅ done.
 - **Phase 1 — Revenue loop:** ✅ live (scan → email → lead → admin) + PDF.
-- **Phase 2 — Money:** ⛔ Lemon Squeezy checkout + webhook → plan gating. *Blocked on account.*
-- **Phase 3 — Demo polish:** 🔶 landing ✅; remaining = Calendly + PostHog.
-- **Phase 4 — V1 hardening:** Inngest queue · scheduled monitoring + alerts · AI remediation · WordPress plugin.
-- **Phase 5 — V2/Enterprise:** white-label portal · human-audit · VPAT/ACR · SSO · CI/CD axe gate.
+- **Phase H — Bulletproofing:** ✅ code/DB/CI done + live; founder-gated items remain (above).
+- **Phase 2 — Money:** ⛔ Stripe checkout + webhook → plan gating. *Blocked on Stripe account.*
+- **Phase 3 — Demo polish:** 🔶 landing ✅; remaining = booking embed (founder's own) + PostHog.
+- **Phase 4 — Features:** Inngest queue · monitoring + alerts · AI remediation · WordPress plugin.
+- **Phase 5 — V2/Enterprise:** white-label · human-audit · VPAT/ACR · SSO · CI/CD axe gate.
 
 ---
 
 ## 📋 Update protocol (for every agent, every block)
 
-**At the START of a block:** read this file + claim/confirm your lane on the agent board.
+**START of a block:** read this file + claim/confirm your lane on the agent board.
 
-**At the END of a block, update in this order:**
-1. **This file (`STATUS.md`)** — the dashboard. Edit the relevant table cells, the agent board row, "Up next", and the `Last updated` / `Updated by` line at the top. Keep it *scannable* — tables and one-liners, not prose.
+**END of a block, in order:**
+1. **`STATUS.md`** — the dashboard. Edit the table cells, agent board, "Up next", and the `Last updated`/`Updated by` line. Keep it scannable.
 2. **`SESSION.md`** — append the detailed narrative entry (what/why/verification).
-3. If structure or guardrails changed, reflect it in `CLAUDE.md`.
+3. If structure/guardrails changed, reflect it in `CLAUDE.md`.
 
-**Honesty rule:** mark things ✅ only when *verified* (tests run, browser-checked, or live-confirmed). Use 🔶 for in-progress, ⛔ for blocked. Never claim done without evidence.
+**Honesty rule:** mark ✅ only when *verified* (tests run, browser/live-checked). 🔶 in-progress, ⛔ blocked. Never claim done without evidence.
 
-**gbrain:** this repo also has a searchable memory brain (see CLAUDE.md). Agents can query it via MCP for deeper history; STATUS.md remains the human-glance source of truth.
+**gbrain:** local searchable brain (see CLAUDE.md `## GBrain Configuration`). Re-seed after big changes: `cat docs/STATUS.md | gbrain put "makoya-status-dashboard"`.

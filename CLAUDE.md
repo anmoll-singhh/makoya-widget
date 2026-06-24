@@ -88,7 +88,8 @@ Config flows one way: dashboard **writes** config → CDN JSON → loader **read
 - **Multi-tenant via RLS.** Every row is owned by an auth user; RLS makes cross-tenant reads impossible. See `infra/schema.sql`.
 - **`leads` is service-role only.** It has RLS enabled with **no policy** — only the service role touches it. The public scanner writes leads via a server route (`/api/scan-ingest`) using the service key, never from the browser. Owners never see other owners' leads.
 - **Service key never reaches the client.** The widget never queries the DB directly; it only fetches a public, read-only config JSON (`/api/config/[siteId]`) that exposes only safe display fields.
-- **Billing is gated server-side** and (when wired) driven by payment webhooks (Lemon Squeezy — our chosen Merchant-of-Record; Stripe is the fallback) — never trust the client for plan state. **Not yet built.**
+- **Billing is gated server-side** and (when wired) driven by payment webhooks (**Stripe** — founder's chosen processor as of 2026-06-24; webhooks must be signature-verified + idempotent) — never trust the client for plan state. **Not yet built.** Note: Stripe is a payment *processor*, not a Merchant-of-Record, so tax/VAT is the founder's responsibility (Stripe Tax add-on or manual).
+- **Booking/consultations:** founder uses their **own external booking system** (NOT Calendly). UI leaves a placeholder/demo embed slot; the real embed code is dropped in later.
 - The data layer lives in `apps/web/lib/{sites,scans,admin}.ts` and is **Supabase-only** (no mock mode). Each function takes a Supabase client (server, or service-role for privileged writes). Columns are snake_case; `*-mappers.ts` convert to/from camelCase.
 
 ## Compliance guardrails
@@ -97,7 +98,7 @@ Do **not** put WCAG/ADA/Section-508 "compliance" or "guaranteed accessible" clai
 
 ## Conventions
 
-- Supabase is wired and live. Still to wire: Resend (email), Lemon Squeezy (billing), Sentry/PostHog (route through `apps/web/lib/observability.ts` — the single seam). See `docs/SESSION.md` for phase status.
+- Supabase + Resend are wired and live. Still to wire: **Stripe** (billing), Sentry/PostHog (route through `apps/web/lib/observability.ts` — the single seam). See `docs/SESSION.md` for phase status.
 - Source files carry thorough top-of-file doc comments explaining *why*; match that density when editing.
 - Auth is **real Supabase Auth** (`@supabase/ssr`; `lib/supabase/{server,client,middleware}.ts`; `app/auth/*`). Admin gating: `lib/auth/roles.ts` + `lib/auth/require-admin.ts` against `ADMIN_EMAILS`.
 
