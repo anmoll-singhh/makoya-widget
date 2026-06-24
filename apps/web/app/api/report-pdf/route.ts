@@ -22,7 +22,7 @@ import { NextResponse } from "next/server";
 import { renderReportPdf, reportFilename } from "@/lib/pdf/render-report";
 import type { ReportPdfInput, ReportPdfIssue } from "@/lib/pdf/report-content";
 import { captureError } from "@/lib/observability";
-import { isValidEmail } from "@/lib/utils/email";
+import { parseBody, reportPdfBodySchema } from "@/lib/validation/api";
 
 // @react-pdf/renderer is Node-only.
 export const runtime = "nodejs";
@@ -48,16 +48,6 @@ function rateLimited(key: string): boolean {
 // we even parse it. A legitimate report is a few KB.
 const MAX_BODY_BYTES = 64 * 1024;
 const MAX_ISSUES_IN = 60;
-
-function isHttpUrl(v: unknown): v is string {
-  if (typeof v !== "string" || v.length === 0 || v.length > 2048) return false;
-  try {
-    const u = new URL(v);
-    return u.protocol === "http:" || u.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
 
 function sanitizeIssues(raw: unknown): ReportPdfIssue[] {
   if (!Array.isArray(raw)) return [];
@@ -95,30 +85,27 @@ export async function POST(req: Request): Promise<NextResponse> {
     return NextResponse.json({ error: "Payload too large." }, { status: 413 });
   }
 
-  let body: Record<string, unknown>;
+  let json: unknown;
   try {
-    body = JSON.parse(raw) as Record<string, unknown>;
+    json = JSON.parse(raw) as unknown;
   } catch {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
 
-  const { url, email, score, totals, topIssues, isPartialScan } = body ?? {};
-
-  // ── Email gate (server-side enforcement) ───────────────────────────────────
-  // The PDF is the lead magnet: it cannot be downloaded without an email. The
-  // /scan UI captures the lead (via /api/scan-ingest) before requesting the PDF;
-  // enforcing it here too means the gate can't be bypassed by calling the API
-  // directly. We don't trust the client to self-gate.
-  if (!isValidEmail(email)) {
+  // ── Schema gate (incl. server-side email gate) ─────────────────────────────
+  // The PDF is the lead magnet: it cannot be downloaded without an email, and a
+  // valid scanned http(s) URL is required. Enforcing both in the schema means the
+  // gate can't be bypassed by calling the API directly — we don't trust the
+  // client to self-gate. Generic error only; no field-level detail leaks.
+  const parsed = parseBody(reportPdfBodySchema, json);
+  if (!parsed.ok) {
     return NextResponse.json(
-      { error: "An email address is required to download the report." },
+      { error: "An email address and a valid scanned URL are required to download the report." },
       { status: 400 }
     );
   }
-
-  if (!isHttpUrl(url)) {
-    return NextResponse.json({ error: "A valid scanned URL is required." }, { status: 400 });
-  }
+  const { url, email, score, totals, topIssues, isPartialScan } = parsed.data;
+  void email; // validated as the lead-magnet gate; not embedded in the PDF.
 
   // Everything below is clamped/coerced inside buildReportContent — we only need
   // to shape the input safely here.

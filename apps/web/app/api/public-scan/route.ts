@@ -30,11 +30,13 @@
  */
 
 import { NextResponse } from "next/server";
+import { lookup } from "node:dns/promises";
 import { runScan } from "@/lib/scanner";
 import { buildReport } from "@/lib/scanner/report-builder";
 import { topPlainIssues } from "@/lib/scanner/plain-language";
 import { validateScanUrl, sanitiseUrl } from "@/lib/utils/url";
-import { isPublicHttpUrl } from "@/lib/scan-utils/public-url";
+import { isPublicHttpUrl, anyDisallowedAddress } from "@/lib/scan-utils/public-url";
+import { parseBody, publicScanBodySchema } from "@/lib/validation/api";
 import { track, captureError } from "@/lib/observability";
 import { isAppError } from "@/lib/utils/error";
 
@@ -61,6 +63,24 @@ function rateLimited(key: string): boolean {
   return cur.n > RATE_MAX;
 }
 
+/**
+ * Resolve `host` via DNS and return true if ANY resolved address is private/
+ * internal — the defence against DNS rebinding that the string-only gates can't
+ * provide. Fail-closed: a lookup failure (NXDOMAIN, etc.) returns `true`, since
+ * a host we can't safely resolve must never be scanned. Never throws.
+ *
+ * We deliberately return only a boolean — the caller emits a GENERIC error so we
+ * never reveal WHY a host was rejected (no internal-vs-external SSRF oracle).
+ */
+async function resolvesToDisallowed(host: string): Promise<boolean> {
+  try {
+    const addrs = await lookup(host, { all: true });
+    return anyDisallowedAddress(addrs);
+  } catch {
+    return true; // unresolvable → fail closed
+  }
+}
+
 export async function POST(req: Request): Promise<NextResponse> {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
   if (rateLimited(ip)) {
@@ -70,15 +90,24 @@ export async function POST(req: Request): Promise<NextResponse> {
     );
   }
 
-  let body: { url?: unknown };
+  let json: unknown;
   try {
-    body = (await req.json()) as { url?: unknown };
+    json = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
 
+  // ── Schema gate: reject malformed bodies before any SSRF/scan work ──────────
+  const parsed = parseBody(publicScanBodySchema, json);
+  if (!parsed.ok) {
+    return NextResponse.json(
+      { error: "Enter a public website address (e.g. example.com).", code: "INVALID_URL" },
+      { status: 400 }
+    );
+  }
+
   // ── SSRF gate (layer 1): cheap string/AST predicate, never throws ──────────
-  if (!isPublicHttpUrl(body?.url)) {
+  if (!isPublicHttpUrl(parsed.data.url)) {
     return NextResponse.json(
       { error: "Enter a public website address (e.g. example.com).", code: "INVALID_URL" },
       { status: 400 }
@@ -88,13 +117,25 @@ export async function POST(req: Request): Promise<NextResponse> {
   // ── SSRF gate (layer 2) + normalisation ────────────────────────────────────
   // validateScanUrl also normalises (adds https://, strips creds) and is the
   // shared choke-point used by the authed scan path, so both agree on policy.
-  let url: string;
+  let parsedUrl: URL;
   try {
-    url = sanitiseUrl(validateScanUrl(body.url as string));
+    parsedUrl = validateScanUrl(parsed.data.url);
   } catch (e) {
     const code = isAppError(e) ? e.code : "INVALID_URL";
     return NextResponse.json(
       { error: "That address can't be scanned. Try a public website like example.com.", code },
+      { status: 400 }
+    );
+  }
+  const url = sanitiseUrl(parsedUrl);
+
+  // ── SSRF gate (layer 3): resolved-IP check (DNS-rebinding defence) ──────────
+  // The string gates can't see that a public hostname resolves to a private IP.
+  // We resolve here and reject if ANY address is internal. Generic error only —
+  // never reveal that the host was internal (no SSRF oracle).
+  if (await resolvesToDisallowed(parsedUrl.hostname)) {
+    return NextResponse.json(
+      { error: "That address can't be scanned. Try a public website like example.com.", code: "INVALID_URL" },
       { status: 400 }
     );
   }
@@ -110,6 +151,24 @@ export async function POST(req: Request): Promise<NextResponse> {
       scanInternalLinks: false,
     });
     const report = buildReport(raw, url);
+
+    // ── Post-redirect re-validation (DNS-rebinding via redirect) ──────────────
+    // The engine may have followed redirects to a different host than the one we
+    // resolved above. If the FINAL host resolves to an internal address, discard
+    // the result rather than return data harvested from an internal target.
+    // Generic error only — never reveal where the redirect landed.
+    try {
+      const finalHost = new URL(report.url).hostname;
+      if (finalHost && finalHost !== parsedUrl.hostname && (await resolvesToDisallowed(finalHost))) {
+        return NextResponse.json(
+          { error: "That address can't be scanned. Try a public website like example.com.", code: "INVALID_URL" },
+          { status: 400 }
+        );
+      }
+    } catch {
+      // If report.url isn't parseable we simply skip this extra check; the
+      // pre-scan gates already cleared the original target.
+    }
 
     track("scan_completed", { source: "public", score: report.score, total: report.totals.total });
 
