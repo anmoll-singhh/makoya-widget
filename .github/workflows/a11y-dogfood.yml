@@ -1,0 +1,93 @@
+name: A11y Dogfood
+
+# We sell accessibility, so our OWN public site must be flawless. This job runs
+# axe-core (via @axe-core/playwright, already a dependency of apps/web) against a
+# real production build of the landing (/) and scanner (/scan) pages and FAILS on
+# any serious or critical violation.
+#
+# The runner is written inline (heredoc) at CI time so it lives entirely in this
+# workflow file — no source files are added under apps/web. Runs on GitHub Actions.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  axe:
+    name: axe-core (own site)
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: dummy-anon-key-for-ci-build-only
+      SUPABASE_SERVICE_ROLE_KEY: dummy-service-role-key-for-ci-build-only
+      ADMIN_EMAILS: ci@example.com
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install (workspaces)
+        run: npm ci
+
+      - name: Sync shared mirror
+        run: npm run sync:shared
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+
+      - name: Build apps/web
+        run: npm run build -w @makoya/web
+
+      - name: Start app
+        run: |
+          npm run start -w @makoya/web &
+          npx wait-on http://localhost:3000/ --timeout 60000
+
+      - name: Run axe against / and /scan
+        working-directory: apps/web
+        run: |
+          cat > /tmp/axe-dogfood.mjs <<'EOF'
+          import { chromium } from "playwright";
+          import AxeBuilder from "@axe-core/playwright";
+
+          const PAGES = ["http://localhost:3000/", "http://localhost:3000/scan"];
+          const FAIL_IMPACTS = new Set(["serious", "critical"]);
+
+          const browser = await chromium.launch();
+          let failed = false;
+
+          for (const url of PAGES) {
+            const page = await browser.newPage();
+            await page.goto(url, { waitUntil: "networkidle" });
+            const results = await new AxeBuilder({ page })
+              .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+              .analyze();
+
+            const blocking = results.violations.filter((v) => FAIL_IMPACTS.has(v.impact));
+            console.log(`\n=== ${url} ===`);
+            console.log(`violations: ${results.violations.length} (serious/critical: ${blocking.length})`);
+            for (const v of blocking) {
+              console.log(`  [${v.impact}] ${v.id}: ${v.help}`);
+              for (const node of v.nodes) console.log(`      -> ${node.target.join(" ")}`);
+            }
+            if (blocking.length > 0) failed = true;
+            await page.close();
+          }
+
+          await browser.close();
+          if (failed) {
+            console.error("\nA11y dogfood FAILED: serious/critical violations on our own site.");
+            process.exit(1);
+          }
+          console.log("\nA11y dogfood passed: no serious/critical violations.");
+          EOF
+          node /tmp/axe-dogfood.mjs

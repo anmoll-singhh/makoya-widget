@@ -1,0 +1,25 @@
+{
+  "//": "Lighthouse CI config. We sell accessibility, so the a11y category is a HARD 1.0 gate. Other categories are warn-level budgets so a transient perf dip never blocks a merge — tighten to 'error' as the site stabilizes.",
+  "ci": {
+    "collect": {
+      "//": "Runs against a local production build (next build && next start) started by the workflow on port 3000. Two public routes: landing + scanner funnel.",
+      "url": ["http://localhost:3000/", "http://localhost:3000/scan"],
+      "numberOfRuns": 3,
+      "settings": {
+        "preset": "desktop"
+      }
+    },
+    "assert": {
+      "assertions": {
+        "categories:accessibility": ["error", { "minScore": 1.0 }],
+        "categories:performance": ["warn", { "minScore": 0.8 }],
+        "categories:best-practices": ["warn", { "minScore": 0.9 }],
+        "categories:seo": ["warn", { "minScore": 0.9 }]
+      }
+    },
+    "upload": {
+      "//": "Free temporary public storage hosted by the LHCI project — no token/server required. Reports are kept for ~7 days and linked in the job log.",
+      "target": "temporary-public-storage"
+    }
+  }
+}

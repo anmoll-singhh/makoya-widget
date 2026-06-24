@@ -37,5 +37,28 @@ jobs:
       - name: Typecheck (web + widget)
         run: npm run typecheck
 
-      - name: Unit tests
-        run: npm run test
+      - name: Lint (non-blocking on legacy)
+        # ESLint is intentionally NON-BLOCKING: the flat config downgrades noisy
+        # legacy rules to warnings, and `lint` (= `eslint .`) exits 0 on warnings.
+        # To make it blocking once the codebase is clean, switch to
+        # `npm run lint:strict -w @makoya/web` (eslint . --max-warnings=0).
+        run: npm run lint -w @makoya/web
+
+      - name: Format check (report-only)
+        # Legacy code is not yet Prettier-formatted, so a hard --check would mass-
+        # fail. `|| true` keeps this informational. Drop `|| true` after running
+        # `npm run format -w @makoya/web` once and committing the result.
+        run: npm run format:check -w @makoya/web || true
+
+      - name: Unit tests + coverage
+        # Coverage thresholds (vitest.config.ts) are a regression floor set just
+        # below current numbers: passes today, fails if coverage drops.
+        run: npm run test:coverage -w @makoya/web
+
+      - name: Dependency audit (warn-only)
+        # `npm audit` is reported but does NOT hard-fail the build. Legacy
+        # transitive advisories (often in build-only tooling with no fix path)
+        # would otherwise block every PR. Review the output and bump deps via
+        # the Dependabot PRs. Tighten to a hard gate by removing `|| true` once
+        # the high/critical advisory backlog is cleared.
+        run: npm audit --audit-level=high || true

@@ -1,0 +1,54 @@
+name: Lighthouse CI
+
+# Performance / accessibility / best-practices / SEO budgets, run against a REAL
+# production build of apps/web (next build && next start), not the deployed URL —
+# so a PR is gated before it ships.
+#
+# Accessibility is a HARD 1.0 gate (we are an accessibility company); the other
+# categories are warn-level budgets in lighthouserc.json. Runs on GitHub Actions.
+#
+# Build env: lib/env.ts throws in production on placeholder NEXT_PUBLIC_* keys, so
+# we pass syntactically-valid dummy Supabase values. The public routes under test
+# (/ and /scan) never call Supabase at request time, so dummies are sufficient.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lighthouse:
+    name: Lighthouse CI
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: dummy-anon-key-for-ci-build-only
+      SUPABASE_SERVICE_ROLE_KEY: dummy-service-role-key-for-ci-build-only
+      ADMIN_EMAILS: ci@example.com
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install (workspaces)
+        run: npm ci
+
+      - name: Sync shared mirror
+        run: npm run sync:shared
+
+      - name: Build apps/web
+        run: npm run build -w @makoya/web
+
+      - name: Run Lighthouse CI
+        run: |
+          npm install -g @lhci/cli@0.14.x
+          lhci autorun --config=./lighthouserc.json --collect.startServerCommand="npm run start -w @makoya/web"
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}

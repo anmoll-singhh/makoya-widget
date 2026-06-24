@@ -1,0 +1,85 @@
+name: Security
+
+# Free, industry-grade security scanning. Runs on every push to main and every PR.
+# All three scanners below run on GitHub-hosted runners only (they are NOT part of
+# the local `npm run ci`):
+#   - Gitleaks  : secret scanning (committed credentials/tokens)
+#   - Semgrep   : SAST over JS/TS/React rule packs (OSS, no token required)
+#   - CodeQL    : GitHub's deep SAST for javascript-typescript
+#
+# None of these require a paid plan or a secret to be configured:
+#   - gitleaks-action runs without GITLEAKS_LICENSE for public/OSS-tier scanning.
+#   - `semgrep ci` falls back to local OSS rules when SEMGREP_APP_TOKEN is unset.
+#   - CodeQL uses the built-in GITHUB_TOKEN (Actions: read, security-events: write).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Secret scanning — fails the build if a credential is committed.
+  # ---------------------------------------------------------------------------
+  gitleaks:
+    name: Gitleaks (secret scan)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history so gitleaks can scan past commits on PRs
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GITLEAKS_LICENSE intentionally omitted — not required for OSS-tier use.
+
+  # ---------------------------------------------------------------------------
+  # Semgrep OSS SAST — runs the default + typescript + react community rule packs.
+  # `semgrep ci` exits non-zero on findings of blocking severity, hard-failing
+  # the job. No SEMGREP_APP_TOKEN needed (OSS local rules).
+  # ---------------------------------------------------------------------------
+  semgrep:
+    name: Semgrep (SAST)
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Semgrep
+        run: semgrep ci --config p/default --config p/typescript --config p/react
+        env:
+          # Unset token => OSS mode. Define SEMGREP_APP_TOKEN as a repo secret
+          # later to also upload findings to Semgrep Cloud (optional).
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+
+  # ---------------------------------------------------------------------------
+  # CodeQL — GitHub-native SAST. Results land in the repo Security tab.
+  # ---------------------------------------------------------------------------
+  codeql:
+    name: CodeQL (javascript-typescript)
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    strategy:
+      matrix:
+        language: [javascript-typescript]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-and-quality
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
