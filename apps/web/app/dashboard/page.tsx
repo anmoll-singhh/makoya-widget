@@ -14,7 +14,9 @@
 import { notFound } from "next/navigation";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { listSites, getConfig } from "@/lib/sites";
+import { mintSiteToken } from "@/lib/licensing/token";
 import { Customizer } from "@/components/customizer/Customizer";
+import { SnippetBox } from "@/components/SnippetBox";
 
 interface Props {
   searchParams: Promise<{ site?: string }>;
@@ -58,13 +60,29 @@ export default async function DashboardPage({ searchParams }: Props) {
   const config = await getConfig(supabase, activeSiteId);
   if (!config) return notFound();
 
+  // Mint the install token SERVER-SIDE (the signing secret never crosses to the
+  // client) and hand it to SnippetBox as a plain prop, so merchants can copy the
+  // contract snippet + bare Site ID / Token into their platform's install form.
+  const token = mintSiteToken(activeSiteId);
+
   return (
-    <Customizer
-      key={activeSiteId}
-      sites={sites}
-      activeSiteId={activeSiteId}
-      initialConfig={config}
-      plan={activeSite.plan}
-    />
+    <>
+      <section className="mx-auto mb-6 max-w-2xl rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
+        <h2 className="font-display text-base font-bold text-neutral-900">Install your widget</h2>
+        <p className="mt-1 text-sm leading-relaxed text-neutral-500">
+          Paste this snippet into your site (before <code className="rounded bg-neutral-100 px-1 py-0.5 text-[12px]">&lt;/head&gt;</code>),
+          or enter the Site ID + Token into the Makoya plugin for your platform.
+        </p>
+        <SnippetBox siteId={activeSiteId} token={token} />
+      </section>
+
+      <Customizer
+        key={activeSiteId}
+        sites={sites}
+        activeSiteId={activeSiteId}
+        initialConfig={config}
+        plan={activeSite.plan}
+      />
+    </>
   );
 }

@@ -8,10 +8,12 @@
     "build:loader": "cross-env BUILD_TARGET=loader vite build",
     "build": "npm run build:core && npm run build:loader",
     "dev": "vite",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsx src/fetch-config.test.ts && tsx src/core-autoinit.test.ts && tsx src/loader.test.ts && tsx src/core/state.test.ts"
   },
   "devDependencies": {
     "cross-env": "^7.0.3",
+    "tsx": "^4.19.2",
     "typescript": "^5.9.3",
     "vite": "^5.4.21"
   }

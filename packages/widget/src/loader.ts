@@ -14,49 +14,23 @@
  *   <script src="https://cdn.makoya.example/loader.js" data-site="SITE_ID" defer></script>
  */
 
-import { DEFAULT_CONFIG, WidgetConfig } from "@makoya/shared";
+import { DEFAULT_CONFIG } from "@makoya/shared";
+import { fetchGatedConfig } from "./fetch-config";
 
-/**
- * Loader-LOCAL transport type for the fetched payload.
- *
- * `active` is an ENVELOPE/transport flag the config endpoint uses to signal an
- * explicit "this site is licensed-off — do not mount" verdict. It is NOT a
- * widget display field, so it deliberately stays loader-local and is NEVER
- * added to the canonical `WidgetConfig` in `packages/shared` — doing so would
- * force a `sync:shared` regen and trip the shared-sync drift gate
- * (apps/web/lib/shared-sync.test.ts) for a value the widget UI never reads.
- */
-type FetchedConfig = Partial<WidgetConfig> & { active?: boolean };
-
-// In production these come from your build env. Hardcoded defaults keep the
-// loader working even if env injection fails.
-const CONFIG_BASE =
-  (window as any).MAKOYA_CONFIG_BASE || "https://makoya-gamma.vercel.app/api/config";
+// CORE_URL is loader-local; the config base now lives in fetch-config.ts (shared
+// by both bundles) so the loader and core auto-init resolve it identically.
 const CORE_URL =
   (window as any).MAKOYA_CORE_URL || "https://makoya-gamma.vercel.app/widget/core.js";
 
-function getSiteId(): string | null {
+/**
+ * Read the script tag this loader was injected as, so we can pull its data-*
+ * attributes. `currentScript` can be null when bundlers inline the loader, so
+ * we fall back to the first <script data-site> on the page.
+ */
+function getSelfScript(): HTMLScriptElement | null {
   const current = document.currentScript as HTMLScriptElement | null;
-  if (current?.dataset.site) return current.dataset.site;
-  // Fallback: find any script tag with data-site (currentScript can be null
-  // when bundlers inline the loader).
-  const tag = document.querySelector<HTMLScriptElement>("script[data-site]");
-  return tag?.dataset.site ?? null;
-}
-
-async function fetchConfig(siteId: string): Promise<FetchedConfig> {
-  try {
-    const res = await fetch(`${CONFIG_BASE}/${encodeURIComponent(siteId)}`, {
-      cache: "default",
-    });
-    if (!res.ok) return {};
-    return (await res.json()) as FetchedConfig;
-  } catch {
-    // Network/CORS failure must NEVER stop the widget — fall back to defaults.
-    // Note this returns {} (no `active` field), which is exactly why a real
-    // outage still mounts the widget (see the asymmetry comment in boot()).
-    return {};
-  }
+  if (current?.dataset.site) return current;
+  return document.querySelector<HTMLScriptElement>("script[data-site]");
 }
 
 function loadCore(): Promise<void> {
@@ -76,29 +50,31 @@ function loadCore(): Promise<void> {
 }
 
 export async function boot(): Promise<void> {
-  const siteId = getSiteId();
+  const self = getSelfScript();
+  const siteId = self?.dataset.site ?? null;
   if (!siteId) return; // nothing to do without a site id
 
-  // Fetch config and core in parallel; apply defaults if config is missing.
-  const [partial] = await Promise.all([fetchConfig(siteId), loadCore()]);
+  // The per-site token (read the same way as data-site) is forwarded to the
+  // config endpoint as `?t=` so the server can issue its licensing verdict.
+  const token = self?.dataset.token;
 
-  // Pull the transport-only `active` flag off before forwarding the rest to
-  // init(config: WidgetConfig) — keeping it out of the spread avoids a TS
-  // excess-property error and stops a non-WidgetConfig field leaking into core.
-  const { active, ...cfg } = partial;
+  // Fetch the gated config and core in parallel. fetchGatedConfig NEVER throws —
+  // on any failure it returns { active: true, config: {} } (FAIL OPEN).
+  const [{ active, config }] = await Promise.all([
+    fetchGatedConfig(siteId, token),
+    loadCore(),
+  ]);
 
   // SAFE ASYMMETRY — availability must never be sacrificed (non-negotiable #1):
-  //   • active === false  → an EXPLICIT server "off" verdict (licensed-off /
+  //   • active === false → an EXPLICIT server "off" verdict (licensed-off /
   //     domain-mismatch). The freeloader's browser always reaches the server,
   //     so it gets this explicit false → we do NOT mount.
-  //   • active === undefined → no verdict was delivered. This is what a real
-  //     network/CORS failure produces (fetchConfig returns {}), and also a
-  //     plain config with no envelope flag. undefined is NOT false, so we STILL
-  //     mount on defaults — a paying customer is never punished for an outage.
+  //   • Any failure (network/CORS/non-200) yields active === true (fetchGatedConfig
+  //     fails open), so a paying customer is never punished for an outage.
   // Only the explicit `false` suppresses the widget.
   if (active === false) return;
 
-  window.MakoyaWidget?.init({ ...DEFAULT_CONFIG, ...cfg, siteId });
+  window.MakoyaWidget?.init({ ...DEFAULT_CONFIG, ...config, siteId });
 }
 
 // Auto-run on load (the real client snippet path). Guarded so test harnesses

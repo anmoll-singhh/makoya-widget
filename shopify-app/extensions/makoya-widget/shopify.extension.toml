@@ -1,0 +1,14 @@
+# Makoya Accessibility — Shopify Theme App Extension config
+#
+# This declares a theme app extension. The merchant enables the app embed block
+# defined in blocks/makoya.liquid from their theme editor; no theme-file edits.
+#
+# NOTE: This scaffold cannot be deployed without the founder's Shopify Partner
+# account + the Shopify CLI (`shopify app deploy`). See ../../SHOPIFY-SETUP.md.
+
+api_version = "2024-07"
+
+[[extensions]]
+name = "Makoya Accessibility"
+handle = "makoya-widget"
+type = "theme"
