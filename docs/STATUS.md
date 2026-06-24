@@ -3,7 +3,7 @@
 > **This is the single glance-able source of truth.** Read this first; it answers "where are we, what's in flight, what's blocked, what's next."
 > Detailed narrative history lives in [`SESSION.md`](./SESSION.md) (append-only log). This file is the *dashboard view* on top of it.
 >
-> **Last updated:** 2026-06-25 · **Updated by:** Claude (block 9 — Phase H bulletproofing)
+> **Last updated:** 2026-06-25 · **Updated by:** Claude (block 10 — Phase 1 widget licensing gate, on branch)
 >
 > **Backup status:** ✅ All branches pushed to `origin` (github.com/anmoll-singhh/makoya-widget). No work is local-only.
 >
@@ -31,10 +31,12 @@
 
 | Worktree | Branch | Owner / purpose | Status |
 |---|---|---|---|
-| `C:\Users\ANMOL\Desktop\makoya` | `main` (or a feature branch) | Production source of truth | ✅ Has scanner-v2 + Phase H hardening, deployed |
+| `C:\Users\ANMOL\Desktop\makoya` | `feat/phase-1-licensing` | **Widget license + domain gate (Phase 1)** | ✅ MERGED to main + **DEPLOYED LIVE** (monitor mode); branch can be pruned |
+| `C:\Users\ANMOL\Desktop\makoya-scanner-v3` | `feat/scanner-evidence-v3` | Scanner evidence v3 (other session) | 🔶 active — `7fab09f` fast-forwarded onto `main` |
 | `C:\Users\ANMOL\Desktop\makoya` | `feat/dashboards-ui-wip` | Dashboard/admin/CRM UI elevation | 🔶 WIP, unmerged — decide: finish→merge or fold into strategic frontend rebuild |
-| `C:\Users\ANMOL\Desktop\makoya-scanner` | `feat/scanner-trustworthy-v2` | Scanner v2 | ✅ MERGED to main + deployed — **worktree can be removed** |
 | `.claude/worktrees/agent-*` | `harden/*` | Phase H parallel agents (A/B/C) | ✅ MERGED to main — worktrees + branches can be pruned |
+
+> **Block 10 note (data + licensing — ✅ SHIPPED):** Founder **deleted all `sites`** (clean slate; `leads` untouched) — new sites onboarded fresh. **Phase 1 widget licensing gate** is **LIVE** (config endpoint enforces per-site `license_status` + `allowed_domains`; `no-store`; fail-open infra / fail-closed not-found; monitor→enforce via `WIDGET_ENFORCE`). Migration `widget_licensing` applied to prod; merged to main (`e54b684`); deployed (`dpl_9Qpw1etTxRXtapJ7VbbsKkQ3y1mc`, makoya-gamma); verified live (unknown siteId → 200, `no-store`, `active:true` monitor-mode). **Ships OFF** — `WIDGET_ENFORCE` unset, so nothing is blocked yet; flip it only after **Phase 1.5** (signed-token wall + close direct-`core.js` bypass — Origin-lock alone is a deterrent, spoofable). Plan + threat-model: `docs/plans/PHASE-1-LICENSING.md`.
 
 **Rules:** one worktree = one branch = one agent · don't develop two features in one checkout · if two lanes need the same shared file (`packages/shared`, `package.json`, `lib/email`), STOP and coordinate · deploy only from clean `main` (`vercel --prod` from `apps/web`; no GitHub auto-deploy) · update this board when a lane merges/ends.
 
