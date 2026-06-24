@@ -15,18 +15,68 @@ function rowToSite(r: any): Site {
 }
 
 /**
+ * Per-site licensing facts consumed by the public widget config endpoint.
+ * Deliberately narrow: the gate only needs status + trial expiry + the domain
+ * allowlist, never the full site row. snake_case columns mapped to camelCase.
+ */
+export interface SiteLicense {
+  licenseStatus: string;
+  trialEndsAt: string | null;
+  allowedDomains: string[];
+}
+
+/**
+ * Derives the apex + www variants of a host so a site is gated on both from the
+ * moment it is created (Phase 1 §3). Bare-host in, lowercased pair out:
+ *   foo.com      → ['foo.com', 'www.foo.com']
+ *   www.foo.com  → ['www.foo.com', 'foo.com']
+ * Mirrors the migration backfill so create-time and backfill agree.
+ */
+function apexAndWww(domain: string): string[] {
+  const host = domain.toLowerCase();
+  const sibling = host.startsWith("www.") ? host.slice(4) : `www.${host}`;
+  // Dedupe defensively (host === sibling can't happen for these rules, but be safe).
+  return Array.from(new Set([host, sibling]));
+}
+
+/**
  * Creates a site. The default `site_config` row is created atomically by a
  * Postgres AFTER INSERT trigger (see infra/schema.sql), so there is no
  * second insert here and therefore no orphaned-site window.
+ *
+ * `allowed_domains` is seeded with the apex + www of `domain` at insert time so
+ * every freshly onboarded site is correctly domain-gated from creation (the DB
+ * is a clean slate, so the migration backfill never runs for new rows).
  */
 export async function createSite(client: SupabaseClient, ownerId: string, domain: string): Promise<Site> {
   const { data, error } = await client
     .from("sites")
-    .insert({ owner_id: ownerId, domain })
+    .insert({ owner_id: ownerId, domain, allowed_domains: apexAndWww(domain) })
     .select("*")
     .single();
   if (error) throw error;
   return rowToSite(data);
+}
+
+/**
+ * Reads the licensing facts for one site. Mirrors getSite's error discipline:
+ *  - a Supabase `error` is an INFRA failure → throw (the endpoint fails OPEN on it),
+ *  - simply no row → return null (not-found → the endpoint fails CLOSED on it).
+ * This distinction is load-bearing for the gate's availability contract.
+ */
+export async function getSiteLicense(client: SupabaseClient, siteId: string): Promise<SiteLicense | null> {
+  const { data, error } = await client
+    .from("sites")
+    .select("license_status, trial_ends_at, allowed_domains")
+    .eq("id", siteId)
+    .maybeSingle();
+  if (error) throw error; // infra failure — caller fails OPEN
+  if (!data) return null; // not found — caller fails CLOSED
+  return {
+    licenseStatus: data.license_status,
+    trialEndsAt: data.trial_ends_at ?? null,
+    allowedDomains: data.allowed_domains ?? [],
+  };
 }
 
 export async function listSites(client: SupabaseClient, ownerId: string): Promise<Site[]> {

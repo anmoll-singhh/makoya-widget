@@ -30,3 +30,20 @@ export function captureError(err: unknown, context?: Record<string, unknown>): v
   const message = err instanceof Error ? err.message : String(err);
   console.error(`[error] ${message}`, context ?? {});
 }
+
+/**
+ * Widget license/domain gate decision (Phase 1). Logged on EVERY would-be denial
+ * — including monitor mode (`enforced:false`), where the verdict is computed but
+ * the widget is still served — so the founder can watch the funnel before
+ * flipping `WIDGET_ENFORCE=true`. Routed through this seam, never raw console at
+ * the call site (CLAUDE.md observability rule).
+ */
+export function logWidgetGate(info: {
+  siteId: string;
+  host: string | null;
+  status: string;
+  enforced: boolean;
+}): void {
+  // TODO(phase-3): forward to PostHog/Sentry as a structured event.
+  console.warn(`[widget-gate] ${info.enforced ? "deny" : "monitor_would_deny"}`, info);
+}
