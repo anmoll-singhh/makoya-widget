@@ -24,16 +24,51 @@
  * plain `Sentry.init` in the instrumentation files works fully without it.
  */
 import * as Sentry from "@sentry/nextjs";
+import { PostHog } from "posthog-node";
 
 import { env } from "@/lib/env";
 
 const isProd = process.env.NODE_ENV === "production";
 
+/**
+ * Lazily-built server-side PostHog client (singleton). Only constructed when a
+ * key is configured. `flushAt:1` + `flushInterval:0` send each event immediately
+ * — serverless functions are short-lived and may freeze before a batch flushes,
+ * so we don't buffer. Returns null when analytics is disabled (no key).
+ */
+let phServer: PostHog | null = null;
+let phServerInit = false;
+function serverPosthog(): PostHog | null {
+  if (phServerInit) return phServer;
+  phServerInit = true;
+  if (env.POSTHOG_KEY) {
+    phServer = new PostHog(env.POSTHOG_KEY, {
+      host: env.POSTHOG_HOST,
+      flushAt: 1,
+      flushInterval: 0,
+    });
+  }
+  return phServer;
+}
+
 /** Funnel/product event. The names we care about: scan_started, scan_completed,
- *  report_emailed, signup, checkout_started, plan_upgraded. */
+ *  report_emailed, signup, checkout_started, plan_upgraded.
+ *
+ *  Server-side events are captured under a `distinctId` taken from props when the
+ *  caller knows one (so they stitch to the visitor's client-side funnel), else a
+ *  generic "server" id. NEVER throws — a failed analytics send must not break a
+ *  route. No-op when no PostHog key is configured. */
 export function track(event: string, props?: Record<string, unknown>): void {
-  // TODO(phase-3): forward to PostHog when NEXT_PUBLIC_POSTHOG_KEY is set.
   if (!isProd) console.debug(`[track] ${event}`, props ?? {});
+  try {
+    const ph = serverPosthog();
+    if (!ph) return;
+    const distinctId =
+      (typeof props?.distinctId === "string" && props.distinctId) || "server";
+    ph.capture({ distinctId, event, properties: props ?? {} });
+  } catch {
+    // Analytics must never break a request path.
+  }
 }
 
 /** Server-side error capture. Use in route catch blocks instead of bare console.
