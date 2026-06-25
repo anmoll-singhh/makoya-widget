@@ -29,6 +29,8 @@
     "lucide-react": "^1.21.0",
     "next": "15.5.19",
     "playwright-core": "^1.50.1",
+    "posthog-js": "^1.393.5",
+    "posthog-node": "^5.21.2",
     "radix-ui": "^1.6.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",

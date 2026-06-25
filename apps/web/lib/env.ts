@@ -46,4 +46,9 @@ export const env = {
   // Sentry disabled (init no-ops) so nothing breaks without it (bootstrap-safe).
   SENTRY_DSN: process.env.SENTRY_DSN ?? "",
   SENTRY_DSN_PUBLIC: process.env.NEXT_PUBLIC_SENTRY_DSN ?? "",
+  // PostHog product analytics (the funnel). The KEY is public by design (it ships
+  // in the browser bundle and can only WRITE events). Empty = analytics disabled
+  // (the client provider + server track() both no-op), so nothing breaks without it.
+  POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY ?? "",
+  POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com",
 };
