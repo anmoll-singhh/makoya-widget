@@ -3,7 +3,7 @@
 > **This is the single glance-able source of truth.** Read this first; it answers "where are we, what's in flight, what's blocked, what's next."
 > Detailed narrative history lives in [`SESSION.md`](./SESSION.md) (append-only log). This file is the *dashboard view* on top of it.
 >
-> **Last updated:** 2026-06-26 · **Updated by:** Claude (block 19 — Redline DASHBOARD reskinned + merged; remaining: auth/login + admin, then deploy)
+> **Last updated:** 2026-06-26 · **Updated by:** Claude (block 20 — Redline AUTH/login + Logo done; ALL customer-facing surfaces rebuilt; admin (internal) + deploy remain)
 >
 > **Backup status:** ✅ All branches pushed to `origin` (github.com/anmoll-singhh/makoya-widget). No work is local-only.
 >
