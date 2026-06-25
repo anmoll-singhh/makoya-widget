@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAdminUser } from "@/lib/auth/require-admin";
 import { listAdminSites } from "@/lib/admin";
+import { AddCustomerForm } from "@/components/admin/AddCustomerForm";
 
 function scoreClass(score: number | null) {
   if (score === null) return "bg-[var(--surface-2)] text-[var(--ink-600)]";
@@ -42,6 +43,9 @@ export default async function AdminHome() {
           )}
         </Link>
       </div>
+
+      {/* Onboard a new customer (creates user + site, returns the handover). */}
+      <AddCustomerForm />
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">

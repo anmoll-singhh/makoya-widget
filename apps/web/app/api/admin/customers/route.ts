@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAdminUser } from "@/lib/auth/require-admin";
 import { isValidPlan } from "@/lib/admin-constants";
 import { createCustomer } from "@/lib/admin";
+import { mintSiteToken } from "@/lib/licensing/token";
 
 export async function POST(req: Request) {
   const admin = await getAdminUser();
@@ -18,7 +19,11 @@ export async function POST(req: Request) {
 
   try {
     const result = await createCustomer({ email, domain, plan });
-    return NextResponse.json(result, { status: 201 });
+    // Mint the install token server-side (the signing secret never leaves the
+    // server) so the operator gets the complete handover — incl. the snippet —
+    // without having to log in as the client first.
+    const token = mintSiteToken(result.siteId);
+    return NextResponse.json({ ...result, token }, { status: 201 });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message ?? "create failed" }, { status: 500 });
   }
