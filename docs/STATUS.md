@@ -3,7 +3,7 @@
 > **This is the single glance-able source of truth.** Read this first; it answers "where are we, what's in flight, what's blocked, what's next."
 > Detailed narrative history lives in [`SESSION.md`](./SESSION.md) (append-only log). This file is the *dashboard view* on top of it.
 >
-> **Last updated:** 2026-06-25 · **Updated by:** Claude (block 13 — Upstash durable rate-limit + Sentry MERGED + DEPLOYED LIVE; live-caught + fixed a per-endpoint counter collision)
+> **Last updated:** 2026-06-25 · **Updated by:** Claude (block 14 — Sentry test-error fired + full live test matrix + high-effort code review → fixed report-pdf limiter gap + 2 latent issues; all DEPLOYED LIVE)
 >
 > **Backup status:** ✅ All branches pushed to `origin` (github.com/anmoll-singhh/makoya-widget). No work is local-only.
 >
@@ -60,7 +60,8 @@
 | Email | Resend (`mailer.jewlx.ai`, verified); send failure never blocks lead | ✅ live + tested |
 | **Security (Phase H)** | DNS-rebinding/SSRF resolved-IP block · Zod at all API boundaries · hardened SECURITY DEFINER fn | ✅ live + QA'd |
 | **Hardening (block 12)** | Widget config-fetch AbortController timeout (hang→fail-open) · app HTTP security headers (nosniff/Referrer-Policy/Permissions-Policy/HSTS, embedding-safe) | ✅ live + smoke-verified (`dpl_8zJE2A…`) |
-| **Observability (block 13)** | Upstash durable cross-instance rate limiting (public-scan 5/min, scan-ingest 10/min, per-endpoint namespaced, fail-open) · Sentry error reporting (server+edge+client, no-op without DSN) | ✅ live + verified (`dpl_GqWXrr…`): limits enforce across instances + budgets isolated; Sentry wired (verify events in dashboard) |
+| **Observability (block 13)** | Upstash durable cross-instance rate limiting (public-scan 5/min, scan-ingest 10/min, **report-pdf 20/min** added block 14, per-endpoint namespaced, fail-open) · Sentry error reporting (server+edge+client, no-op without DSN) | ✅ live + verified (`dpl_8rJk9q…`): all 3 public routes enforce across instances + budgets isolated; Sentry test error fired (verify in dashboard) |
+| **Code-review pass (block 14)** | High-effort multi-agent review of the session diff → caught report-pdf still on the broken limiter (fixed) + 2 latent (captureError client-DSN gate, getLimiter doc/model) | ✅ fixed + deployed + live-verified |
 
 ---
 
