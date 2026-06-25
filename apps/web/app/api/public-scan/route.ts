@@ -39,29 +39,19 @@ import { isPublicHttpUrl, anyDisallowedAddress } from "@/lib/scan-utils/public-u
 import { parseBody, publicScanBodySchema } from "@/lib/validation/api";
 import { track, captureError } from "@/lib/observability";
 import { isAppError } from "@/lib/utils/error";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // The real scan needs the Node runtime (Chromium) and the full Vercel budget.
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-// ── crude per-instance rate limit ──────────────────────────────────────────
-// Mirrors /api/scan-ingest. Good enough to stop accidental floods in the demo;
-// replace with a durable cross-instance limiter (Upstash) when hardening. The
-// limit is tighter here than scan-ingest because each call spins up a browser.
+// ── rate limit (durable, cross-instance via Upstash) ───────────────────────
+// Mirrors /api/scan-ingest. The limit is tighter here than scan-ingest because
+// each call spins up a browser. Enforcement is delegated to lib/rate-limit.ts,
+// which uses Upstash Redis when configured (shared across Vercel instances) and
+// falls back to an in-memory window when it isn't.
 const RATE_WINDOW_MS = 60_000;
 const RATE_MAX = 5;
-const hits = new Map<string, { n: number; t: number }>();
-
-function rateLimited(key: string): boolean {
-  const now = Date.now();
-  const cur = hits.get(key);
-  if (!cur || now - cur.t > RATE_WINDOW_MS) {
-    hits.set(key, { n: 1, t: now });
-    return false;
-  }
-  cur.n++;
-  return cur.n > RATE_MAX;
-}
 
 /**
  * Resolve `host` via DNS and return true if ANY resolved address is private/
@@ -83,7 +73,7 @@ async function resolvesToDisallowed(host: string): Promise<boolean> {
 
 export async function POST(req: Request): Promise<NextResponse> {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  if (rateLimited(ip)) {
+  if (await checkRateLimit(ip, { limit: RATE_MAX, windowMs: RATE_WINDOW_MS })) {
     return NextResponse.json(
       { error: "Too many scans from this connection. Please wait a minute and try again." },
       { status: 429 }

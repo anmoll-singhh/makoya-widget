@@ -21,6 +21,7 @@ import { getEmailProvider, buildReportEmail } from "@/lib/email";
 import { env } from "@/lib/env";
 import { track, captureError } from "@/lib/observability";
 import { parseBody, scanIngestBodySchema } from "@/lib/validation/api";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -34,23 +35,12 @@ export function OPTIONS(): NextResponse {
   return new NextResponse(null, { status: 204, headers: CORS });
 }
 
-// ── crude per-instance rate limit ──────────────────────────────────────────
-// Good enough to stop accidental floods in the demo. Replace with Upstash/QStash
-// (durable, cross-instance) when we harden for real traffic.
+// ── rate limit (durable, cross-instance via Upstash) ───────────────────────
+// Enforcement is delegated to lib/rate-limit.ts, which uses Upstash Redis when
+// configured (shared across Vercel instances) and falls back to an in-memory
+// window when it isn't. Limits below are preserved exactly as before.
 const RATE_WINDOW_MS = 60_000;
 const RATE_MAX = 10;
-const hits = new Map<string, { n: number; t: number }>();
-
-function rateLimited(key: string): boolean {
-  const now = Date.now();
-  const cur = hits.get(key);
-  if (!cur || now - cur.t > RATE_WINDOW_MS) {
-    hits.set(key, { n: 1, t: now });
-    return false;
-  }
-  cur.n++;
-  return cur.n > RATE_MAX;
-}
 
 function normalizeTotals(raw: unknown): LeadTotals {
   const t = (raw ?? {}) as Record<string, unknown>;
@@ -68,7 +58,7 @@ function normalizeScore(raw: unknown): number | null {
 
 export async function POST(req: Request): Promise<NextResponse> {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  if (rateLimited(ip)) {
+  if (await checkRateLimit(ip, { limit: RATE_MAX, windowMs: RATE_WINDOW_MS })) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429, headers: CORS });
   }
 
