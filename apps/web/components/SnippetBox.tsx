@@ -34,7 +34,7 @@ function CopyButton({ value, label }: { value: string; label: string }) {
           /* clipboard unavailable (insecure context) — value stays selectable */
         }
       }}
-      className="transition-base shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold text-brand-600 hover:bg-brand-50"
+      className="transition-colors shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold text-signal-600 hover:bg-signal-50"
     >
       {copied ? "Copied ✓" : "Copy"}
     </button>
@@ -46,10 +46,10 @@ function CopyField({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <div className="mb-1 flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wide text-neutral-400">{label}</span>
+        <span className="text-xs font-semibold uppercase tracking-wide text-[var(--ink-400)]">{label}</span>
         <CopyButton value={value} label={label} />
       </div>
-      <code className="block overflow-x-auto rounded-lg bg-neutral-100 px-3 py-2 text-[11px] leading-relaxed text-neutral-700 ring-1 ring-neutral-200">
+      <code className="block overflow-x-auto rounded-lg bg-[var(--surface-2)] px-3 py-2 text-[11px] leading-relaxed text-[var(--ink-900)] ring-1 ring-[var(--border)]">
         {value}
       </code>
     </div>
@@ -64,7 +64,7 @@ export function SnippetBox({ siteId, token }: { siteId: string; token: string })
       {/* Full contract snippet — paste into raw HTML / theme.liquid before </head>. */}
       <div>
         <div className="mb-1.5 flex items-center justify-between">
-          <span className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Install snippet</span>
+          <span className="text-xs font-semibold uppercase tracking-wide text-[var(--ink-400)]">Install snippet</span>
           <CopyButton value={snippet} label="install snippet" />
         </div>
         <pre className="overflow-x-auto rounded-xl bg-neutral-950 p-3.5 text-[11px] leading-relaxed text-neutral-300 ring-1 ring-neutral-800">

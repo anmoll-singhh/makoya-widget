@@ -14,8 +14,8 @@
  *  - Position uses a 2×2 grid that mirrors screen corners: top-left/top-right
  *    on the first row, bottom-left/bottom-right on the second, so the spatial
  *    metaphor is immediately obvious.
- *  - Active selections use brand-600 ring + background so they match the rest
- *    of the dashboard (indigo/violet system).
+ *  - Active selections use signal-600 ring + background so they match the rest
+ *    of the dashboard (Redline signal system).
  *  - All interactive elements carry proper aria attributes.
  */
 
@@ -79,14 +79,14 @@ export function AppearanceControls({ value, onChange }: AppearanceControlsProps)
     <div className="space-y-6">
       {/* ── Primary colour ─────────────────────────────────────────────── */}
       <div className="space-y-2">
-        <Label htmlFor="appearance-color" className="text-sm font-medium text-neutral-700">
+        <Label htmlFor="appearance-color" className="text-sm font-medium text-[var(--ink-600)]">
           Primary colour
         </Label>
         <div className="flex items-center gap-3">
           {/* Native colour picker — styled to look intentional, not browser-default */}
           <label
             htmlFor="appearance-color"
-            className="relative h-10 w-10 cursor-pointer overflow-hidden rounded-lg border border-neutral-300 shadow-sm transition-base hover:border-brand-400"
+            className="relative h-10 w-10 cursor-pointer overflow-hidden rounded-lg border border-[var(--border)] shadow-sm transition-colors hover:border-[var(--border-strong)]"
             aria-label="Open colour picker"
           >
             <input
@@ -120,7 +120,7 @@ export function AppearanceControls({ value, onChange }: AppearanceControlsProps)
 
       {/* ── Launcher icon ───────────────────────────────────────────────── */}
       <div className="space-y-2">
-        <Label className="text-sm font-medium text-neutral-700">Launcher icon</Label>
+        <Label className="text-sm font-medium text-[var(--ink-600)]">Launcher icon</Label>
         <div className="flex gap-2" role="group" aria-label="Launcher icon">
           {LAUNCHER_ICON_KEYS.map((ic) => {
             const active = value.launcherIcon === ic;
@@ -132,10 +132,10 @@ export function AppearanceControls({ value, onChange }: AppearanceControlsProps)
                 aria-label={ICON_LABELS[ic]}
                 aria-pressed={active}
                 className={cn(
-                  "grid h-11 w-11 place-items-center rounded-xl border transition-base",
+                  "grid h-11 w-11 place-items-center rounded-xl border transition-colors",
                   active
-                    ? "border-brand-600 bg-brand-50 text-brand-700 ring-2 ring-brand-300"
-                    : "border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300 hover:bg-neutral-50",
+                    ? "border-signal-600 bg-signal-50 text-signal-700 ring-2 ring-signal-300"
+                    : "border-[var(--border)] bg-[var(--surface)] text-[var(--ink-600)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-2)]",
                 )}
                 // Inject SVG with a forced size attribute
                 dangerouslySetInnerHTML={{
@@ -149,9 +149,9 @@ export function AppearanceControls({ value, onChange }: AppearanceControlsProps)
 
       {/* ── Launcher size ───────────────────────────────────────────────── */}
       <div className="space-y-2">
-        <Label className="text-sm font-medium text-neutral-700">Button size</Label>
+        <Label className="text-sm font-medium text-[var(--ink-600)]">Button size</Label>
         <div
-          className="inline-flex gap-1 rounded-xl border border-neutral-200 bg-neutral-50 p-1"
+          className="inline-flex gap-1 rounded-xl border border-[var(--border)] bg-[var(--paper)] p-1"
           role="group"
           aria-label="Button size"
         >
@@ -164,10 +164,10 @@ export function AppearanceControls({ value, onChange }: AppearanceControlsProps)
                 onClick={() => onChange("launcherSize", sz)}
                 aria-pressed={active}
                 className={cn(
-                  "min-w-[2.5rem] rounded-lg px-4 py-1.5 text-sm font-semibold transition-base",
+                  "min-w-[2.5rem] rounded-lg px-4 py-1.5 text-sm font-semibold transition-colors",
                   active
-                    ? "bg-white text-brand-700 shadow-sm ring-1 ring-neutral-200"
-                    : "text-neutral-500 hover:text-neutral-700",
+                    ? "bg-[var(--surface)] text-signal-700 shadow-sm ring-1 ring-[var(--border)]"
+                    : "text-[var(--ink-600)] hover:text-[var(--ink-900)]",
                 )}
               >
                 {label}
@@ -179,7 +179,7 @@ export function AppearanceControls({ value, onChange }: AppearanceControlsProps)
 
       {/* ── Position ────────────────────────────────────────────────────── */}
       <div className="space-y-2">
-        <Label className="text-sm font-medium text-neutral-700">Position</Label>
+        <Label className="text-sm font-medium text-[var(--ink-600)]">Position</Label>
         {/* 2×2 grid mirrors screen corners so the affordance is spatial */}
         <div className="grid grid-cols-2 gap-2 max-w-xs" role="group" aria-label="Widget position">
           {POSITION_GRID.flat().map(({ value: pos, label }) => {
@@ -191,10 +191,10 @@ export function AppearanceControls({ value, onChange }: AppearanceControlsProps)
                 onClick={() => onChange("position", pos)}
                 aria-pressed={active}
                 className={cn(
-                  "rounded-xl border px-3 py-2.5 text-sm font-medium transition-base",
+                  "rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors",
                   active
-                    ? "border-brand-600 bg-brand-50 text-brand-700 ring-1 ring-brand-300"
-                    : "border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300 hover:bg-neutral-50",
+                    ? "border-signal-600 bg-signal-50 text-signal-700 ring-1 ring-signal-300"
+                    : "border-[var(--border)] bg-[var(--surface)] text-[var(--ink-600)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-2)]",
                 )}
               >
                 {label}
