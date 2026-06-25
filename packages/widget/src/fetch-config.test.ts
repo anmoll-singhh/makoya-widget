@@ -23,17 +23,32 @@ import assert from "node:assert/strict";
 (globalThis as any).window = {
   // Override the config base so we get a deterministic, asserted URL prefix.
   MAKOYA_CONFIG_BASE: "https://test.example/api/config",
+  // Tiny abort budget so the "hang" test fails open in milliseconds, not 5 s.
+  MAKOYA_CONFIG_TIMEOUT_MS: 30,
 };
 
 // Controllable fetch: each test sets the behaviour. "reject" simulates a thrown
 // network/CORS error; an object is returned as an ok JSON body; { __status:404 }
 // simulates a non-200. The URL of the last call is recorded for assertion.
-let nextFetch: Record<string, unknown> | "reject" | { __status: number } = {};
+let nextFetch: Record<string, unknown> | "reject" | "hang" | { __status: number } = {};
 let lastUrl = "";
 
-(globalThis as any).fetch = async (url: string) => {
+(globalThis as any).fetch = async (url: string, opts?: { signal?: AbortSignal }) => {
   lastUrl = url;
   if (nextFetch === "reject") throw new Error("network down");
+  // "hang" simulates a server that accepts the connection then never responds:
+  // the promise settles ONLY when the AbortController fires (rejecting like a
+  // real aborted fetch), proving the timeout path drives the fail-open verdict.
+  if (nextFetch === "hang") {
+    return new Promise((_resolve, reject) => {
+      const signal = opts?.signal;
+      if (signal) {
+        signal.addEventListener("abort", () =>
+          reject(Object.assign(new Error("aborted"), { name: "AbortError" })),
+        );
+      }
+    });
+  }
   if (typeof nextFetch === "object" && "__status" in nextFetch) {
     return { ok: false, status: (nextFetch as any).__status, json: async () => ({}) };
   }
@@ -87,6 +102,16 @@ async function main(): Promise<void> {
     const r = await fetchGatedConfig("site-1");
     assert.equal(r.active, true, "non-200 must FAIL OPEN to active:true");
     assert.deepEqual(r.config, {}, "no config on non-200");
+  });
+
+  // 3b. Hanging server (never responds) → aborted by timeout → FAIL OPEN ------
+  await test("hanging server → timeout aborts → { active:true, config:{} }", async () => {
+    nextFetch = "hang";
+    const started = Date.now();
+    const r = await fetchGatedConfig("site-1");
+    assert.equal(r.active, true, "a hang must FAIL OPEN to active:true, not stall forever");
+    assert.deepEqual(r.config, {}, "no config on timeout");
+    assert.ok(Date.now() - started < 2000, "must resolve via the abort budget, not hang");
   });
 
   // 4. Normal config → active:true, config applied, `active` stripped ---------
