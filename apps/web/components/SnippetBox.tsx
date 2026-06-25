@@ -46,7 +46,7 @@ function CopyField({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <div className="mb-1 flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wide text-[var(--ink-400)]">{label}</span>
+        <span className="text-xs font-semibold uppercase tracking-wide text-[var(--ink-600)]">{label}</span>
         <CopyButton value={value} label={label} />
       </div>
       <code className="block overflow-x-auto rounded-lg bg-[var(--surface-2)] px-3 py-2 text-[11px] leading-relaxed text-[var(--ink-900)] ring-1 ring-[var(--border)]">
@@ -64,7 +64,7 @@ export function SnippetBox({ siteId, token }: { siteId: string; token: string })
       {/* Full contract snippet — paste into raw HTML / theme.liquid before </head>. */}
       <div>
         <div className="mb-1.5 flex items-center justify-between">
-          <span className="text-xs font-semibold uppercase tracking-wide text-[var(--ink-400)]">Install snippet</span>
+          <span className="text-xs font-semibold uppercase tracking-wide text-[var(--ink-600)]">Install snippet</span>
           <CopyButton value={snippet} label="install snippet" />
         </div>
         <pre className="overflow-x-auto rounded-xl bg-neutral-950 p-3.5 text-[11px] leading-relaxed text-neutral-300 ring-1 ring-neutral-800">
