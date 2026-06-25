@@ -16,10 +16,10 @@
  *   boundary without heaviness.
  * - Logo in its default (light) mode, accompanied by minimal nav links.
  * - Tagline in ink-600 (#6B6760) — readable but muted.
- * - Disclaimer in ink-400 (#9A958C) — smallest, quietest — contrast vs paper
- *   = ~3.1:1 which meets AA for large text; this is fine-print at 12 px.
- *   For body-weight (16px) text AA is 4.5:1 — the tagline (14px/ink-600)
- *   achieves ~4.8:1 on paper. ✓
+ * - Disclaimer in ink-600 (#6B6760) — contrast vs paper ≈ 4.8:1, meeting
+ *   WCAG AA for normal text (4.5:1 threshold) even at 12px. ink-400 (~3.1:1)
+ *   fails AA for normal text — WCAG requires 4.5:1 for text below 18px
+ *   (or 14px bold). Our own scanner flags this, so we use ink-600. ✓
  *
  * MOTION
  * No motion in the footer — it's the last thing on screen and animating it
@@ -116,13 +116,11 @@ export function LandingFooter() {
 
         {/* ── Disclaimer / honesty note ───────────────────────── */}
         {/*
-          ink-400 (#9A958C) on paper (#FBFAF8) → ~3.1:1. This is fine-print
-          at 12px; WCAG AA for large text (≥14px bold or ≥18px) is 3:1, so
-          this just clears it. For absolute strictness on small text, consider
-          ink-600 — but fine-print disclaimers conventionally use a quieter
-          tone and this is industry standard practice.
+          ink-600 (#6B6760) on paper (#FBFAF8) → ~4.8:1. Meets WCAG AA
+          for normal text (4.5:1 threshold) at 12px. ink-400 (~3.1:1) fails
+          AA for text below 18px regular weight — our own scanner would flag it.
         */}
-        <p className="mt-2 max-w-xl text-xs text-[var(--ink-400)]">
+        <p className="mt-2 max-w-xl text-xs text-[var(--ink-600)]">
           {footer.disclaimer}
         </p>
 

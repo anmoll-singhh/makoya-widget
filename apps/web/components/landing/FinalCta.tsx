@@ -61,7 +61,7 @@ export function FinalCta() {
         Background: var(--ink-900) = #1A1815, a near-black warm brown-black.
         All text on this band is --paper (#FBFAF8) or lighter, meeting AA.
       */}
-      <div className="mx-auto max-w-5xl rounded-[var(--radius-lg,16px)] bg-[var(--ink-900)] px-8 py-16 md:px-16 md:py-20 text-center">
+      <div className="mx-auto max-w-5xl rounded-2xl bg-[var(--ink-900)] px-8 py-16 md:px-16 md:py-20 text-center">
         <Reveal>
           {/* ── Heading ─────────────────────────────────────────── */}
           {/*
@@ -92,7 +92,7 @@ export function FinalCta() {
             The Input itself (bg-background = #FBFAF8, ink-900 text) is always
             legible regardless of surrounding background.
           */}
-          <div className="mx-auto mt-8 max-w-xl rounded-[var(--radius)] bg-white/5 p-1 ring-1 ring-white/10">
+          <div className="mx-auto mt-8 max-w-xl rounded-[var(--radius)] bg-white/10 p-1 ring-1 ring-white/20">
             <HeroScanInput
               cta={finalCta.primary}
               placeholder="yourwebsite.com"

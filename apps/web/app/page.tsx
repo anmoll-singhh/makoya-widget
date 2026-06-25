@@ -40,8 +40,9 @@ export default async function LandingPage() {
 
   return (
     <div className="paper-grain min-h-dvh bg-[var(--paper)] text-[var(--ink-900)]">
+      <a href="#content" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-[var(--surface)] focus:px-4 focus:py-2 focus:text-[var(--ink-900)] focus:shadow-[var(--shadow-md)]">Skip to content</a>
       <LandingHeader />
-      <main>
+      <main id="content">
         <Hero />
         <HonestDifference />
         <HowItWorks />

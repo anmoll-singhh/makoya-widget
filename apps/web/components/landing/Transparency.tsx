@@ -46,6 +46,7 @@
  */
 "use client";
 
+import Link from "next/link";
 import { transparency } from "@/lib/landing-copy";
 import { Reveal } from "@/components/landing/Reveal";
 
@@ -88,7 +89,7 @@ export function Transparency() {
          * `relative` is required for the absolutely-positioned Vellum accent rule.
          */}
         <div
-          className="relative rounded-[var(--radius-lg,14px)] border border-[var(--border)] bg-[var(--surface-2)] p-8 md:p-12"
+          className="relative rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-8 md:p-12"
         >
           {/*
            * Vellum left accent rule — 3 px wide, rounded pill, amber/warm-gold.
@@ -132,6 +133,9 @@ export function Transparency() {
              */}
             <p className="mt-5 text-lg leading-relaxed text-[var(--ink-600)]">
               {transparency.body}
+            </p>
+            <p className="mt-6">
+              <Link href="/scan" className="text-sm font-medium text-signal-600 underline underline-offset-4 hover:text-signal-700">See exactly what we check →</Link>
             </p>
           </div>
         </div>

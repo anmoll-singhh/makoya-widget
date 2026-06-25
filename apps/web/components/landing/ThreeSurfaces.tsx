@@ -12,8 +12,8 @@
  *   matching the document-paper aesthetic throughout the landing.
  * - Icon squares are tinted signal-600/10 (cobalt wash) to tie back to the
  *   primary action color without overwhelming the quiet palette.
- * - Motion: RevealStagger wraps the whole grid; each card animates in on scroll
- *   via the shared motion tokens. useReducedMotion() is respected inside Reveal —
+ * - Motion: Reveal wraps the whole grid so all three cards fade/rise in together
+ *   as a single cohesive unit. useReducedMotion() is respected inside Reveal —
  *   no animation for users who have it turned off.
  *
  * COPY
@@ -29,7 +29,7 @@
 
 import { ScanLine, SlidersHorizontal, LayoutDashboard } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { Reveal, RevealStagger } from "@/components/landing/Reveal";
+import { Reveal } from "@/components/landing/Reveal";
 import { surfaces } from "@/lib/landing-copy";
 
 // Map each surface index to its lucide icon. Defined outside the component so
@@ -52,7 +52,6 @@ export function ThreeSurfaces() {
         {/* Eyebrow — uppercase signal label above the main heading */}
         <p
           className="text-sm font-semibold uppercase tracking-widest text-signal-600"
-          aria-hidden="true"
         >
           What you get
         </p>
@@ -68,11 +67,11 @@ export function ThreeSurfaces() {
 
       {/* ── 3-column card grid ─────────────────────────────────── */}
       {/*
-        RevealStagger staggers each card's fade-in by the default 80 ms.
-        If the stagger feels too elaborate (e.g. only 3 items), a single
-        <Reveal> over the whole grid is equally valid — both are motion-safe.
+        Reveal wraps the whole grid so all three cards animate in together as a
+        single cohesive unit. With only 3 items, a stagger adds little value and
+        RevealStagger only staggers direct <Reveal> children — not plain divs.
       */}
-      <RevealStagger className="mt-14 grid gap-6 md:grid-cols-3">
+      <Reveal className="mt-14 grid gap-6 md:grid-cols-3">
         {surfaces.items.map((item, index) => {
           const Icon = SURFACE_ICONS[index];
 
@@ -85,7 +84,7 @@ export function ThreeSurfaces() {
             />
           );
         })}
-      </RevealStagger>
+      </Reveal>
     </section>
   );
 }

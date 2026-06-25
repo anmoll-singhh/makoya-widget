@@ -114,7 +114,7 @@ export function Hero() {
       // aria-labelledby connects the section landmark to its headline so
       // screen-reader users who browse by landmarks hear the section name.
       aria-labelledby="hero-heading"
-      className="relative mx-auto w-full max-w-6xl px-6 py-20 md:py-28"
+      className="relative mx-auto w-full max-w-6xl px-6 py-14 md:py-28"
     >
       {/* ── Subtle radial glow behind the grid ──────────────────────────── */}
       {/*
@@ -192,7 +192,7 @@ export function Hero() {
                */}
               <span
                 aria-hidden="true"
-                className="absolute inset-x-0 -bottom-1 h-[3px] rounded-full"
+                className="absolute inset-x-0 -bottom-2 h-[4px] rounded-sm"
                 style={{ background: "var(--color-vellum-500)" }}
               />
             </span>
@@ -217,6 +217,15 @@ export function Hero() {
           <p className="mt-3 text-sm text-[var(--ink-400)]">
             {hero.microcopy}
           </p>
+
+          {/* Mobile-only product proof — shows a ScoreMark on small screens where
+              the right-column product preview is hidden. Gives mobile visitors
+              a tangible glimpse of the scanner output before they scroll. */}
+          <div className="mt-8 lg:hidden">
+            <div className="inline-flex items-center rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-md)]">
+              <ScoreMark score={68} size="app" verdict="3 real issues found" />
+            </div>
+          </div>
         </Reveal>
 
         {/* ── RIGHT: Product dramatization ──────────────────────────────── */}
