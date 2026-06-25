@@ -51,25 +51,28 @@ function domainOf(url: string): string {
   }
 }
 
-/** Score chip palette — mirrors the admin customers table. */
+/** Score chip palette — maps to Redline severity tokens. */
 function scoreClass(score: number | null) {
-  if (score === null) return "bg-neutral-800 text-neutral-500";
-  if (score >= 80) return "bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30";
-  if (score >= 60) return "bg-amber-500/15 text-amber-300 ring-1 ring-amber-500/30";
-  return "bg-red-500/15 text-red-300 ring-1 ring-red-500/30";
+  if (score === null)
+    return "bg-[var(--surface-2)] text-[var(--ink-600)]";
+  if (score >= 80)
+    return "bg-[color-mix(in_srgb,var(--color-sev-passed)_15%,transparent)] text-[var(--color-sev-passed)] ring-1 ring-[color-mix(in_srgb,var(--color-sev-passed)_30%,transparent)]";
+  if (score >= 60)
+    return "bg-[color-mix(in_srgb,var(--color-sev-moderate)_15%,transparent)] text-[var(--color-sev-moderate)] ring-1 ring-[color-mix(in_srgb,var(--color-sev-moderate)_30%,transparent)]";
+  return "bg-[color-mix(in_srgb,var(--color-sev-critical)_15%,transparent)] text-[var(--color-sev-critical)] ring-1 ring-[color-mix(in_srgb,var(--color-sev-critical)_30%,transparent)]";
 }
 
 function statusClass(status: Lead["status"]) {
   switch (status) {
     case "won":
-      return "bg-emerald-500/15 text-emerald-300";
+      return "bg-[color-mix(in_srgb,var(--color-sev-passed)_15%,transparent)] text-[var(--color-sev-passed)]";
     case "qualified":
     case "contacted":
-      return "bg-brand-600/20 text-brand-200";
+      return "bg-signal-600/20 text-signal-700";
     case "lost":
-      return "bg-neutral-800 text-neutral-500";
+      return "bg-[var(--surface-2)] text-[var(--ink-600)]";
     default:
-      return "bg-amber-500/20 text-amber-300"; // "new"
+      return "bg-[color-mix(in_srgb,var(--color-sev-moderate)_20%,transparent)] text-[var(--color-sev-moderate)]"; // "new"
   }
 }
 
@@ -95,8 +98,8 @@ export default async function AdminLeads() {
     <div className="space-y-7">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-bold tracking-tight">Leads</h1>
-          <p className="mt-1 text-sm text-neutral-400">
+          <h1 className="font-sans text-2xl font-bold tracking-tight">Leads</h1>
+          <p className="mt-1 text-sm text-[var(--ink-600)]">
             {leads.length === 0
               ? "Scanner leads will appear here as people request their report."
               : `${leads.length} lead${leads.length === 1 ? "" : "s"} from the scanner` +
@@ -104,35 +107,35 @@ export default async function AdminLeads() {
                 " — worst-scoring sites first."}
           </p>
         </div>
-        <Link href="/admin" className="transition-base text-sm font-medium text-neutral-400 hover:text-white">
+        <Link href="/admin" className="transition-colors text-sm font-medium text-[var(--ink-600)] hover:text-[var(--ink-900)]">
           ← Customers
         </Link>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900/40">
+      <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
         <Table>
           <TableHeader>
-            <TableRow className="border-neutral-800 hover:bg-transparent">
-              <TableHead className="px-5 py-3 text-xs uppercase tracking-wide text-neutral-500">Email</TableHead>
-              <TableHead className="px-5 py-3 text-xs uppercase tracking-wide text-neutral-500">Site</TableHead>
-              <TableHead className="px-5 py-3 text-xs uppercase tracking-wide text-neutral-500">Score</TableHead>
-              <TableHead className="px-5 py-3 text-xs uppercase tracking-wide text-neutral-500">Issues</TableHead>
-              <TableHead className="px-5 py-3 text-xs uppercase tracking-wide text-neutral-500">Status</TableHead>
-              <TableHead className="px-5 py-3 text-xs uppercase tracking-wide text-neutral-500">When</TableHead>
+            <TableRow className="border-[var(--border)] hover:bg-transparent">
+              <TableHead className="px-5 py-3 text-xs uppercase tracking-wide text-[var(--ink-600)]">Email</TableHead>
+              <TableHead className="px-5 py-3 text-xs uppercase tracking-wide text-[var(--ink-600)]">Site</TableHead>
+              <TableHead className="px-5 py-3 text-xs uppercase tracking-wide text-[var(--ink-600)]">Score</TableHead>
+              <TableHead className="px-5 py-3 text-xs uppercase tracking-wide text-[var(--ink-600)]">Issues</TableHead>
+              <TableHead className="px-5 py-3 text-xs uppercase tracking-wide text-[var(--ink-600)]">Status</TableHead>
+              <TableHead className="px-5 py-3 text-xs uppercase tracking-wide text-[var(--ink-600)]">When</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {leads.length === 0 && (
-              <TableRow className="border-neutral-800 hover:bg-transparent">
-                <TableCell colSpan={6} className="px-5 py-10 text-center text-neutral-500">
+              <TableRow className="border-[var(--border)] hover:bg-transparent">
+                <TableCell colSpan={6} className="px-5 py-10 text-center text-[var(--ink-600)]">
                   No leads yet — they appear when someone runs the public scanner and asks for the report.
                 </TableCell>
               </TableRow>
             )}
             {leads.map((lead) => (
-              <TableRow key={lead.id} className="border-neutral-800/70 transition-colors hover:bg-neutral-800/40">
-                <TableCell className="px-5 py-3 font-medium text-white">{lead.email}</TableCell>
-                <TableCell className="px-5 py-3 text-neutral-300">
+              <TableRow key={lead.id} className="border-[var(--border)] transition-colors hover:bg-[var(--surface-2)]">
+                <TableCell className="px-5 py-3 font-medium text-[var(--ink-900)]">{lead.email}</TableCell>
+                <TableCell className="px-5 py-3 text-[var(--ink-600)]">
                   <a
                     href={lead.url}
                     target="_blank"
@@ -147,7 +150,7 @@ export default async function AdminLeads() {
                     {lead.score ?? "—"}
                   </span>
                 </TableCell>
-                <TableCell className="px-5 py-3 font-semibold text-neutral-200">
+                <TableCell className="px-5 py-3 font-semibold text-[var(--ink-900)]">
                   {issueTotal(lead.totals)}
                 </TableCell>
                 <TableCell className="px-5 py-3">
@@ -155,7 +158,7 @@ export default async function AdminLeads() {
                     {lead.status}
                   </span>
                 </TableCell>
-                <TableCell className="px-5 py-3 text-neutral-500">
+                <TableCell className="px-5 py-3 text-[var(--ink-600)]">
                   {new Date(lead.createdAt).toLocaleDateString()}
                 </TableCell>
               </TableRow>

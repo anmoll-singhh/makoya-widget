@@ -4,10 +4,10 @@ import { getAdminUser } from "@/lib/auth/require-admin";
 import { listAdminSites } from "@/lib/admin";
 
 function scoreClass(score: number | null) {
-  if (score === null) return "bg-neutral-800 text-neutral-500";
-  if (score >= 80) return "bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30";
-  if (score >= 60) return "bg-amber-500/15 text-amber-300 ring-1 ring-amber-500/30";
-  return "bg-red-500/15 text-red-300 ring-1 ring-red-500/30";
+  if (score === null) return "bg-[var(--surface-2)] text-[var(--ink-600)]";
+  if (score >= 80) return "bg-[var(--color-sev-passed)]/15 text-[var(--color-sev-passed)] ring-1 ring-[var(--color-sev-passed)]/30";
+  if (score >= 60) return "bg-[var(--color-sev-moderate)]/15 text-[var(--color-sev-moderate)] ring-1 ring-[var(--color-sev-moderate)]/30";
+  return "bg-[var(--color-sev-critical)]/15 text-[var(--color-sev-critical)] ring-1 ring-[var(--color-sev-critical)]/30";
 }
 
 export default async function AdminHome() {
@@ -29,12 +29,12 @@ export default async function AdminHome() {
     <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-bold tracking-tight">Customers</h1>
-          <p className="mt-1 text-sm text-neutral-400">Everyone running Makoya — and who needs you.</p>
+          <h1 className="font-sans text-2xl font-bold tracking-tight">Customers</h1>
+          <p className="mt-1 text-sm text-[var(--ink-600)]">Everyone running Makoya — and who needs you.</p>
         </div>
         <Link
           href="/admin/requests"
-          className="transition-base inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-brand-600/25 hover:bg-brand-500"
+          className="transition-colors inline-flex items-center gap-2 rounded-xl bg-signal-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-signal-500"
         >
           Requests inbox
           {openTotal > 0 && (
@@ -46,19 +46,19 @@ export default async function AdminHome() {
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         {stats.map((s) => (
-          <div key={s.label} className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-            <div className={`font-display text-3xl font-extrabold ${s.accent ? "text-amber-300" : "text-white"}`}>
+          <div key={s.label} className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
+            <div className={`font-sans text-3xl font-extrabold ${s.accent ? "text-[var(--color-sev-moderate)]" : "text-[var(--ink-900)]"}`}>
               {s.value}
             </div>
-            <div className="mt-1 text-xs font-medium uppercase tracking-wide text-neutral-500">{s.label}</div>
+            <div className="mt-1 text-xs font-medium uppercase tracking-wide text-[var(--ink-600)]">{s.label}</div>
           </div>
         ))}
       </div>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900/40">
+      <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
         <table className="w-full text-left text-sm">
-          <thead className="border-b border-neutral-800 text-xs uppercase tracking-wide text-neutral-500">
+          <thead className="border-b border-[var(--border)] text-xs uppercase tracking-wide text-[var(--ink-600)]">
             <tr>
               <th className="px-5 py-3 font-medium">Customer</th>
               <th className="px-5 py-3 font-medium">Plan</th>
@@ -66,31 +66,31 @@ export default async function AdminHome() {
               <th className="px-5 py-3 font-medium">Open</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-neutral-800/70">
+          <tbody className="divide-y divide-[var(--border)]">
             {sites.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-5 py-10 text-center text-neutral-500">
+                <td colSpan={4} className="px-5 py-10 text-center text-[var(--ink-600)]">
                   No customers yet — they&apos;ll appear here as people add sites.
                 </td>
               </tr>
             )}
             {sites.map((s) => (
-              <tr key={s.id} className="transition-base hover:bg-neutral-800/40">
+              <tr key={s.id} className="transition-colors hover:bg-[var(--surface-2)]">
                 <td className="px-5 py-3">
                   <Link href={`/admin/sites/${s.id}`} className="flex items-center gap-3">
-                    <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand-600 to-violet-600 text-sm font-bold text-white">
+                    <span className="grid h-9 w-9 place-items-center rounded-xl bg-signal-600 text-sm font-bold text-white">
                       {(s.domain[0] ?? "?").toUpperCase()}
                     </span>
                     <span className="min-w-0">
-                      <span className="block truncate font-semibold text-white underline-offset-2 group-hover:underline">
+                      <span className="block truncate font-semibold text-[var(--ink-900)] underline-offset-2 group-hover:underline">
                         {s.domain}
                       </span>
-                      <span className="block truncate text-xs text-neutral-400">{s.ownerEmail}</span>
+                      <span className="block truncate text-xs text-[var(--ink-600)]">{s.ownerEmail}</span>
                     </span>
                   </Link>
                 </td>
                 <td className="px-5 py-3">
-                  <span className="inline-flex items-center rounded-full bg-neutral-800 px-2.5 py-0.5 text-xs font-medium capitalize text-neutral-300">
+                  <span className="inline-flex items-center rounded-full bg-[var(--surface-2)] px-2.5 py-0.5 text-xs font-medium capitalize text-[var(--ink-900)]">
                     {s.plan}
                   </span>
                 </td>
@@ -101,11 +101,11 @@ export default async function AdminHome() {
                 </td>
                 <td className="px-5 py-3">
                   {s.openRequests > 0 ? (
-                    <span className="inline-flex items-center rounded-full bg-amber-500/20 px-2 py-0.5 text-xs font-bold text-amber-300">
+                    <span className="inline-flex items-center rounded-full bg-[var(--color-sev-moderate)]/20 px-2 py-0.5 text-xs font-bold text-[var(--color-sev-moderate)]">
                       {s.openRequests}
                     </span>
                   ) : (
-                    <span className="text-neutral-600">0</span>
+                    <span className="text-[var(--ink-600)]">0</span>
                   )}
                 </td>
               </tr>

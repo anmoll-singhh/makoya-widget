@@ -19,10 +19,10 @@ export function PlanSelect({ siteId, plan }: { siteId: string; plan: string }) {
   return (
     <div className="flex items-center gap-2">
       <select value={value} disabled={saving} onChange={(e) => change(e.target.value)}
-        className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-sm text-neutral-100">
+        className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-sm text-[var(--ink-900)] focus:outline-none focus:ring-2 focus:ring-signal-500">
         {PLANS.map((p) => <option key={p} value={p}>{p}</option>)}
       </select>
-      {error && <span className="text-xs text-red-400">failed</span>}
+      {error && <span className="text-xs text-[var(--color-sev-critical)]">failed</span>}
     </div>
   );
 }
