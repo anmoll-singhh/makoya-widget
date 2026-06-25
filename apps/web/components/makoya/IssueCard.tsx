@@ -62,7 +62,24 @@ export interface Issue {
   wcag?: string;
   /** The offending DOM element as a string snippet. Shown in a mono code block. */
   element?: string;
+  /** Structured disability groups this issue affects (rendered as small chips). */
+  disabilityGroups?: string[];
+  /** A concrete measured fact ("Contrast 2.1:1, needs 4.5:1") — the honest-evidence
+   *  line that proves we measured rather than guessed. Shown in a mono evidence pill. */
+  measuredEvidence?: string;
 }
+
+/** Short, human labels for the structured disability-group keys the scanner emits. */
+const DISABILITY_LABELS: Record<string, string> = {
+  blind: "Blind",
+  "low-vision": "Low vision",
+  "color-blind": "Colour blindness",
+  "deaf-hard-of-hearing": "Deaf / HoH",
+  motor: "Motor",
+  cognitive: "Cognitive",
+  vestibular: "Motion sensitivity",
+  speech: "Speech",
+};
 
 export interface IssueCardProps {
   issue: Issue;
@@ -132,6 +149,8 @@ export function IssueCard({ issue, className }: IssueCardProps) {
     howToFix,
     wcag,
     element,
+    disabilityGroups,
+    measuredEvidence,
   } = issue;
 
   return (
@@ -162,6 +181,20 @@ export function IssueCard({ issue, className }: IssueCardProps) {
         {/* ── Expanded content ─────────────────────────────────────────────── */}
         <AccordionContent className="text-sm">
           <div className="flex flex-col gap-3 py-1">
+            {/* Measured evidence — the honest "we measured this, didn't guess" proof.
+                Rendered first because it is the most credible signal. */}
+            {measuredEvidence && (
+              <p
+                className="inline-block w-fit rounded-md px-2 py-1 font-mono text-xs"
+                style={{
+                  background: "var(--surface-2)",
+                  color: "var(--ink-600)",
+                }}
+              >
+                {measuredEvidence}
+              </p>
+            )}
+
             {/* What it means */}
             <div>
               <SectionLabel>What it means</SectionLabel>
@@ -172,6 +205,19 @@ export function IssueCard({ issue, className }: IssueCardProps) {
             <div>
               <SectionLabel>Who it affects</SectionLabel>
               <p className="text-foreground/90 leading-relaxed">{whoItAffects}</p>
+              {disabilityGroups && disabilityGroups.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {disabilityGroups.map((g) => (
+                    <span
+                      key={g}
+                      className="rounded-full px-2 py-0.5 text-[11px] font-medium"
+                      style={{ background: "var(--color-signal-50)", color: "var(--color-signal-700)" }}
+                    >
+                      {DISABILITY_LABELS[g] ?? g}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* How to fix — only rendered when provided */}
