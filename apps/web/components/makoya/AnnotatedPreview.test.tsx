@@ -46,13 +46,13 @@ describe("AnnotatedPreview", () => {
   });
 
   it("exposes each annotation label as accessible text", () => {
-    const { unmount } = render(<AnnotatedPreview annotations={SAMPLE_ANNOTATIONS} />);
-    // Each label appears in a visually-hidden sr-only span; use getAllByText since
-    // the same text could appear in multiple spans (one per annotation).
-    expect(screen.getAllByText("Missing alt text on hero image").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Insufficient color contrast on nav links").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Heading hierarchy skips a level").length).toBeGreaterThanOrEqual(1);
-    unmount();
+    render(<AnnotatedPreview annotations={SAMPLE_ANNOTATIONS} />);
+    // Each label appears in a visually-hidden sr-only span; now that afterEach
+    // cleanup runs (wired in vitest.setup.ts), each test gets a clean DOM so
+    // getByText (singular) is safe — no cross-test DOM accumulation.
+    expect(screen.getByText("Missing alt text on hero image")).toBeInTheDocument();
+    expect(screen.getByText("Insufficient color contrast on nav links")).toBeInTheDocument();
+    expect(screen.getByText("Heading hierarchy skips a level")).toBeInTheDocument();
   });
 
   it("renders zero annotation markers when annotations is empty", () => {

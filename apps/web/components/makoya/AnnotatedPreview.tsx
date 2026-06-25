@@ -99,6 +99,18 @@ export interface AnnotatedPreviewProps {
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
+// Vellum amber — the brand annotation color. Severity token used for the
+// overlay box tint only (subtle fill), never the stroke itself.
+// Hoisted to module scope: pure constant, never changes between renders.
+const AMBER = "var(--color-vellum-500, var(--vellum-500, #C8821E))";
+
+// SVG underline/bracket that represents the annotation stroke.
+// The path draws a bracket shape: a short top tick, a vertical bar, a short
+// bottom tick — like a code-review left-bracket comment marker.
+// Coordinates are in SVG user units; the SVG is 20×40.
+// Hoisted to module scope: pure constant, never changes between renders.
+const BRACKET_PATH = "M 14 4 L 6 4 L 6 36 L 14 36";
+
 /** A single visually-positioned annotation mark with an SVG stroke. */
 function AnnotationMark({
   annotation,
@@ -107,15 +119,6 @@ function AnnotationMark({
   annotation: Annotation;
   animate: boolean;
 }) {
-  // Vellum amber — the brand annotation color. Severity token used for the
-  // overlay box tint only (subtle fill), never the stroke itself.
-  const AMBER = "var(--color-vellum-500, var(--vellum-500, #C8821E))";
-
-  // SVG underline/bracket that represents the annotation stroke.
-  // The path draws a bracket shape: a short top tick, a vertical bar, a short
-  // bottom tick — like a code-review left-bracket comment marker.
-  // Coordinates are in SVG user units; the SVG is 20×40.
-  const BRACKET_PATH = "M 14 4 L 6 4 L 6 36 L 14 36";
 
   // Animation variants: static means already at final state, no animation.
   const variants = animate ? inkStroke : undefined;
@@ -305,16 +308,10 @@ export function AnnotatedPreview({
           aria-hidden="true"
           className="flex items-center gap-1.5"
         >
-          {(["#ef4444", "#f59e0b", "#22c55e"] as const).map((color, i) => (
+          {(["bg-red-400", "bg-amber-400", "bg-green-400"] as const).map((colorClass, i) => (
             <span
               key={i}
-              className="block rounded-full"
-              style={{
-                width: "0.5rem",
-                height: "0.5rem",
-                backgroundColor: color,
-                opacity: 0.6,
-              }}
+              className={`block h-2 w-2 rounded-full opacity-60 ${colorClass}`}
             />
           ))}
         </div>
