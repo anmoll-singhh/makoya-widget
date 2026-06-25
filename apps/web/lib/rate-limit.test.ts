@@ -75,6 +75,20 @@ describe("checkRateLimit — in-memory fallback", () => {
     expect(await checkRateLimit(key, { limit: 5, windowMs: 30_000 })).toBe(false);
   });
 
+  it("isolates buckets by `name` even when key/limit/window are identical", async () => {
+    // Regression for the cross-endpoint collision a live test caught: two routes
+    // passing the SAME ip + same limit/window must NOT share a counter. Exhausting
+    // one named bucket must leave the other's budget completely untouched.
+    const key = `k-name-${Math.random()}`;
+    const opts = { limit: 1, windowMs: 60_000 };
+
+    expect(await checkRateLimit(key, { ...opts, name: "public-scan" })).toBe(false);
+    expect(await checkRateLimit(key, { ...opts, name: "public-scan" })).toBe(true); // exhausted
+
+    // Same ip, same limit/window, DIFFERENT endpoint name → fresh, independent bucket.
+    expect(await checkRateLimit(key, { ...opts, name: "scan-ingest" })).toBe(false);
+  });
+
   it("never throws and always returns a boolean", async () => {
     const key = `k-contract-${Math.random()}`;
     const result = await checkRateLimit(key, { limit: 1, windowMs: 1_000 });

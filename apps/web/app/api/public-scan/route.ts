@@ -73,7 +73,7 @@ async function resolvesToDisallowed(host: string): Promise<boolean> {
 
 export async function POST(req: Request): Promise<NextResponse> {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  if (await checkRateLimit(ip, { limit: RATE_MAX, windowMs: RATE_WINDOW_MS })) {
+  if (await checkRateLimit(ip, { name: "public-scan", limit: RATE_MAX, windowMs: RATE_WINDOW_MS })) {
     return NextResponse.json(
       { error: "Too many scans from this connection. Please wait a minute and try again." },
       { status: 429 }
