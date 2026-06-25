@@ -54,11 +54,15 @@ interface ScanEmailGateProps {
   /** Called with the visitor's email the moment /api/scan-ingest succeeds.
    *  The parent uses this to unlock the full issue list / detailed view. */
   onCaptured: (email: string) => void;
+  /** Optional — called when the visitor clicks "Made changes? Re-scan".
+   *  Fix 1 (conversion differentiator): the fix-and-re-scan loop.
+   *  When provided, a secondary ghost CTA is shown in the success state. */
+  onRescan?: () => void;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function ScanEmailGate({ result, onCaptured }: ScanEmailGateProps) {
+export function ScanEmailGate({ result, onCaptured, onRescan }: ScanEmailGateProps) {
   // Form state
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
@@ -207,8 +211,8 @@ export function ScanEmailGate({ result, onCaptured }: ScanEmailGateProps) {
           </div>
         </div>
 
-        {/* Re-download CTA */}
-        <div className="mt-4 pl-12">
+        {/* Re-download + re-scan CTAs */}
+        <div className="mt-4 pl-12 flex flex-wrap gap-3">
           <Button
             type="button"
             variant="outline"
@@ -220,6 +224,20 @@ export function ScanEmailGate({ result, onCaptured }: ScanEmailGateProps) {
           >
             {reDownloading ? "Preparing…" : "Download PDF again"}
           </Button>
+
+          {/* Fix 1 (conversion): fix-and-re-scan loop — our key differentiator.
+              Ghost/outline secondary CTA, only rendered when the parent wires it. */}
+          {onRescan && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onRescan}
+              className="text-[var(--ink-600)] hover:text-[var(--ink-900)] hover:bg-[var(--color-sev-passed)]/10"
+            >
+              Made changes? Re-scan to see your new score
+            </Button>
+          )}
         </div>
 
         {/* Recoverable error — only shown if re-download also fails */}
@@ -243,19 +261,20 @@ export function ScanEmailGate({ result, onCaptured }: ScanEmailGateProps) {
   //   var(--paper)/60 (~rgba(251,250,248,0.6)) ≈ 9.8:1 (AA, microcopy) ✓
   // Never use ink-400 (#9A958C) on this dark band — it reads ~2.7:1 (fail).
 
-  // Copy branches on risk level
+  // Copy branches on risk level — Fix 3: name the locked value, not just "a PDF".
   const description = highRisk
-    ? "We found critical issues blocking some visitors. Enter your email and we'll download your full PDF report and email you a copy with exactly how to fix each one."
-    : "Enter your email to download your full PDF report — the complete breakdown of every issue and how to fix it. We'll email you a copy too.";
+    ? "We found critical issues blocking some visitors. Get the full PDF — every issue, the exact fix for each, and a summary to hand your developer today."
+    : "The report lists every issue (not just the top few), the exact fix for each, and a one-page summary you can hand to your developer or agency.";
 
   return (
     <section
       aria-label="Get your full accessibility report"
       className="rounded-2xl bg-[var(--ink-900)] p-8 md:p-10"
     >
-      {/* Heading — font-display (Newsreader) per Redline spec */}
+      {/* Heading — font-display (Newsreader) per Redline spec.
+          Fix 3: name the locked value upfront — not just "a PDF". */}
       <h2 className="font-display text-2xl text-[var(--paper)]">
-        Get your full report (PDF)
+        Get the full breakdown — a shareable PDF
       </h2>
 
       {/* Description — branches on highRisk */}

@@ -53,13 +53,16 @@ import type { ScanResult, Severity } from "@/lib/scan/types";
  * Maps a numeric score to an honest, plain-English one-liner.
  * No compliance claims — the language describes visitor experience, not legal status.
  *
+ * Fix 11: added a ≥90 "Strong" tier; softened the 80–89 band.
  * Thresholds:
- *  ≥80  — generally usable with a handful of rough edges
+ *  ≥90  — strong; only minor issues left
+ *  80–89 — good coverage; a few things to polish
  *  60–79 — real gaps that will turn some visitors away
  *  <60  — significant barriers that likely block parts of the page
  */
 function deriveVerdict(score: number): string {
-  if (score >= 80) return "A solid start — a few things to tidy up.";
+  if (score >= 90) return "Strong — only minor issues left.";
+  if (score >= 80) return "Good coverage — a few things to polish.";
   if (score >= 60) return "Real gaps are turning some visitors away.";
   return "Several visitors likely can't use parts of this page.";
 }
@@ -131,11 +134,13 @@ function DownloadReportButton({
     }
   }
 
+  // Fix 7: when no email yet, telegraph the gate with "Unlock PDF report" so
+  // visitors understand the value before they click.
   const label = busy
     ? "Preparing…"
     : capturedEmail
       ? "Download PDF"
-      : "Download PDF report";
+      : "Unlock PDF report";
 
   return (
     <div className="flex flex-col items-end gap-1">
@@ -149,12 +154,14 @@ function DownloadReportButton({
         {label}
       </Button>
 
-      {/* Nudge hint — shown only when visitor clicked without giving email */}
+      {/* Nudge hint — shown only when visitor clicked without giving email.
+          Fix 7: ink-600 (readable) instead of ink-400 (too muted) so the
+          affordance reads clearly. */}
       {nudge && !capturedEmail && (
         <p
           className={cn(
-            "text-xs font-sans text-right",
-            "text-[var(--ink-400)]"
+            "text-sm font-sans text-right",
+            "text-[var(--ink-600)]"
           )}
         >
           Enter your email below to unlock the PDF.
@@ -271,6 +278,12 @@ export function ScanResults({
               className="w-full"
             />
 
+            {/* Fix 2: score legend — one line tells first-timers what the number
+                means without them having to guess. */}
+            <p className="mt-2 text-xs text-[var(--ink-600)]">
+              80+ is generally usable. Below 60, real visitors are likely blocked.
+            </p>
+
             {/* Chip row — one chip per severity level */}
             <div className="flex flex-wrap gap-2">
               {SEVERITY_ORDER.map((sev) => (
@@ -289,6 +302,8 @@ export function ScanResults({
          * to page size. Honest framing: doesn't imply less accuracy, just that
          * the full WCAG rule set runs in the premium report.
          */}
+        {/* Fix 9: reframe the partial-scan note as a reason to get the PDF,
+            not just a caveat. Keeps the same honest tone. */}
         {result.isPartialScan && (
           <p
             className={cn(
@@ -296,8 +311,8 @@ export function ScanResults({
               "text-[var(--ink-400)]"
             )}
           >
-            This page was large, so we scanned the core WCAG A/AA rules. The
-            full report covers everything.
+            This is a summary scan. The full PDF report runs the complete WCAG
+            2.0/2.1/2.2 rule set and may surface more.
           </p>
         )}
       </section>

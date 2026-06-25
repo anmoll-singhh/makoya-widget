@@ -182,17 +182,21 @@ export function IssueCard({ issue, className }: IssueCardProps) {
         <AccordionContent className="text-sm">
           <div className="flex flex-col gap-3 py-1">
             {/* Measured evidence — the honest "we measured this, didn't guess" proof.
-                Rendered first because it is the most credible signal. */}
+                Rendered first because it is the most credible signal.
+                Fix 8: labelled with a SectionLabel ("Measured") to match siblings. */}
             {measuredEvidence && (
-              <p
-                className="inline-block w-fit rounded-md px-2 py-1 font-mono text-xs"
-                style={{
-                  background: "var(--surface-2)",
-                  color: "var(--ink-600)",
-                }}
-              >
-                {measuredEvidence}
-              </p>
+              <div>
+                <SectionLabel>Measured</SectionLabel>
+                <p
+                  className="inline-block w-fit rounded-md px-2 py-1 font-mono text-xs"
+                  style={{
+                    background: "var(--surface-2)",
+                    color: "var(--ink-600)",
+                  }}
+                >
+                  {measuredEvidence}
+                </p>
+              </div>
             )}
 
             {/* What it means */}

@@ -109,7 +109,7 @@ function PublicScanPageInner() {
     <div className="paper-grain min-h-dvh bg-[var(--paper)] text-[var(--ink-900)]">
       <ScanHeader />
 
-      <div className="mx-auto max-w-3xl px-6 py-12 sm:py-16">
+      <main className="mx-auto max-w-3xl px-6 py-12 sm:py-16">
         <ScanForm
           url={url}
           onUrlChange={setUrl}
@@ -117,12 +117,17 @@ function PublicScanPageInner() {
           scanning={scanning}
         />
 
-        {/* Loading — the methodical line-tick loader, not a spinner/sweep. */}
-        {scanning && (
-          <div className="mt-12" aria-live="polite">
-            <ScanLoading label="Loading the page in a real browser and checking it against WCAG rules — this usually takes 10–30 seconds." />
-          </div>
-        )}
+        {/* Loading — the methodical line-tick loader, not a spinner/sweep.
+            aria-live is on the OUTER wrapper (always in the DOM) so screen
+            readers can announce the region even when its content is inserted
+            dynamically. Fix 4 (a11y 4.1.3): persistent aria-live element. */}
+        <div aria-live="polite">
+          {scanning && (
+            <div className="mt-12">
+              <ScanLoading label="Loading the page in a real browser and checking it against WCAG rules — this usually takes 10–30 seconds." />
+            </div>
+          )}
+        </div>
 
         {/* Error */}
         {error && !scanning && (
@@ -148,11 +153,22 @@ function PublicScanPageInner() {
               onNeedEmail={scrollToGate}
             />
             <div ref={gateRef}>
-              <ScanEmailGate result={result} onCaptured={setCapturedEmail} />
+              <ScanEmailGate
+                result={result}
+                onCaptured={setCapturedEmail}
+                onRescan={() => {
+                  setUrl(result.finalUrl);
+                  setResult(null);
+                  setError(null);
+                  setCapturedEmail(null);
+                  if (typeof window !== "undefined")
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+              />
             </div>
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

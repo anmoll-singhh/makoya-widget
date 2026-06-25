@@ -255,6 +255,13 @@ export function ScanForm({ url, onUrlChange, onSubmit, scanning }: ScanFormProps
         We scan the page you give us and report real issues. We don&apos;t claim
         any site is &ldquo;compliant&rdquo; — we show you what to fix.
       </p>
+
+      {/* Fix 10: engine trust line — names the tools so visitors know this is
+          a real scan. Honest, no compliance/guaranteed claim.
+          axe-core is the industry-standard open-source engine; this is factual. */}
+      <p className="mx-auto mt-2 max-w-md text-xs text-[var(--ink-400)]">
+        Powered by axe-core and a real browser — the engine accessibility engineers trust.
+      </p>
     </section>
   );
 }
