@@ -29,7 +29,7 @@ export function RescannableScanReport({ siteId }: Props) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-[var(--ink-400)]">
+        <p className="text-xs text-[var(--ink-600)]">
           Scans update automatically — click Re-scan to run a fresh check now.
         </p>
         <button

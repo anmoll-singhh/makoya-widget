@@ -46,7 +46,7 @@ export default async function ReportPage({ searchParams }: Props) {
           <h1 className="font-sans text-xl font-bold text-[var(--ink-900)]">
             Your widget is being set up
           </h1>
-          <p className="text-sm leading-relaxed text-[var(--ink-400)]">
+          <p className="text-sm leading-relaxed text-[var(--ink-600)]">
             Your operator will hand over access shortly. Once your site is
             provisioned your accessibility report will appear here.
           </p>
@@ -68,7 +68,7 @@ export default async function ReportPage({ searchParams }: Props) {
         <h1 className="font-sans text-2xl font-bold tracking-tight text-[var(--ink-900)]">
           Accessibility Report
         </h1>
-        <p className="mt-1 text-sm text-[var(--ink-400)]">
+        <p className="mt-1 text-sm text-[var(--ink-600)]">
           {activeSite.domain}
         </p>
       </div>

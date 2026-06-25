@@ -70,6 +70,12 @@ function scoreVerdict(score: number): string {
   return "Your site is quietly turning customers away.";
 }
 
+// ─── Runtime guard for impact values ──────────────────────────────────────────
+// Prevents IssueCard from receiving an unexpected string if the scanner API
+// ever returns a value outside the four known severities. Unknown values become
+// null; IssueCard renders an "Unknown" chip for null impact gracefully.
+const VALID_SEVERITIES = new Set(["critical", "serious", "moderate", "minor"]);
+
 // ─── PlainIssue → IssueCard.Issue mapper ──────────────────────────────────────
 // The only name difference is `title` (PlainIssue) → `help` (IssueCard.Issue).
 // All other fields align 1-to-1; wcag and element are not present in PlainIssue
@@ -78,7 +84,7 @@ function scoreVerdict(score: number): string {
 function mapIssue(p: PlainIssue): Issue {
   return {
     id: p.id,
-    impact: (p.impact as Severity | null),
+    impact: VALID_SEVERITIES.has(p.impact as string) ? (p.impact as Severity) : null,
     help: p.title,
     whatItMeans: p.whatItMeans,
     whoItAffects: p.whoItAffects,
@@ -254,11 +260,11 @@ export function ScanReport({ siteId }: { siteId: string }) {
             </div>
           </div>
         ) : (
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-6">
-            <p className="font-sans text-lg font-bold text-[var(--ink-900)]">
+          <div className="rounded-2xl border border-[var(--color-sev-passed)]/30 bg-[var(--color-sev-passed-bg)] p-6">
+            <p className="font-sans text-lg font-bold text-[var(--color-sev-passed)]">
               You&apos;re in — we&apos;ll be in touch shortly. ✓
             </p>
-            <p className="mt-1.5 text-sm leading-relaxed text-[var(--ink-600)]">
+            <p className="mt-1.5 text-sm leading-relaxed text-[var(--ink-900)]">
               Your full report and a senior expert are on the way. We&apos;ll map out every fix so you
               stop losing customers to barriers you can&apos;t see.
             </p>

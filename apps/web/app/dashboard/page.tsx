@@ -39,7 +39,7 @@ export default async function DashboardPage({ searchParams }: Props) {
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[var(--surface-2)] ring-1 ring-[var(--border)]">
             <span className="text-2xl" aria-hidden="true">⏳</span>
           </div>
-          <h1 className="font-display text-xl font-bold text-[var(--ink-900)]">
+          <h1 className="font-sans text-xl font-bold text-[var(--ink-900)]">
             Your widget is being set up
           </h1>
           <p className="text-sm leading-relaxed text-[var(--ink-600)]">
@@ -68,7 +68,7 @@ export default async function DashboardPage({ searchParams }: Props) {
   return (
     <>
       <section className="mx-auto mb-6 max-w-2xl rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
-        <h2 className="font-display text-base font-bold text-[var(--ink-900)]">Install your widget</h2>
+        <h2 className="font-sans text-base font-bold text-[var(--ink-900)]">Install your widget</h2>
         <p className="mt-1 text-sm leading-relaxed text-[var(--ink-600)]">
           Paste this snippet into your site (before <code className="rounded bg-[var(--surface-2)] px-1 py-0.5 text-[12px]">&lt;/head&gt;</code>),
           or enter the Site ID + Token into the Makoya plugin for your platform.
