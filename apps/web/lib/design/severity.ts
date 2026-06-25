@@ -19,7 +19,9 @@
  * Severity model:
  * ───────────────
  * Four levels, ranked worst-first: critical (0) > serious (1) > moderate (2) > minor (3).
- * Each maps to a CSS variable namespace (--sev-* and --sev-*-bg for backgrounds).
+ * Each maps to a CSS variable namespace (--color-sev-* and --color-sev-*-bg for backgrounds).
+ * The --color-sev-* form is the canonical name: it matches the @theme block in globals.css
+ * exactly. Never use the short --sev-* form — those variables are not defined and resolve blank.
  *
  * Score bands (0–100):
  *  - ≥90:  "passed" (green/success)
@@ -40,14 +42,14 @@ export type Severity = "critical" | "serious" | "moderate" | "minor";
  * Metadata for each severity level: rank (0 = worst), label, and CSS variable names.
  *
  * Rank is used for sorting; lower ranks appear first.
- * Token is the main CSS variable (--sev-*); bgToken is the background variant.
+ * Token is the main CSS variable (--color-sev-*); bgToken is the background variant (--color-sev-*-bg).
  * Labels are title-cased for UI display.
  */
 export const SEVERITY_META: Record<Severity, { label: string; token: string; bgToken: string; rank: number }> = {
-  critical: { label: "Critical", token: "--sev-critical", bgToken: "--sev-critical-bg", rank: 0 },
-  serious: { label: "Serious", token: "--sev-serious", bgToken: "--sev-serious-bg", rank: 1 },
-  moderate: { label: "Moderate", token: "--sev-moderate", bgToken: "--sev-moderate-bg", rank: 2 },
-  minor: { label: "Minor", token: "--sev-minor", bgToken: "--sev-minor-bg", rank: 3 },
+  critical: { label: "Critical", token: "--color-sev-critical", bgToken: "--color-sev-critical-bg", rank: 0 },
+  serious: { label: "Serious", token: "--color-sev-serious", bgToken: "--color-sev-serious-bg", rank: 1 },
+  moderate: { label: "Moderate", token: "--color-sev-moderate", bgToken: "--color-sev-moderate-bg", rank: 2 },
+  minor: { label: "Minor", token: "--color-sev-minor", bgToken: "--color-sev-minor-bg", rank: 3 },
 };
 
 /**
@@ -64,15 +66,15 @@ export const SEVERITY_META: Record<Severity, { label: string; token: string; bgT
  */
 export function scoreBand(score: number): { token: string; label: string } {
   if (score >= 90) {
-    return { token: "--sev-passed", label: "Passed" };
+    return { token: "--color-sev-passed", label: "Passed" };
   }
   if (score >= 75) {
-    return { token: "--sev-serious", label: "Serious" };
+    return { token: "--color-sev-serious", label: "Serious" };
   }
   if (score >= 50) {
-    return { token: "--sev-moderate", label: "Moderate" };
+    return { token: "--color-sev-moderate", label: "Moderate" };
   }
-  return { token: "--sev-critical", label: "Critical" };
+  return { token: "--color-sev-critical", label: "Critical" };
 }
 
 /**

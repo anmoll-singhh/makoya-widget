@@ -101,8 +101,9 @@ export interface AnnotatedPreviewProps {
 
 // Vellum amber — the brand annotation color. Severity token used for the
 // overlay box tint only (subtle fill), never the stroke itself.
+// --color-vellum-500 is the canonical @theme token defined in globals.css.
 // Hoisted to module scope: pure constant, never changes between renders.
-const AMBER = "var(--color-vellum-500, var(--vellum-500, #C8821E))";
+const AMBER = "var(--color-vellum-500)";
 
 // SVG underline/bracket that represents the annotation stroke.
 // The path draws a bracket shape: a short top tick, a vertical bar, a short
@@ -303,15 +304,18 @@ export function AnnotatedPreview({
           borderColor: "var(--border, #d4d0c8)",
         }}
       >
-        {/* Three decorative window control dots */}
+        {/* Three decorative window control dots — neutral, on-brand (no traffic-light).
+            All three use --border-strong so they read as warm/neutral chrome spots
+            and adapt correctly in both light and dark modes. */}
         <div
           aria-hidden="true"
           className="flex items-center gap-1.5"
         >
-          {(["bg-red-400", "bg-amber-400", "bg-green-400"] as const).map((colorClass, i) => (
+          {[0, 1, 2].map((i) => (
             <span
               key={i}
-              className={`block h-2 w-2 rounded-full opacity-60 ${colorClass}`}
+              className="block h-2 w-2 rounded-full opacity-60"
+              style={{ backgroundColor: "var(--border-strong)" }}
             />
           ))}
         </div>

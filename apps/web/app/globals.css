@@ -228,6 +228,22 @@ html {
   --sidebar-accent-foreground: #EDEAE3;
   --sidebar-border: #322E26;
   --sidebar-ring: #7A7EF0;
+
+  /* ── Severity — dark-mode overrides ─────────────────────────────────────────
+     Light tints (#FBEFEE etc.) are near-invisible on dark charcoal; foregrounds
+     need lifting so they clear AA against the dark surfaces above.
+     Foregrounds: slightly desaturated, lifted variants of the light values.
+     Backgrounds: very dark low-saturation tints — readable in dark mode. */
+  --color-sev-critical: #F08A82;
+  --color-sev-serious: #E0A24A;
+  --color-sev-moderate: #C9BC6A;
+  --color-sev-minor: #A8A399;
+  --color-sev-passed: #5FB58F;
+  --color-sev-critical-bg: #2A1A18;
+  --color-sev-serious-bg: #2A2114;
+  --color-sev-moderate-bg: #25220F;
+  --color-sev-minor-bg: #211F1A;
+  --color-sev-passed-bg: #14241D;
 }
 
 @layer base {

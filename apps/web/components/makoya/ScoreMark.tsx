@@ -19,7 +19,7 @@
  *   entire score — number, ring, tick — reflects the same severity palette
  *   as the issue list and chip components.
  * • One small Vellum-amber tick mark (aria-hidden) beside the score. Decorative
- *   brand element using `var(--color-vellum-500)` / `var(--vellum-500)`.
+ *   brand element using `var(--color-vellum-500)` — the canonical @theme token.
  * • Ring: SVG `<motion.circle>` with `inkStroke` variants (pathLength 0 → 1,
  *   plays once, no loop). When `prefers-reduced-motion` is active the ring
  *   renders at pathLength 1 with NO animation — static but still visible.
@@ -148,7 +148,7 @@ export function ScoreMark({ score, verdict, size = "hero", className }: ScoreMar
               "font-mono font-bold",
               isHero ? "text-[32px]" : "text-[16px]"
             )}
-            style={{ color: "var(--color-vellum-500, var(--vellum-500, #C8821E))" }}
+            style={{ color: "var(--color-vellum-500)" }}
           >
             ✓
           </span>

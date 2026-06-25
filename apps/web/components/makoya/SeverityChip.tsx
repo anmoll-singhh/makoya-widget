@@ -7,8 +7,8 @@
  *
  * Design decisions:
  * ─────────────────
- * • Color via CSS custom properties (--sev-* and --sev-*-bg) so the chip
- *   inherits whichever theme is active without hard-coding hex values here.
+ * • Color via CSS custom properties (--color-sev-* and --color-sev-*-bg) so the
+ *   chip inherits whichever theme is active without hard-coding hex values here.
  * • Ink-weight hierarchy: critical and serious get a filled circle marker (●)
  *   to signal "take action"; moderate gets a hollow marker (○); minor gets a
  *   tiny dash (–) in grayscale — conveys presence without urgency.

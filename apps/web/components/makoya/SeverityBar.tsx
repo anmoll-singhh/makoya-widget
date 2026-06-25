@@ -13,7 +13,7 @@
  * • Zero-count severities are omitted entirely (no invisible 0-width segments)
  *   to keep the bar crisp and avoid confusing empty DOM nodes.
  * • Each segment uses the CSS custom property for its severity colour
- *   (--sev-* as background) so it integrates with the design token system.
+ *   (--color-sev-* as background) so it integrates with the design token system.
  * • The wrapper carries an `aria-label` that spells out all four counts,
  *   making the bar understandable to screen-reader users who can't see colours.
  *
