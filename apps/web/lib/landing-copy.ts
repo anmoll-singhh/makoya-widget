@@ -34,7 +34,7 @@ export const hero = {
   headlineLead: "See what's really blocking",
   headlineAccent: "your visitors",
   subhead:
-    "Run a real accessibility scan in seconds. We show you a clear score and the exact issues turning people away — in plain English — then help you fix them at the source.",
+    "Get a real 0–100 accessibility score and every issue in plain English — before you ever give us an email.",
   inputPlaceholder: "yourwebsite.com",
   cta: "Scan my site free",
   microcopy:
