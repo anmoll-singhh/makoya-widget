@@ -23,7 +23,7 @@ export const DUR = {
   section: 0.6,
 } as const;
 
-export const revealVariant: Variants = {
+export const revealVariant = {
   hidden: {
     opacity: 0,
     y: 8,
@@ -36,9 +36,9 @@ export const revealVariant: Variants = {
       ease: EASE_INK,
     },
   },
-};
+} satisfies Variants;
 
-export function staggerParent(stagger: number = 0.04): Variants {
+export function staggerParent(stagger: number = 0.04) {
   return {
     hidden: {},
     visible: {
@@ -46,10 +46,10 @@ export function staggerParent(stagger: number = 0.04): Variants {
         staggerChildren: stagger,
       },
     },
-  };
+  } satisfies Variants;
 }
 
-export const inkStroke: Variants = {
+export const inkStroke = {
   hidden: {
     pathLength: 0,
     opacity: 0,
@@ -60,6 +60,7 @@ export const inkStroke: Variants = {
     transition: {
       duration: DUR.mark,
       ease: EASE_INK,
+      repeat: undefined,
     },
   },
-};
+} satisfies Variants;
