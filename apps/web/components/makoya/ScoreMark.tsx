@@ -148,7 +148,7 @@ export function ScoreMark({ score, verdict, size = "hero", className }: ScoreMar
               "font-mono font-bold",
               isHero ? "text-[32px]" : "text-[16px]"
             )}
-            style={{ color: "var(--color-vellum-500, var(--vellum-500, #f59e0b))" }}
+            style={{ color: "var(--color-vellum-500, var(--vellum-500, #C8821E))" }}
           >
             ✓
           </span>
