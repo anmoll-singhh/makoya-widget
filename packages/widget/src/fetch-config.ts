@@ -59,6 +59,22 @@ function configBase(): string {
 }
 
 /**
+ * How long to wait for the config endpoint before giving up and FAILING OPEN.
+ *
+ * Non-negotiable rule #1 says a network FAILURE must never stop the widget — but
+ * a slow *hang* (the server accepts the TCP connection then never responds: cold
+ * start stall, overloaded origin, captive portal) is not a failure `fetch` will
+ * reject quickly. Without a bound the loader's `Promise.all([config, core])`
+ * never settles and the widget silently never mounts. We abort after this budget
+ * so a hang resolves to the SAME fail-open verdict as an error. Overridable via
+ * the `MAKOYA_CONFIG_TIMEOUT_MS` window global (the tests set it tiny).
+ */
+function configTimeoutMs(): number {
+  const v = (window as any).MAKOYA_CONFIG_TIMEOUT_MS;
+  return typeof v === "number" && v > 0 ? v : 5000;
+}
+
+/**
  * Fetch + gate a site's config. NEVER throws — every failure mode resolves to
  * the fail-open verdict `{ active: true, config: {} }`.
  *
@@ -74,8 +90,16 @@ export async function fetchGatedConfig(
     `${base}/${encodeURIComponent(siteId)}` +
     (token ? `?t=${encodeURIComponent(token)}` : "");
 
+  // Bound the request with an AbortController so a HANG (not just an error) also
+  // fails open. AbortController is universal in browsers; guard for exotic hosts.
+  const controller =
+    typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timer = controller
+    ? setTimeout(() => controller.abort(), configTimeoutMs())
+    : null;
+
   try {
-    const res = await fetch(url, { cache: "default" });
+    const res = await fetch(url, { cache: "default", signal: controller?.signal });
     // Non-200 → no verdict delivered → FAIL OPEN (mount on defaults).
     if (!res.ok) return { active: true, config: {} };
 
@@ -88,7 +112,9 @@ export async function fetchGatedConfig(
     // else (true / undefined / missing) means mount.
     return { active: active !== false, config };
   } catch {
-    // Network / CORS / timeout / parse error → FAIL OPEN (non-negotiable #1).
+    // Network / CORS / timeout / abort / parse error → FAIL OPEN (non-negotiable #1).
     return { active: true, config: {} };
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
