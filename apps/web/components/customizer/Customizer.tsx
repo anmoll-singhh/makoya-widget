@@ -96,7 +96,7 @@ export function Customizer({ sites, activeSiteId, initialConfig, plan }: Customi
       {/* ── Site switcher (hidden when only one site) ─────────────────── */}
       {sites.length > 1 && (
         <div className="flex items-center gap-3">
-          <span className="text-sm font-medium text-neutral-600 shrink-0">Site:</span>
+          <span className="text-sm font-medium text-[var(--ink-600)] shrink-0">Site:</span>
           <Select
             value={activeSiteId}
             onValueChange={(id) => router.push(`/dashboard?site=${id}`)}
@@ -122,12 +122,12 @@ export function Customizer({ sites, activeSiteId, initialConfig, plan }: Customi
         <div className="space-y-5 min-w-0">
 
           {/* Appearance */}
-          <Card className="rounded-2xl border-neutral-200 shadow-sm">
+          <Card className="rounded-2xl border-[var(--border)] shadow-sm">
             <CardHeader className="pb-3">
-              <CardTitle className="font-display text-base font-semibold text-neutral-900">
+              <CardTitle className="font-sans text-base font-semibold text-[var(--ink-900)]">
                 Appearance
               </CardTitle>
-              <p className="text-xs text-neutral-400">
+              <p className="text-xs text-[var(--ink-400)]">
                 Colour, icon, size, and position of the launcher button.
               </p>
             </CardHeader>
@@ -137,12 +137,12 @@ export function Customizer({ sites, activeSiteId, initialConfig, plan }: Customi
           </Card>
 
           {/* Features */}
-          <Card className="rounded-2xl border-neutral-200 shadow-sm">
+          <Card className="rounded-2xl border-[var(--border)] shadow-sm">
             <CardHeader className="pb-3">
-              <CardTitle className="font-display text-base font-semibold text-neutral-900">
+              <CardTitle className="font-sans text-base font-semibold text-[var(--ink-900)]">
                 Features
               </CardTitle>
-              <p className="text-xs text-neutral-400">
+              <p className="text-xs text-[var(--ink-400)]">
                 Choose which tools to show and drag to set their order in the panel.
               </p>
             </CardHeader>
@@ -155,12 +155,12 @@ export function Customizer({ sites, activeSiteId, initialConfig, plan }: Customi
           </Card>
 
           {/* Behaviour */}
-          <Card className="rounded-2xl border-neutral-200 shadow-sm">
+          <Card className="rounded-2xl border-[var(--border)] shadow-sm">
             <CardHeader className="pb-3">
-              <CardTitle className="font-display text-base font-semibold text-neutral-900">
+              <CardTitle className="font-sans text-base font-semibold text-[var(--ink-900)]">
                 Behaviour
               </CardTitle>
-              <p className="text-xs text-neutral-400">
+              <p className="text-xs text-[var(--ink-400)]">
                 Default profile and language for first-time visitors.
               </p>
             </CardHeader>
@@ -170,12 +170,12 @@ export function Customizer({ sites, activeSiteId, initialConfig, plan }: Customi
           </Card>
 
           {/* Branding */}
-          <Card className="rounded-2xl border-neutral-200 shadow-sm">
+          <Card className="rounded-2xl border-[var(--border)] shadow-sm">
             <CardHeader className="pb-3">
-              <CardTitle className="font-display text-base font-semibold text-neutral-900">
+              <CardTitle className="font-sans text-base font-semibold text-[var(--ink-900)]">
                 Branding
               </CardTitle>
-              <p className="text-xs text-neutral-400">
+              <p className="text-xs text-[var(--ink-400)]">
                 Customise the panel title and attribution.
               </p>
             </CardHeader>
@@ -188,8 +188,8 @@ export function Customizer({ sites, activeSiteId, initialConfig, plan }: Customi
           <div className="flex items-center gap-2 py-1" aria-live="polite" aria-atomic="true">
             {status === "saving" && (
               <>
-                <span className="h-2 w-2 animate-pulse rounded-full bg-brand-400" aria-hidden="true" />
-                <span className="text-sm text-neutral-500">Saving…</span>
+                <span className="h-2 w-2 animate-pulse rounded-full bg-signal-500" aria-hidden="true" />
+                <span className="text-sm text-[var(--ink-600)]">Saving…</span>
               </>
             )}
             {status === "saved" && (
@@ -206,7 +206,7 @@ export function Customizer({ sites, activeSiteId, initialConfig, plan }: Customi
                   <button
                     type="button"
                     onClick={saveNow}
-                    className="underline hover:no-underline font-medium transition-base"
+                    className="underline hover:no-underline font-medium transition-colors"
                   >
                     retry
                   </button>
@@ -214,7 +214,7 @@ export function Customizer({ sites, activeSiteId, initialConfig, plan }: Customi
               </>
             )}
             {status === "idle" && (
-              <span className="text-xs text-neutral-400">Changes save automatically.</span>
+              <span className="text-xs text-[var(--ink-400)]">Changes save automatically.</span>
             )}
           </div>
         </div>
@@ -223,7 +223,7 @@ export function Customizer({ sites, activeSiteId, initialConfig, plan }: Customi
         <div className="lg:sticky lg:top-6 lg:self-start">
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <span className="font-display text-sm font-semibold text-neutral-700">
+              <span className="font-sans text-sm font-semibold text-[var(--ink-600)]">
                 Live preview
               </span>
               <span className={cn(

@@ -40,7 +40,7 @@ export function DashboardTabs() {
   return (
     <nav
       aria-label="Dashboard sections"
-      className="border-b border-neutral-200 bg-white/80 backdrop-blur-sm"
+      className="border-b border-[var(--border)] bg-[var(--surface)]/80 backdrop-blur-sm"
     >
       <div className="mx-auto flex max-w-6xl gap-0 px-5">
         {TABS.map(({ label, href }) => {
@@ -51,17 +51,17 @@ export function DashboardTabs() {
               href={tabHref(href)}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "relative inline-flex items-center px-4 py-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-1",
+                "relative inline-flex items-center px-4 py-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-500 focus-visible:ring-offset-1",
                 active
-                  ? "text-brand-700"
-                  : "text-neutral-500 hover:text-neutral-800",
+                  ? "text-signal-700"
+                  : "text-[var(--ink-600)] hover:text-[var(--ink-900)]",
               )}
             >
               {label}
               {active && (
                 <span
                   aria-hidden
-                  className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-brand-600"
+                  className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-signal-600"
                 />
               )}
             </Link>

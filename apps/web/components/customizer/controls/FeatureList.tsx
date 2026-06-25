@@ -96,10 +96,10 @@ export function FeatureList({ enabled, onChange }: FeatureListProps) {
           <li
             key={row.key}
             className={cn(
-              "flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-base",
+              "flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-colors",
               row.on
-                ? "border-neutral-200 bg-white"
-                : "border-neutral-100 bg-neutral-50 opacity-60",
+                ? "border-[var(--border)] bg-[var(--surface)]"
+                : "border-[var(--border)] bg-[var(--paper)] opacity-60",
             )}
           >
             {/* Toggle */}
@@ -115,7 +115,7 @@ export function FeatureList({ enabled, onChange }: FeatureListProps) {
               <div className="flex items-center gap-2">
                 <span className={cn(
                   "text-sm font-semibold",
-                  row.on ? "text-neutral-900" : "text-neutral-500",
+                  row.on ? "text-[var(--ink-900)]" : "text-[var(--ink-400)]",
                 )}>
                   {meta.label}
                 </span>
@@ -126,7 +126,7 @@ export function FeatureList({ enabled, onChange }: FeatureListProps) {
                   {groupStyle.label}
                 </span>
               </div>
-              <p className="mt-0.5 text-xs text-neutral-400 leading-snug">
+              <p className="mt-0.5 text-xs text-[var(--ink-400)] leading-snug">
                 {meta.description}
               </p>
             </div>
@@ -139,10 +139,10 @@ export function FeatureList({ enabled, onChange }: FeatureListProps) {
                 disabled={!row.on || isFirst}
                 aria-label={`Move ${meta.label} up`}
                 className={cn(
-                  "flex h-6 w-6 items-center justify-center rounded-md text-neutral-400 transition-base",
+                  "flex h-6 w-6 items-center justify-center rounded-md text-[var(--ink-400)] transition-colors",
                   !row.on || isFirst
                     ? "cursor-not-allowed opacity-30"
-                    : "hover:bg-neutral-100 hover:text-neutral-700",
+                    : "hover:bg-[var(--surface-2)] hover:text-[var(--ink-900)]",
                 )}
               >
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
@@ -155,10 +155,10 @@ export function FeatureList({ enabled, onChange }: FeatureListProps) {
                 disabled={!row.on || isLast}
                 aria-label={`Move ${meta.label} down`}
                 className={cn(
-                  "flex h-6 w-6 items-center justify-center rounded-md text-neutral-400 transition-base",
+                  "flex h-6 w-6 items-center justify-center rounded-md text-[var(--ink-400)] transition-colors",
                   !row.on || isLast
                     ? "cursor-not-allowed opacity-30"
-                    : "hover:bg-neutral-100 hover:text-neutral-700",
+                    : "hover:bg-[var(--surface-2)] hover:text-[var(--ink-900)]",
                 )}
               >
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">

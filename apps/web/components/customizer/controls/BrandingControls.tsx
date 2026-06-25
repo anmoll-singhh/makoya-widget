@@ -66,11 +66,11 @@ export function BrandingControls({ value, plan, onChange }: BrandingControlsProp
         <div>
           <Label
             htmlFor="branding-hide"
-            className="text-sm font-medium text-neutral-700 cursor-pointer"
+            className="text-sm font-medium text-[var(--ink-900)] cursor-pointer"
           >
             Hide &ldquo;Powered by Makoya&rdquo;
           </Label>
-          <p id="branding-hide-desc" className="mt-0.5 text-xs text-neutral-400">
+          <p id="branding-hide-desc" className="mt-0.5 text-xs text-[var(--ink-400)]">
             Removes the Makoya attribution link from the bottom of the panel.
           </p>
         </div>
@@ -78,7 +78,7 @@ export function BrandingControls({ value, plan, onChange }: BrandingControlsProp
 
       {/* ── Panel title ──────────────────────────────────────────────────── */}
       <div className={cn("space-y-1.5", !isPaid && "pointer-events-none opacity-50")}>
-        <Label htmlFor="branding-title" className="text-sm font-medium text-neutral-700">
+        <Label htmlFor="branding-title" className="text-sm font-medium text-[var(--ink-600)]">
           Panel title
         </Label>
         <Input
@@ -91,7 +91,7 @@ export function BrandingControls({ value, plan, onChange }: BrandingControlsProp
           maxLength={60}
           aria-describedby="branding-title-desc"
         />
-        <p id="branding-title-desc" className="text-xs text-neutral-400">
+        <p id="branding-title-desc" className="text-xs text-[var(--ink-400)]">
           Replaces the default panel heading. Leave empty to use the built-in
           localised title.
         </p>
@@ -99,7 +99,7 @@ export function BrandingControls({ value, plan, onChange }: BrandingControlsProp
 
       {/* ── Accessibility statement URL ──────────────────────────────────── */}
       <div className={cn("space-y-1.5", !isPaid && "pointer-events-none opacity-50")}>
-        <Label htmlFor="branding-statement-url" className="text-sm font-medium text-neutral-700">
+        <Label htmlFor="branding-statement-url" className="text-sm font-medium text-[var(--ink-600)]">
           Accessibility statement URL
         </Label>
         <Input
@@ -111,7 +111,7 @@ export function BrandingControls({ value, plan, onChange }: BrandingControlsProp
           placeholder="https://yoursite.com/accessibility"
           aria-describedby="branding-statement-url-desc"
         />
-        <p id="branding-statement-url-desc" className="text-xs text-neutral-400">
+        <p id="branding-statement-url-desc" className="text-xs text-[var(--ink-400)]">
           Adds a link to your accessibility statement inside the panel. Leave
           empty to hide the link.
         </p>

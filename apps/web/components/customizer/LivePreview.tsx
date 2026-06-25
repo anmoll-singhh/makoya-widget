@@ -166,30 +166,30 @@ export function LivePreview({ config }: { config: SiteConfig }) {
   return (
     <div className="flex flex-col gap-3">
       {/* Browser-chrome frame — inspired by WidgetPreview.tsx */}
-      <div className="overflow-hidden rounded-2xl border border-neutral-200 shadow-md ring-1 ring-black/[0.04]">
+      <div className="overflow-hidden rounded-2xl border border-[var(--border)] shadow-md ring-1 ring-black/[0.04]">
         {/* Traffic-light header */}
-        <div className="flex items-center gap-2 border-b border-neutral-200 bg-neutral-50 px-4 py-3">
+        <div className="flex items-center gap-2 border-b border-[var(--border)] bg-[var(--paper)] px-4 py-3">
           <span className="h-3 w-3 rounded-full bg-[#ff5f57]" aria-hidden="true" />
           <span className="h-3 w-3 rounded-full bg-[#febc2e]" aria-hidden="true" />
           <span className="h-3 w-3 rounded-full bg-[#28c840]" aria-hidden="true" />
 
           {/* Fake address bar */}
           <div className="ml-3 flex-1">
-            <div className="flex items-center gap-1.5 rounded-md bg-neutral-100 px-3 py-1.5">
+            <div className="flex items-center gap-1.5 rounded-md bg-[var(--surface-2)] px-3 py-1.5">
               <svg
                 width="11"
                 height="11"
                 viewBox="0 0 12 12"
                 fill="none"
                 aria-hidden="true"
-                className="shrink-0 text-neutral-400"
+                className="shrink-0 text-[var(--ink-400)]"
               >
                 <path
                   d="M6 1a3.5 3.5 0 1 0 0 7A3.5 3.5 0 0 0 6 1Zm0 9.5c-2.25 0-4.5-.75-4.5-2v-.5C1.5 7.12 3.5 6.5 6 6.5s4.5.62 4.5 1.5v.5c0 1.25-2.25 2-4.5 2Z"
                   fill="currentColor"
                 />
               </svg>
-              <span className="truncate font-mono text-[10px] text-neutral-400 select-none">
+              <span className="truncate font-mono text-[10px] text-[var(--ink-400)] select-none">
                 yoursite.com
               </span>
             </div>
@@ -207,7 +207,7 @@ export function LivePreview({ config }: { config: SiteConfig }) {
       </div>
 
       {/* Caption — no compliance claims per project rules */}
-      <p className="text-center text-xs text-neutral-400">
+      <p className="text-center text-xs text-[var(--ink-400)]">
         Live preview — your real widget. Click the button to explore the panel.
       </p>
     </div>

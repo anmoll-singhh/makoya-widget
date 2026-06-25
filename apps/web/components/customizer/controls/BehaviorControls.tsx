@@ -61,7 +61,7 @@ export function BehaviorControls({ value, onChange }: BehaviorControlsProps) {
     <div className="space-y-6">
       {/* ── Default profile ─────────────────────────────────────────────── */}
       <div className="space-y-1.5">
-        <Label htmlFor="behavior-profile" className="text-sm font-medium text-neutral-700">
+        <Label htmlFor="behavior-profile" className="text-sm font-medium text-[var(--ink-600)]">
           Default profile
         </Label>
         <Select
@@ -79,7 +79,7 @@ export function BehaviorControls({ value, onChange }: BehaviorControlsProps) {
             ))}
           </SelectContent>
         </Select>
-        <p className="text-xs text-neutral-400">
+        <p className="text-xs text-[var(--ink-400)]">
           When set, the widget pre-applies this profile on a visitor&apos;s first
           open. Visitors can still adjust or reset at any time.
         </p>
@@ -87,7 +87,7 @@ export function BehaviorControls({ value, onChange }: BehaviorControlsProps) {
 
       {/* ── Default language ────────────────────────────────────────────── */}
       <div className="space-y-1.5">
-        <Label htmlFor="behavior-language" className="text-sm font-medium text-neutral-700">
+        <Label htmlFor="behavior-language" className="text-sm font-medium text-[var(--ink-600)]">
           Widget language
         </Label>
         <Select
@@ -105,7 +105,7 @@ export function BehaviorControls({ value, onChange }: BehaviorControlsProps) {
             ))}
           </SelectContent>
         </Select>
-        <p className="text-xs text-neutral-400">
+        <p className="text-xs text-[var(--ink-400)]">
           Sets the language used for the widget&apos;s own labels and button text.
           Visitors can switch it from within the panel.
         </p>

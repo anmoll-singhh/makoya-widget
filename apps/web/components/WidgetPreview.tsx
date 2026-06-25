@@ -10,17 +10,17 @@ const CORNER: Record<WidgetPosition, string> = {
 
 export function WidgetPreview({ color, position, icon }: { color: string; position: WidgetPosition; icon: LauncherIconKey }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-neutral-200 shadow-sm">
-      <div className="flex items-center gap-1.5 border-b border-neutral-200 bg-neutral-50 px-3 py-2">
-        <span className="h-2.5 w-2.5 rounded-full bg-neutral-300" />
-        <span className="h-2.5 w-2.5 rounded-full bg-neutral-300" />
-        <span className="h-2.5 w-2.5 rounded-full bg-neutral-300" />
+    <div className="overflow-hidden rounded-2xl border border-[var(--border)] shadow-sm">
+      <div className="flex items-center gap-1.5 border-b border-[var(--border)] bg-[var(--paper)] px-3 py-2">
+        <span className="h-2.5 w-2.5 rounded-full bg-[var(--border-strong)]" />
+        <span className="h-2.5 w-2.5 rounded-full bg-[var(--border-strong)]" />
+        <span className="h-2.5 w-2.5 rounded-full bg-[var(--border-strong)]" />
       </div>
-      <div className="relative h-72 bg-white p-5">
+      <div className="relative h-72 bg-[var(--surface)] p-5">
         <div className="space-y-2">
-          <div className="h-3 w-2/3 rounded bg-neutral-200" />
-          <div className="h-3 w-1/2 rounded bg-neutral-100" />
-          <div className="h-3 w-3/5 rounded bg-neutral-100" />
+          <div className="h-3 w-2/3 rounded bg-[var(--surface-2)]" />
+          <div className="h-3 w-1/2 rounded bg-[var(--paper)]" />
+          <div className="h-3 w-3/5 rounded bg-[var(--paper)]" />
         </div>
         <button
           aria-hidden
