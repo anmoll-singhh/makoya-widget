@@ -1,25 +1,30 @@
 import "./globals.css";
 import type { ReactNode } from "react";
-import { Inter, Sora } from "next/font/google";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
+import { Newsreader } from "next/font/google";
 import { PostHogProvider } from "./posthog-provider";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
-const sora = Sora({
+const newsreader = Newsreader({
   subsets: ["latin"],
-  variable: "--font-sora",
+  variable: "--font-newsreader",
   display: "swap",
-  weight: ["400", "500", "600", "700", "800"],
+  weight: ["400", "500"],
+  style: ["normal", "italic"],
 });
 
 export const metadata = {
-  title: "Makoya — turn an inaccessible site into customers",
+  title: "Makoya — find what's turning visitors away, and fix it",
   description:
-    "Find exactly what's turning visitors away, fix it, and stop losing customers to a site they can't use.",
+    "An honest accessibility scan: a real 0–100 score and the exact issues on your site, in plain English. No 'instant compliance' lies.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${sora.variable}`}>
+    <html
+      lang="en"
+      className={`${GeistSans.variable} ${GeistMono.variable} ${newsreader.variable}`}
+    >
       <body>
         <PostHogProvider>{children}</PostHogProvider>
       </body>

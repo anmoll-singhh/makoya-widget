@@ -25,6 +25,8 @@
     "@upstash/redis": "^1.38.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "framer-motion": "^12.42.0",
+    "geist": "^1.7.2",
     "html_codesniffer": "^2.5.1",
     "lucide-react": "^1.21.0",
     "next": "15.5.19",
