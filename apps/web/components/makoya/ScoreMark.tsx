@@ -140,6 +140,10 @@ export function ScoreMark({ score, verdict, size = "hero", className }: ScoreMar
             style={{ color: `var(${band.token})` }}
           >
             {score}
+            {/* Fix 2a (a11y 1.4.1): SR-visible scale — first-timers and screen
+                readers get "out of 100" so the number is self-explanatory
+                without colour or visual context. */}
+            <span className="sr-only"> out of 100</span>
           </span>
           {/* Vellum amber tick — decorative brand element */}
           <span
@@ -155,12 +159,14 @@ export function ScoreMark({ score, verdict, size = "hero", className }: ScoreMar
         </div>
       </div>
 
-      {/* Optional verdict one-liner */}
+      {/* Optional verdict one-liner.
+          Fix 2b: use readable ink-600 (≥4.8:1) at text-sm — the previous
+          muted-foreground token was too low-contrast for first-time visitors. */}
       {verdict && (
         <p
           className={cn(
-            "text-center font-sans",
-            isHero ? "text-base text-muted-foreground" : "text-sm text-muted-foreground"
+            "text-center font-sans text-sm",
+            "text-[var(--ink-600)]"
           )}
         >
           {verdict}

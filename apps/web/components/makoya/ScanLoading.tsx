@@ -189,10 +189,12 @@ export function ScanLoading({ label, progress, className }: ScanLoadingProps) {
       </motion.div>
 
       {/* Label — the only content exposed to assistive tech */}
+      {/* Fix 6: label was ~11px font-mono which is too small and reads as code.
+          font-sans text-sm makes the status message readable prose. */}
       {label && (
         <p
           className={cn(
-            "mt-3 font-mono text-[0.6875rem] leading-none tracking-wide",
+            "mt-3 font-sans text-sm leading-relaxed",
           )}
           style={{ color: "var(--muted-foreground, var(--foreground))" }}
         >
