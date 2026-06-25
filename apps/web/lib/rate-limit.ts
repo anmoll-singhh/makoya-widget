@@ -44,6 +44,24 @@ export interface RateLimitOptions {
   limit: number;
   /** Rolling window length in milliseconds. */
   windowMs: number;
+  /**
+   * Per-caller NAMESPACE — keeps independent endpoints from sharing one counter.
+   *
+   * This MUST be distinct per logical bucket. Upstash builds its Redis key as
+   * `${prefix}:${key}`, so without a per-endpoint prefix two routes that pass the
+   * same `key` (here, the IP) would increment the SAME counter — e.g. a visitor's
+   * scans would eat into their email-submit budget and block the lead. We fold
+   * `name` into the Upstash prefix AND the in-memory key. Defaults to
+   * `"<limit>:<windowMs>"` (which still separates our two routes, since their
+   * limits differ), but routes should pass an explicit name for clarity + safety
+   * against two endpoints that happen to share the same limit/window.
+   */
+  name?: string;
+}
+
+/** The bucket namespace: explicit `name`, else the limit/window signature. */
+function namespaceOf(opts: RateLimitOptions): string {
+  return opts.name ?? `${opts.limit}:${opts.windowMs}`;
 }
 
 // ── Upstash backend (durable, cross-instance) ──────────────────────────────────
@@ -63,9 +81,8 @@ function getRedis(url: string, token: string): Redis {
   return redisSingleton;
 }
 
-function getLimiter(redis: Redis, limit: number, windowMs: number): Ratelimit {
-  const cacheKey = `${limit}:${windowMs}`;
-  let limiter = limiterCache.get(cacheKey);
+function getLimiter(redis: Redis, namespace: string, limit: number, windowMs: number): Ratelimit {
+  let limiter = limiterCache.get(namespace);
   if (!limiter) {
     // Sliding window matches the intent of the old fixed-window Map (a rolling
     // count over the last `windowMs`). The duration string is whole seconds.
@@ -73,12 +90,13 @@ function getLimiter(redis: Redis, limit: number, windowMs: number): Ratelimit {
     limiter = new Ratelimit({
       redis,
       limiter: Ratelimit.slidingWindow(limit, `${windowSec} s`),
-      // Stable prefix namespaces all Makoya keys so this Redis can be shared.
-      prefix: "makoya_rl",
+      // Per-bucket prefix → the Redis key is `makoya_rl:<namespace>:<ip>`, so each
+      // endpoint counts independently and never bleeds into another's budget.
+      prefix: `makoya_rl:${namespace}`,
       // We do our own analytics via the observability seam; keep Redis writes lean.
       analytics: false,
     });
-    limiterCache.set(cacheKey, limiter);
+    limiterCache.set(namespace, limiter);
   }
   return limiter;
 }
@@ -92,8 +110,8 @@ function getLimiter(redis: Redis, limit: number, windowMs: number): Ratelimit {
 
 const memoryHits = new Map<string, { n: number; t: number }>();
 
-function checkInMemory(key: string, limit: number, windowMs: number): boolean {
-  const bucketKey = `${key}|${limit}|${windowMs}`;
+function checkInMemory(namespace: string, key: string, limit: number, windowMs: number): boolean {
+  const bucketKey = `${namespace}|${key}`;
   const now = Date.now();
   const cur = memoryHits.get(bucketKey);
   if (!cur || now - cur.t > windowMs) {
@@ -111,16 +129,17 @@ function checkInMemory(key: string, limit: number, windowMs: number): boolean {
  */
 export async function checkRateLimit(key: string, opts: RateLimitOptions): Promise<boolean> {
   const { limit, windowMs } = opts;
+  const namespace = namespaceOf(opts);
   const url = env.UPSTASH_REDIS_REST_URL;
   const token = env.UPSTASH_REDIS_REST_TOKEN;
 
   // Not configured → in-memory fallback (keeps local dev + misconfig working).
   if (!url || !token) {
-    return checkInMemory(key, limit, windowMs);
+    return checkInMemory(namespace, key, limit, windowMs);
   }
 
   try {
-    const limiter = getLimiter(getRedis(url, token), limit, windowMs);
+    const limiter = getLimiter(getRedis(url, token), namespace, limit, windowMs);
     const { success } = await limiter.limit(key);
     // `success === true` means the request is ALLOWED → not limited → return false.
     return !success;

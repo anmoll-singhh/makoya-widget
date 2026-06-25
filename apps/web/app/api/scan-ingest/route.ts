@@ -58,7 +58,7 @@ function normalizeScore(raw: unknown): number | null {
 
 export async function POST(req: Request): Promise<NextResponse> {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  if (await checkRateLimit(ip, { limit: RATE_MAX, windowMs: RATE_WINDOW_MS })) {
+  if (await checkRateLimit(ip, { name: "scan-ingest", limit: RATE_MAX, windowMs: RATE_WINDOW_MS })) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429, headers: CORS });
   }
 
