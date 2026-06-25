@@ -48,7 +48,12 @@ export function captureError(err: unknown, context?: Record<string, unknown>): v
   const message = err instanceof Error ? err.message : String(err);
   console.error(`[error] ${message}`, context ?? {});
 
-  if (env.SENTRY_DSN) {
+  // Forward when EITHER DSN is configured: the server reads SENTRY_DSN, but in a
+  // client/browser context that var is stripped (it isn't NEXT_PUBLIC) and only
+  // SENTRY_DSN_PUBLIC survives — so gating on SENTRY_DSN alone would silently drop
+  // any client-side captureError() call even though instrumentation-client.ts has
+  // Sentry enabled. Checking both keeps capture working on whichever side runs.
+  if (env.SENTRY_DSN || env.SENTRY_DSN_PUBLIC) {
     try {
       Sentry.captureException(err, context ? { extra: context } : undefined);
     } catch {

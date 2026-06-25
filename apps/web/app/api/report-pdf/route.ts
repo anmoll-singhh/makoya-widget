@@ -23,26 +23,19 @@ import { renderReportPdf, reportFilename } from "@/lib/pdf/render-report";
 import type { ReportPdfInput, ReportPdfIssue } from "@/lib/pdf/report-content";
 import { captureError } from "@/lib/observability";
 import { parseBody, reportPdfBodySchema } from "@/lib/validation/api";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // @react-pdf/renderer is Node-only.
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
-// ── crude per-instance rate limit (mirrors the other public routes) ──────────
+// ── rate limit (durable, cross-instance via Upstash) ───────────────────────
+// PDF rendering is CPU/memory work, so this PUBLIC route is throttled per IP.
+// Delegated to lib/rate-limit.ts (shared Upstash counter when configured, else
+// in-memory) with its own "report-pdf" namespace so its budget is independent of
+// the scan/ingest routes. Limit preserved at 20/min.
 const RATE_WINDOW_MS = 60_000;
 const RATE_MAX = 20;
-const hits = new Map<string, { n: number; t: number }>();
-
-function rateLimited(key: string): boolean {
-  const now = Date.now();
-  const cur = hits.get(key);
-  if (!cur || now - cur.t > RATE_WINDOW_MS) {
-    hits.set(key, { n: 1, t: now });
-    return false;
-  }
-  cur.n++;
-  return cur.n > RATE_MAX;
-}
 
 // Hard ceiling on the raw body so a giant payload can't exhaust memory before
 // we even parse it. A legitimate report is a few KB.
@@ -70,7 +63,7 @@ function sanitizeIssues(raw: unknown): ReportPdfIssue[] {
 
 export async function POST(req: Request): Promise<NextResponse> {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  if (rateLimited(ip)) {
+  if (await checkRateLimit(ip, { name: "report-pdf", limit: RATE_MAX, windowMs: RATE_WINDOW_MS })) {
     return NextResponse.json({ error: "Too many requests. Please wait a minute." }, { status: 429 });
   }
 

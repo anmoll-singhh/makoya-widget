@@ -25,8 +25,13 @@ vi.mock("@sentry/nextjs", () => ({
   init: vi.fn(),
 }));
 
-// `env` is mutable per-test so we can flip the DSN on and off.
-const mockEnv: { SENTRY_DSN: string } = { SENTRY_DSN: "" };
+// `env` is mutable per-test so we can flip the DSN on and off. Both the server
+// (SENTRY_DSN) and the client-surfaced (SENTRY_DSN_PUBLIC) keys are modelled so we
+// can verify capture works when only the PUBLIC one is present (the client case).
+const mockEnv: { SENTRY_DSN: string; SENTRY_DSN_PUBLIC: string } = {
+  SENTRY_DSN: "",
+  SENTRY_DSN_PUBLIC: "",
+};
 vi.mock("@/lib/env", () => ({ env: mockEnv }));
 
 /** Re-import observability with the current mockEnv applied. */
@@ -39,6 +44,9 @@ async function loadCaptureError() {
 describe("captureError", () => {
   beforeEach(() => {
     captureException.mockClear();
+    // Reset BOTH DSN keys so one case's value can't bleed into the next.
+    mockEnv.SENTRY_DSN = "";
+    mockEnv.SENTRY_DSN_PUBLIC = "";
     // Silence the intentional console.error so test output stays clean, while
     // still letting us assert it was called.
     vi.spyOn(console, "error").mockImplementation(() => {});
@@ -67,6 +75,17 @@ describe("captureError", () => {
     expect(console.error).toHaveBeenCalledTimes(1);
     expect(captureException).toHaveBeenCalledTimes(1);
     expect(captureException).toHaveBeenCalledWith(err, { extra: { siteId: "abc" } });
+  });
+
+  it("forwards to Sentry when ONLY the client (public) DSN is set", async () => {
+    // Client surface: SENTRY_DSN is stripped from the browser bundle, so only
+    // SENTRY_DSN_PUBLIC is present. captureError must still forward.
+    mockEnv.SENTRY_DSN = "";
+    mockEnv.SENTRY_DSN_PUBLIC = "https://public@example.ingest.sentry.io/123";
+    const captureError = await loadCaptureError();
+
+    captureError(new Error("client-side boom"), { where: "browser" });
+    expect(captureException).toHaveBeenCalledTimes(1);
   });
 
   it("passes undefined extra when no context is given (with DSN)", async () => {
