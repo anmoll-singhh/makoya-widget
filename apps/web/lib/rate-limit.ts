@@ -18,8 +18,8 @@
  * testable without module-mocking and respects env set after import:
  *  1. Upstash (durable): used when BOTH `UPSTASH_REDIS_REST_URL` and
  *     `UPSTASH_REDIS_REST_TOKEN` are configured. A single Redis client is shared,
- *     and one `Ratelimit` instance is memoised per (limit, windowMs) pair so we
- *     don't rebuild it on every request.
+ *     and one `Ratelimit` instance is memoised per namespace (the bucket identity)
+ *     so we don't rebuild it on every request.
  *  2. In-memory (fallback): used when Upstash is NOT configured (local dev, or a
  *     misconfigured deploy). Same window+max semantics the routes used before, so
  *     nothing breaks without Redis — it's just per-instance and therefore weak.
@@ -72,6 +72,13 @@ function namespaceOf(opts: RateLimitOptions): string {
 // because constructing one is non-trivial and the route always uses fixed values.
 
 let redisSingleton: Redis | null = null;
+// Keyed by NAMESPACE, which is the bucket identity (it also becomes the Upstash
+// Redis key prefix and the in-memory key prefix). CONTRACT: a given namespace must
+// always be called with the same (limit, windowMs) — every real caller passes a
+// unique `name` with fixed limits, and the default namespace embeds the limit and
+// window, so this holds. Mixing limits under one namespace is unsupported (it would
+// also corrupt the shared Redis window), which is why the cache key is the
+// namespace alone and not a per-call composite that could mask the misuse.
 const limiterCache = new Map<string, Ratelimit>();
 
 function getRedis(url: string, token: string): Redis {
