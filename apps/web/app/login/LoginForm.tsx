@@ -67,22 +67,32 @@ export function LoginForm() {
 
   if (sent)
     return (
-      <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-        <p className="text-sm font-semibold text-emerald-800">Check your inbox ✓</p>
-        <p className="mt-1 text-sm text-emerald-700">
+      <div
+        role="status"
+        className="mt-6 rounded-xl border p-4"
+        style={{
+          borderColor: "color-mix(in oklch, var(--color-sev-passed) 30%, transparent)",
+          background: "var(--color-sev-passed-bg)",
+        }}
+      >
+        <p className="text-sm font-semibold" style={{ color: "var(--color-sev-passed)" }}>
+          Check your inbox ✓
+        </p>
+        <p className="mt-1 text-sm text-[var(--ink-900)]">
           We sent a secure sign-in link to <span className="font-medium">{email}</span>.
         </p>
       </div>
     );
 
   const inputCls =
-    "transition-base w-full rounded-xl border border-neutral-300 bg-white px-4 py-3 text-[15px] text-neutral-900 placeholder:text-neutral-400 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-100";
+    "transition-colors w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-[15px] text-[var(--ink-900)] placeholder:text-[var(--ink-400)] focus:border-signal-500 focus:outline-none focus:ring-2 focus:ring-signal-500/30";
 
   return (
     <form onSubmit={mode === "password" ? signIn : sendLink} className="mt-6 space-y-3">
       <input
         type="email"
         required
+        aria-label="Email address"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="you@company.com"
@@ -94,6 +104,7 @@ export function LoginForm() {
         <input
           type="password"
           required
+          aria-label="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Password"
@@ -105,7 +116,7 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={busy}
-        className="transition-base w-full rounded-xl bg-gradient-to-br from-brand-600 to-violet-600 px-4 py-3 text-[15px] font-semibold text-white shadow-lg shadow-brand-600/25 hover:shadow-xl disabled:opacity-60"
+        className="transition-colors w-full rounded-xl bg-signal-600 px-4 py-3 text-[15px] font-semibold text-white hover:bg-signal-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-500/40 disabled:opacity-60"
       >
         {busy ? "Working…" : mode === "password" ? "Sign in" : "Email me a sign-in link"}
       </button>
@@ -115,14 +126,22 @@ export function LoginForm() {
           type="button"
           onClick={createAccount}
           disabled={busy}
-          className="transition-base w-full rounded-xl border border-neutral-300 bg-white px-4 py-3 text-[15px] font-semibold text-neutral-800 hover:bg-neutral-50 disabled:opacity-60"
+          className="transition-colors w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-[15px] font-semibold text-[var(--ink-900)] hover:bg-[var(--surface-2)] hover:border-[var(--border-strong)] disabled:opacity-60"
         >
           Create account
         </button>
       )}
 
-      {error && <p className="text-sm font-medium text-red-600">{error}</p>}
-      {info && <p className="text-sm font-medium text-emerald-700">{info}</p>}
+      {error && (
+        <p className="text-sm font-medium" style={{ color: "var(--color-sev-critical)" }}>
+          {error}
+        </p>
+      )}
+      {info && (
+        <p className="text-sm font-medium" style={{ color: "var(--color-sev-passed)" }}>
+          {info}
+        </p>
+      )}
 
       <button
         type="button"
@@ -130,9 +149,11 @@ export function LoginForm() {
           reset();
           setMode(mode === "password" ? "link" : "password");
         }}
-        className="transition-base w-full pt-1 text-center text-sm font-medium text-brand-600 hover:text-brand-700"
+        className="transition-colors w-full pt-1 text-center text-sm font-medium text-signal-600 hover:text-signal-700"
       >
-        {mode === "password" ? "Prefer a magic link? Email me one instead" : "Use email + password instead"}
+        {mode === "password"
+          ? "Prefer a magic link? Email me one instead"
+          : "Use email + password instead"}
       </button>
     </form>
   );
