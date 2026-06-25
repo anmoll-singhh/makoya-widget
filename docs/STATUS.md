@@ -3,7 +3,7 @@
 > **This is the single glance-able source of truth.** Read this first; it answers "where are we, what's in flight, what's blocked, what's next."
 > Detailed narrative history lives in [`SESSION.md`](./SESSION.md) (append-only log). This file is the *dashboard view* on top of it.
 >
-> **Last updated:** 2026-06-25 · **Updated by:** Claude (block 14 — Sentry test-error fired + full live test matrix + high-effort code review → fixed report-pdf limiter gap + 2 latent issues; all DEPLOYED LIVE)
+> **Last updated:** 2026-06-25 · **Updated by:** Claude (block 15 — PostHog analytics wired + live; next: strategic frontend rebuild)
 >
 > **Backup status:** ✅ All branches pushed to `origin` (github.com/anmoll-singhh/makoya-widget). No work is local-only.
 >
@@ -87,7 +87,7 @@
 |---|---|---|
 | **Stripe account** (test mode ok) | Phase 2 billing. ⚠️ Stripe ≠ MoR → founder owns tax/VAT | Free acct; ~2.9%+30¢/txn |
 | Enable Supabase leaked-password protection | Phase H security (Auth → toggle) | Free, 30 sec |
-| ~~Sentry (DSN)~~ ✅ wired · ~~Upstash Redis~~ ✅ wired · PostHog (key+host) · Inngest (keys) | analytics (PostHog) · scan queue (Inngest) remain | Free tiers |
+| ~~Sentry~~ ✅ · ~~Upstash~~ ✅ · ~~PostHog~~ ✅ wired (US cloud, live) · Inngest (keys) · Stripe (founder setting up later) | scan queue (Inngest) + billing (Stripe) remain | Free tiers |
 | Rotate Anthropic + Resend keys | Security (pasted in chat earlier) | — |
 | Own booking-system embed code | Phase 3 book-a-call (placeholder slot for now) | — |
 
