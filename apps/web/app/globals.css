@@ -5,54 +5,107 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-display: var(--font-sora), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "Cascadia Code", "Source Code Pro", monospace;
+  --font-display: var(--font-newsreader), Georgia, "Times New Roman", serif;
 
-  /* brand scale (indigo → violet) */
-  --color-brand-50: #eef2ff;
-  --color-brand-100: #e0e7ff;
-  --color-brand-200: #c7d2fe;
-  --color-brand-400: #818cf8;
-  --color-brand-500: #6366f1;
-  --color-brand-600: #4f46e5;
-  --color-brand-700: #4338ca;
+  /* ── Signal (cobalt-indigo ink) ───────────────────────── */
+  --color-signal-50: #F0F1FE;
+  --color-signal-100: #E0E2FD;
+  --color-signal-300: #A9ACF5;
+  --color-signal-500: #4A4FE8;
+  --color-signal-600: #3B40E0;
+  --color-signal-700: #2E32B8;
+  --color-signal-900: #1A1C66;
+
+  /* ── Vellum (annotation amber) ────────────────────────── */
+  --color-vellum-500: #C8821E;
+
+  /* ── Warm document neutrals ───────────────────────────── */
+  --color-ink-900: #1A1815;
+  --color-ink-600: #6B6760;
+  --color-ink-400: #9A958C;
+
+  /* ── Severity — earth/clay (not traffic-light) ─────────── */
+  --color-sev-critical: #C5403B;
+  --color-sev-serious: #C8821E;
+  --color-sev-moderate: #8A7D2E;
+  --color-sev-minor: #6B6760;
+  --color-sev-passed: #3E8E6E;
+
+  /* severity faint tint backgrounds */
+  --color-sev-critical-bg: #FBEFEE;
+  --color-sev-serious-bg: #FBF1E2;
+  --color-sev-moderate-bg: #F4F1E2;
+  --color-sev-minor-bg: #F2F1EE;
+  --color-sev-passed-bg: #E9F4EF;
 }
 
 :root {
   color-scheme: light;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  /* Brand indigo so shadcn primitives (bg-primary, ring) match Makoya's identity. */
-  --primary: #4f46e5;
-  --primary-foreground: #ffffff;
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: #6366f1;
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+
+  /* ── Redline semantic surface tokens ──────────────────── */
+  --paper: #FBFAF8;
+  --surface: #FFFFFF;
+  --surface-2: #F4F2EE;
+  --border-strong: #DCD8D0;
+  --ink-900: #1A1815;
+  --ink-600: #6B6760;
+  --ink-400: #9A958C;
+
+  /* ── Ease ─────────────────────────────────────────────── */
+  --ease-ink: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* ── Elevation / shadow ───────────────────────────────── */
+  --shadow-xs: 0 1px 2px rgba(26, 24, 21, 0.04);
+  --shadow-sm: 0 1px 3px rgba(26, 24, 21, 0.06), 0 1px 2px rgba(26, 24, 21, 0.04);
+  --shadow-md: 0 4px 12px rgba(26, 24, 21, 0.08), 0 2px 4px rgba(26, 24, 21, 0.04);
+  --shadow-lg: 0 12px 32px rgba(26, 24, 21, 0.10), 0 4px 8px rgba(26, 24, 21, 0.05);
+
+  /* ── shadcn semantic vars — remapped to Redline palette ─ */
+  /* Background/surfaces: warm document paper (never pure white) */
+  --background: #FBFAF8;
+  --foreground: #1A1815;
+  --card: #FFFFFF;
+  --card-foreground: #1A1815;
+  --popover: #FFFFFF;
+  --popover-foreground: #1A1815;
+  /* Primary: Signal-600 cobalt (~6.3:1 on Paper) */
+  --primary: #3B40E0;
+  --primary-foreground: #FFFFFF;
+  /* Secondary: warm surface-2 with ink-900 text */
+  --secondary: #F4F2EE;
+  --secondary-foreground: #1A1815;
+  /* Muted: inset/quiet surfaces */
+  --muted: #F4F2EE;
+  --muted-foreground: #6B6760;
+  /* Accent: warm neutral wash */
+  --accent: #F4F2EE;
+  --accent-foreground: #1A1815;
+  /* Destructive: critical clay-red (not traffic-light red) */
+  --destructive: #C5403B;
+  /* Borders/inputs: hairline warm neutrals */
+  --border: #ECE9E3;
+  --input: #ECE9E3;
+  /* Ring: Signal-500 for focus rings */
+  --ring: #4A4FE8;
+  /* Radius */
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* Chart colors: warm severity spectrum */
+  --chart-1: #C5403B;
+  --chart-2: #C8821E;
+  --chart-3: #8A7D2E;
+  --chart-4: #3B40E0;
+  --chart-5: #3E8E6E;
+  /* Sidebar: uses surface hierarchy */
+  --sidebar: #F4F2EE;
+  --sidebar-foreground: #1A1815;
+  --sidebar-primary: #3B40E0;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #ECE9E3;
+  --sidebar-accent-foreground: #1A1815;
+  --sidebar-border: #ECE9E3;
+  --sidebar-ring: #4A4FE8;
 }
 
 html {
@@ -60,55 +113,34 @@ html {
   text-rendering: optimizeLegibility;
 }
 
-body {
-  font-family: var(--font-sans);
-  background: #fafafa;
-  color: #0a0a0a;
-}
-
-/* Display headings get the Sora face + tight tracking */
+/* Display headings: Newsreader editorial serif */
 .font-display {
   font-family: var(--font-display);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.005em;
 }
 
-/* Gradient ink for hero words */
+/* Gradient ink: cobalt → Signal spectrum (retained for any marketing use) */
 .text-gradient {
-  background: linear-gradient(110deg, #4f46e5 0%, #7c3aed 45%, #6366f1 100%);
+  background: linear-gradient(110deg, #3B40E0 0%, #4A4FE8 55%, #7A7EF0 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
-/* Soft brand glow behind hero / CTA blocks */
+/* Signal glow behind hero/CTA blocks */
 .glow-brand {
-  box-shadow: 0 20px 60px -20px rgba(79, 70, 229, 0.45);
-}
-
-/* Subtle grid backdrop for dark sections */
-.bg-grid {
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-  background-size: 44px 44px;
+  box-shadow: 0 20px 60px -20px rgba(59, 64, 224, 0.40);
 }
 
 /* Reusable smooth transitions on interactive surfaces */
 .transition-base {
-  transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.001ms !important;
-    transition-duration: 0.001ms !important;
-  }
+  transition: transform 0.18s var(--ease-ink), box-shadow 0.18s var(--ease-ink), background-color 0.18s var(--ease-ink), color 0.18s var(--ease-ink), border-color 0.18s var(--ease-ink);
 }
 
 @theme inline {
-  /* Fonts come from the @theme block above (Inter/Sora). Re-declaring
-     --font-sans here as var(--font-sans) is circular and breaks font loading
-     (shadcn init bug), so it's intentionally omitted. */
+  /* Fonts come from the @theme block above. Re-declaring --font-sans here as
+     var(--font-sans) is circular and breaks font loading (shadcn init bug),
+     so it's intentionally omitted. */
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -150,37 +182,68 @@ body {
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  /* Warm ink-charcoal — same brand at night, not a different app */
+  --paper: #16140F;
+  --surface: #201D17;
+  --surface-2: #262219;
+  --border-strong: #453F35;
+  --ink-900: #EDEAE3;
+  --ink-600: #A8A399;
+  --ink-400: #6B6760;
+
+  /* shadcn semantic vars for dark mode */
+  --background: #16140F;
+  --foreground: #EDEAE3;
+  --card: #201D17;
+  --card-foreground: #EDEAE3;
+  --popover: #201D17;
+  --popover-foreground: #EDEAE3;
+  /* Signal lifts in dark (stays readable, not glaring) */
+  --primary: #7A7EF0;
+  --primary-foreground: #FFFFFF;
+  --secondary: #262219;
+  --secondary-foreground: #EDEAE3;
+  --muted: #262219;
+  --muted-foreground: #A8A399;
+  --accent: #262219;
+  --accent-foreground: #EDEAE3;
+  /* Destructive lightens so it doesn't vibrate on dark backgrounds */
+  --destructive: #E06B67;
+  --border: #322E26;
+  --input: #322E26;
+  /* Ring: Signal-500 lifted for dark */
+  --ring: #7A7EF0;
+  /* Chart: severity spectrum, lifted for dark readability */
+  --chart-1: #E06B67;
+  --chart-2: #D99A3C;
+  --chart-3: #B0A43D;
+  --chart-4: #7A7EF0;
+  --chart-5: #5AB08A;
+  /* Sidebar */
+  --sidebar: #201D17;
+  --sidebar-foreground: #EDEAE3;
+  --sidebar-primary: #7A7EF0;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #262219;
+  --sidebar-accent-foreground: #EDEAE3;
+  --sidebar-border: #322E26;
+  --sidebar-ring: #7A7EF0;
+
+  /* ── Severity — dark-mode overrides ─────────────────────────────────────────
+     Light tints (#FBEFEE etc.) are near-invisible on dark charcoal; foregrounds
+     need lifting so they clear AA against the dark surfaces above.
+     Foregrounds: slightly desaturated, lifted variants of the light values.
+     Backgrounds: very dark low-saturation tints — readable in dark mode. */
+  --color-sev-critical: #F08A82;
+  --color-sev-serious: #E0A24A;
+  --color-sev-moderate: #C9BC6A;
+  --color-sev-minor: #A8A399;
+  --color-sev-passed: #5FB58F;
+  --color-sev-critical-bg: #2A1A18;
+  --color-sev-serious-bg: #2A2114;
+  --color-sev-moderate-bg: #25220F;
+  --color-sev-minor-bg: #211F1A;
+  --color-sev-passed-bg: #14241D;
 }
 
 @layer base {
@@ -193,4 +256,26 @@ body {
   html {
     @apply font-sans;
   }
+}
+
+/* ── Body defaults ────────────────────────────────────────── */
+body {
+  background: var(--paper);
+  color: var(--ink-900);
+  font-feature-settings: "tnum" 0;
+}
+
+/* 1–2% tactile grain so Paper reads as document stock, not flat CSS. */
+.paper-grain::before {
+  content: "";
+  position: fixed; inset: 0; pointer-events: none; z-index: 1;
+  opacity: 0.015;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Tabular-numeral utility — counts never shift width */
+.tnums { font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; animation-iteration-count: 1 !important; }
 }

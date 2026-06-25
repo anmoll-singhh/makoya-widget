@@ -15,7 +15,10 @@ export default defineConfig({
     environment: "node",
     // IMPORTANT: keep this broad. Other agents add `*.test.ts` files across the
     // tree that must still be discovered. Do NOT narrow this glob.
-    include: ["**/*.test.ts"],
+    // tsx is also included so React component tests (which need jsdom per-file
+    // via the `// @vitest-environment jsdom` docblock) are discovered without
+    // changing the global environment from "node".
+    include: ["**/*.test.{ts,tsx}"],
     setupFiles: ["./vitest.setup.ts"],
 
     coverage: {
