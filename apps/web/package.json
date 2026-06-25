@@ -17,9 +17,12 @@
   "dependencies": {
     "@axe-core/playwright": "^4.11.3",
     "@react-pdf/renderer": "^4.5.1",
+    "@sentry/nextjs": "^10.61.0",
     "@sparticuz/chromium": "^133.0.0",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.45.0",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.38.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "html_codesniffer": "^2.5.1",

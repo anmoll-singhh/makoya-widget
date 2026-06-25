@@ -36,4 +36,14 @@ export const env = {
   // must NEVER reach the client bundle and must NOT fail-fast (empty = monitor-safe:
   // lib/licensing/token.ts then treats verification as a no-op). Read it from here.
   WIDGET_SIGNING_SECRET: process.env.WIDGET_SIGNING_SECRET ?? "",
+  // Upstash Redis (durable, cross-instance rate limiting). Server-only secrets.
+  // BOTH empty = no durable limiter configured → lib/rate-limit.ts falls back to
+  // the in-memory limiter (so local dev + missing-config never breaks the route).
+  UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL ?? "",
+  UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN ?? "",
+  // Sentry error reporting. SENTRY_DSN is server-side; NEXT_PUBLIC_SENTRY_DSN is
+  // the SAME DSN exposed to the browser bundle for client error capture. Empty =
+  // Sentry disabled (init no-ops) so nothing breaks without it (bootstrap-safe).
+  SENTRY_DSN: process.env.SENTRY_DSN ?? "",
+  SENTRY_DSN_PUBLIC: process.env.NEXT_PUBLIC_SENTRY_DSN ?? "",
 };
