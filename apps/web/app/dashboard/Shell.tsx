@@ -134,6 +134,7 @@ export function Shell({ sites, user, children }: ShellProps) {
         {/* Agent switcher */}
         <div ref={switcherRef} style={{ position: "relative" }}>
           <button
+            type="button"
             className="switch"
             onClick={() => setSwitcherOpen((o) => !o)}
             aria-expanded={switcherOpen}
@@ -167,6 +168,7 @@ export function Shell({ sites, user, children }: ShellProps) {
               {sites.map((site) => (
                 <button
                   key={site.id}
+                  type="button"
                   role="option"
                   aria-selected={site.id === currentSiteId}
                   onClick={() => {
@@ -222,8 +224,8 @@ export function Shell({ sites, user, children }: ShellProps) {
           <ul className="nav">
             <li>
               <Link
-                href="/dashboard/agents"
-                className={isActive("/dashboard/agents") ? "on" : ""}
+                href="/dashboard"
+                className={pathname === "/dashboard" ? "on" : ""}
               >
                 <i className="ti ti-layout-dashboard" aria-hidden="true" />
                 Dashboard
@@ -232,7 +234,7 @@ export function Shell({ sites, user, children }: ShellProps) {
             <li>
               <Link
                 href="/dashboard/agents"
-                className={pathname === "/dashboard/agents" ? "on" : ""}
+                className={isActive("/dashboard/agents") ? "on" : ""}
               >
                 <i className="ti ti-stack-2" aria-hidden="true" />
                 Agents
@@ -409,7 +411,7 @@ export function Shell({ sites, user, children }: ShellProps) {
             <span style={{ color: "var(--t3)" }}>Search…</span>
           </div>
           <div className="tcluster">
-            <button className="iconbtn" aria-label="Notifications">
+            <button type="button" className="iconbtn" aria-label="Notifications">
               <i className="ti ti-bell" aria-hidden="true" />
             </button>
 

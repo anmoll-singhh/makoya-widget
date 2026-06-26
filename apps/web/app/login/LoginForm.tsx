@@ -127,7 +127,11 @@ export function LoginForm() {
           <input type="checkbox" defaultChecked style={{ width: "auto", height: "auto", padding: 0 }} />
           Remember me
         </label>
-        <a href="/auth/forgot-password" tabIndex={0}>Forgot password?</a>
+        <button
+          type="button"
+          onClick={(e) => e.preventDefault()}
+          style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "inherit", font: "inherit" }}
+        >Forgot password?</button>
       </div>
 
       {/* Sign in */}
@@ -160,13 +164,13 @@ export function LoginForm() {
       {/* New user CTA */}
       <div className="login-foot">
         New to Makoya?{" "}
-        <a
-          href="#"
+        <button
+          type="button"
           onClick={createAccount}
-          role="button"
+          style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "inherit", font: "inherit", textDecoration: "underline" }}
         >
           Start free →
-        </a>
+        </button>
       </div>
 
       {/* Trust row */}

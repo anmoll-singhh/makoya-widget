@@ -244,7 +244,7 @@ nav ul{list-style:none}
 .kpi .klab{font-size:13px;color:var(--t2);font-weight:700}
 .kpi .kb{display:flex;align-items:flex-end;justify-content:space-between;gap:10px}
 .kpi .knum{font-family:'Satoshi';font-size:28px;font-weight:700;color:var(--deep);letter-spacing:-.02em}.kpi .knum span{font-size:14px;color:var(--t3);font-weight:600}
-.kpi .kdel{font-size:12.5px;font-weight:700;margin-top:5px}.up{color:var(--green-ink)}.down{color:var(--green-ink)}
+.kpi .kdel{font-size:12.5px;font-weight:700;margin-top:5px}.up{color:var(--green-ink)}.down{color:var(--danger)}
 
 /* rows */
 .row2{display:grid;grid-template-columns:1.55fr 1fr;gap:18px;margin:20px 0}

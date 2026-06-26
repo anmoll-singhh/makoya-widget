@@ -4,7 +4,15 @@
  * SVG circle with a gradient stroke (#1E63FF → #1FA86B), centred number,
  * and ARIA role="img" with a descriptive label. Mirrors .gwrap markup from
  * docs/makoya_v7.html lines 421-425.
+ *
+ * "use client" is required for useId() — React 18 hook for stable,
+ * per-instance unique IDs so multiple gauges on one page don't collide
+ * on the SVG linearGradient id.
  */
+
+"use client";
+
+import { useId } from "react";
 
 interface GaugeProps {
   /** Score 0–100 */
@@ -18,6 +26,12 @@ interface GaugeProps {
 }
 
 export function Gauge({ value, size = 158, label, delta }: GaugeProps) {
+  // useId produces a stable, per-instance unique string (e.g. ":r0:") so that
+  // multiple Gauges on the same page each get their own SVG linearGradient id
+  // and don't collide or steal each other's gradient paint.
+  const uid = useId();
+  const gradientId = `mk-gauge-g-${uid.replace(/:/g, "")}`;
+
   // Geometry: the mockup uses r=15.6, circumference ≈ 98 (2π·15.6 ≈ 98.02).
   // stroke-dashoffset for a given value:  98 * (1 - value/100)
   const r = 15.6;
@@ -39,7 +53,7 @@ export function Gauge({ value, size = 158, label, delta }: GaugeProps) {
           aria-hidden="true"
         >
           <defs>
-            <linearGradient id="mk-gauge-g" x1="0" y1="0" x2="1" y2="1">
+            <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
               <stop offset="0" stopColor="#1E63FF" />
               <stop offset="1" stopColor="#1FA86B" />
             </linearGradient>
@@ -59,7 +73,7 @@ export function Gauge({ value, size = 158, label, delta }: GaugeProps) {
             cy="18"
             r={r}
             fill="none"
-            stroke="url(#mk-gauge-g)"
+            stroke={`url(#${gradientId})`}
             strokeWidth="3"
             strokeLinecap="round"
             strokeDasharray={circ.toFixed(2)}
