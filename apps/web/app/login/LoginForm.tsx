@@ -127,11 +127,12 @@ export function LoginForm() {
           <input type="checkbox" defaultChecked style={{ width: "auto", height: "auto", padding: 0 }} />
           Remember me
         </label>
-        <button
-          type="button"
-          onClick={(e) => e.preventDefault()}
-          style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "inherit", font: "inherit" }}
-        >Forgot password?</button>
+        {/* Self-serve password reset isn't wired yet; route to support honestly
+            rather than render a control that silently does nothing. */}
+        <a
+          href="mailto:support@makoya.app?subject=Password%20reset"
+          style={{ color: "inherit", font: "inherit", textDecoration: "none" }}
+        >Forgot password?</a>
       </div>
 
       {/* Sign in */}

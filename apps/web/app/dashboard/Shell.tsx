@@ -56,9 +56,14 @@ export function Shell({ sites, user, children }: ShellProps) {
   const pathname = usePathname();
   const router = useRouter();
 
-  // Parse siteId from /dashboard/[siteId]/...
+  // Parse siteId from /dashboard/[siteId]/... — but NOT the reserved top-level
+  // routes (which are also wrapped by this shell). Treating "account"/"partners"/
+  // "agents" as an agent id would render a spurious per-agent nav with dead 404
+  // sub-links on those screens.
+  const RESERVED_SEGMENTS = ["agents", "account", "partners"];
   const siteIdMatch = pathname.match(/^\/dashboard\/([^/]+)/);
-  const currentSiteId = siteIdMatch ? siteIdMatch[1] : null;
+  const seg = siteIdMatch ? siteIdMatch[1] : null;
+  const currentSiteId = seg && !RESERVED_SEGMENTS.includes(seg) ? seg : null;
   const currentSite = sites.find((s) => s.id === currentSiteId);
 
   // Switcher dropdown
