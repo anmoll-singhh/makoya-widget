@@ -193,6 +193,105 @@ async function runAssertions(client) {
     return `1 config row, ${feats.length} features`;
   });
 
+  // 1b. Onboarding trigger: a brand-new site auto-provisions tenancy + a free
+  //     subscription, atomically, for EVERY creation path. Proves the AFTER-INSERT
+  //     trigger (provision_site_tenancy) creates exactly one organization named for
+  //     the site's domain, one 'owner' team_members row for the owner, stamps
+  //     sites.org_id, and seeds one free/yearly/inactive billing_subscriptions row.
+  await assert(
+    'onboarding trigger: site insert auto-creates org + owner membership + org_id + free subscription',
+    async () => {
+      const owner = randomUUID();
+      await client.query('insert into auth.users (id, email) values ($1, $2)', [
+        owner,
+        'onboard@example.com',
+      ]);
+      const siteId = (
+        await client.query(
+          "insert into sites (owner_id, domain) values ($1, 'onboard.example.com') returning id",
+          [owner],
+        )
+      ).rows[0].id;
+
+      const orgs = await client.query(
+        'select id, name, created_by from organizations where created_by = $1',
+        [owner],
+      );
+      if (orgs.rowCount !== 1) throw new Error(`expected 1 org, got ${orgs.rowCount}`);
+      if (orgs.rows[0].name !== 'onboard.example.com') {
+        throw new Error(`org name = ${orgs.rows[0].name}, expected the site domain`);
+      }
+      const orgId = orgs.rows[0].id;
+
+      const members = await client.query(
+        'select role, user_id from team_members where org_id = $1',
+        [orgId],
+      );
+      if (members.rowCount !== 1) throw new Error(`expected 1 team_member, got ${members.rowCount}`);
+      if (members.rows[0].role !== 'owner') {
+        throw new Error(`role = ${members.rows[0].role}, expected owner`);
+      }
+      if (members.rows[0].user_id !== owner) throw new Error('team_member.user_id mismatch');
+
+      const site = await client.query('select org_id from sites where id = $1', [siteId]);
+      if (site.rows[0].org_id !== orgId) {
+        throw new Error(`sites.org_id not set to new org (got ${site.rows[0].org_id})`);
+      }
+
+      const sub = await client.query(
+        'select plan_slug, period, status from billing_subscriptions where site_id = $1',
+        [siteId],
+      );
+      if (sub.rowCount !== 1) throw new Error(`expected 1 subscription, got ${sub.rowCount}`);
+      const s = sub.rows[0];
+      if (s.plan_slug !== 'free' || s.period !== 'yearly' || s.status !== 'inactive') {
+        throw new Error(`subscription = ${JSON.stringify(s)}, expected free/yearly/inactive`);
+      }
+      return '1 org, 1 owner member, org_id set, 1 free subscription';
+    },
+  );
+
+  // 1c. Two sites for the SAME owner share ONE org (the trigger must reuse the
+  //     existing membership's org_id, never mint a duplicate organization).
+  await assert('onboarding trigger: second site for same owner reuses the org', async () => {
+    const owner = randomUUID();
+    await client.query('insert into auth.users (id, email) values ($1, $2)', [
+      owner,
+      'twosites@example.com',
+    ]);
+    const s1 = (
+      await client.query(
+        "insert into sites (owner_id, domain) values ($1, 'one.example.com') returning id",
+        [owner],
+      )
+    ).rows[0].id;
+    const s2 = (
+      await client.query(
+        "insert into sites (owner_id, domain) values ($1, 'two.example.com') returning id",
+        [owner],
+      )
+    ).rows[0].id;
+
+    const orgs = await client.query('select id from organizations where created_by = $1', [owner]);
+    if (orgs.rowCount !== 1) throw new Error(`expected 1 org for owner, got ${orgs.rowCount}`);
+    const orgId = orgs.rows[0].id;
+    const members = await client.query(
+      'select count(*)::int as n from team_members where org_id = $1',
+      [orgId],
+    );
+    if (members.rows[0].n !== 1) throw new Error(`expected 1 membership, got ${members.rows[0].n}`);
+    const both = await client.query('select org_id from sites where id = any($1)', [[s1, s2]]);
+    if (both.rows.some((r) => r.org_id !== orgId)) {
+      throw new Error('both sites must point at the one shared org');
+    }
+    const subs = await client.query(
+      'select count(*)::int as n from billing_subscriptions where site_id = any($1)',
+      [[s1, s2]],
+    );
+    if (subs.rows[0].n !== 2) throw new Error(`expected 2 subscriptions, got ${subs.rows[0].n}`);
+    return 'one org shared by both sites; 2 free subscriptions';
+  });
+
   // 2. RLS enabled on every public table.
   await assert('RLS enabled on every public table', async () => {
     const { rows } = await client.query(`
@@ -294,13 +393,15 @@ async function runAssertions(client) {
     }
   });
 
-  // 5. Backfill idempotency. The migration backfill ran on an empty DB (no-op),
-  //    so the test sites above still have null org_id. Run the backfill once to
-  //    establish orgs, snapshot, then run it a SECOND time and prove nothing
-  //    changed: one org per owner, and no site left with a null org_id.
+  // 5. Backfill idempotency. With the onboarding trigger in place, every site
+  //    inserted above ALREADY has an org_id + owner membership, so the backfill is
+  //    now a no-op SAFETY NET rather than the thing that establishes orgs. We run
+  //    it twice anyway and prove nothing changes: one org per owner, and no site
+  //    left with a null org_id. (Pre-trigger this run did the real backfilling;
+  //    post-trigger it must be provably inert.)
   const backfillSql = readFileSync(join(MIGRATIONS_DIR, BACKFILL_FILE), 'utf8');
 
-  await client.query(backfillSql); // first real run (backfills the test data)
+  await client.query(backfillSql); // first run — must be a no-op now the trigger provisions tenancy
   const orgCount1 = (await client.query('select count(*)::int as n from organizations')).rows[0].n;
 
   await assert('backfill idempotency: re-run leaves org count unchanged', async () => {
