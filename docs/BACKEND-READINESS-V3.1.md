@@ -29,6 +29,8 @@
 
 **Already solid (don't rebuild):** Scanner v2 + evidence scoring, public scan funnel, widget config + 15 features, PDF report, licensing/domain gate, RLS multi-tenant. These are LIVE.
 
+> **BUILD PROGRESS (block 23, coordinator + subagents):** Backend for **#5 Install-verify, #10 Analytics, #1 Issues, #7 Reports/remediation, and #3 Overview** is now BUILT + tested + security-reviewed + merged to `main` (Waves 1–2; see `docs/superpowers/plans/2026-06-26-v3.1-backend.md`). Tables/endpoints exist; ⛔ the 5 migrations are not yet applied to prod and the widget doesn't yet emit events. Remaining: #13 tenancy (Wave 3), #6/#8/#9/#12 (Wave 4), #11/#14 (Wave 5).
+
 ---
 
 ## Per-screen detail (what exists → what to build)
