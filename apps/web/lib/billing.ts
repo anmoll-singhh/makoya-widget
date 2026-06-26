@@ -32,6 +32,13 @@ import type { PlanSlug, BillingPeriod } from "@/lib/billing/plans";
 /** Subscription lifecycle states (mirror the DB check constraint). */
 export type SubscriptionStatus = "inactive" | "trialing" | "active" | "past_due" | "canceled";
 
+/**
+ * The tiers a site can self-serve PURCHASE. `free` is the default (nothing to
+ * buy) and `enterprise` is contact-sales (custom price), so neither is here —
+ * the same boundary the checkout Zod schema enforces.
+ */
+export type PurchasablePlan = "starter" | "growth" | "scale";
+
 /** The slug a site falls back to when it has no subscription row. */
 export const DEFAULT_SUBSCRIPTION_SLUG: PlanSlug = "free";
 
@@ -243,4 +250,52 @@ export async function getSubscription(
     stripeCustomerId: null,
     stripeSubscriptionId: null,
   };
+}
+
+// ── writes (service-role only — billing_subscriptions has no owner write policy) ─
+
+/**
+ * Records a site's CHOSEN plan as the first half of "Buy now" — everything except
+ * the actual charge. MUST be called with the SERVICE-ROLE client: like `leads`
+ * and `widget_heartbeats`, `billing_subscriptions` is write-locked to the service
+ * key (owners can only READ their own row via RLS), so plan state can never be set
+ * from the browser (CLAUDE.md "Backend / data rules": never trust the client for
+ * plan state).
+ *
+ * Status semantics — IMPORTANT:
+ *   `status:"trialing"` here means "plan SELECTED, awaiting payment" (active,
+ *   payment pending). The real Stripe charge is DEFERRED: when the Stripe account
+ *   exists, a server-side Checkout Session (`lib/billing/stripe.ts#createCheckout
+ *   Session`) takes the payment and the signature-verified, idempotent webhook
+ *   (`handleWebhookEvent`) flips the row trialing→active and sets `renews_at` +
+ *   the `stripe_*` ids. Until then `renews_at` stays null (no real period yet).
+ *
+ * The CLIENT supplies ONLY `planSlug` + `period` (both enum-validated upstream);
+ * the SERVER fixes `status` and the price — never the caller. Upserts on the
+ * `site_id` PK so first-purchase inserts and a plan change updates in place.
+ * Throws on infra error (the authed route surfaces a generic 500).
+ */
+export async function selectPlan(
+  service: SupabaseClient,
+  siteId: string,
+  planSlug: PurchasablePlan,
+  period: BillingPeriod
+): Promise<SubscriptionRecord> {
+  const row = {
+    site_id: siteId,
+    plan_slug: planSlug,
+    period,
+    // SERVER-set: "selected, awaiting payment". Stripe flips this to "active".
+    status: "trialing" as SubscriptionStatus,
+    // No real billing period until a payment confirms it.
+    renews_at: null,
+    updated_at: new Date().toISOString(),
+  };
+  const { data, error } = await service
+    .from("billing_subscriptions")
+    .upsert(row as never, { onConflict: "site_id" })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return rowToSubscription(data);
 }
