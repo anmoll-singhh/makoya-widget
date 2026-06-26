@@ -1,14 +1,29 @@
+/**
+ * app/admin/page.tsx — Admin CRM home: customer list
+ *
+ * v7 restyle: uses v7 CSS classes (.mcard, .tcard, .thead, .trow, .pill, .btn.pri)
+ * from the shared dashboard token layer. All data-fetching, auth gating,
+ * worst-score-first sorting, plan-change, and navigation are unchanged.
+ *
+ * Functionality preserved byte-for-byte:
+ *   - getAdminUser() gates access (redirects non-admins to /dashboard)
+ *   - listAdminSites() fetches the customer table (worst score first from DB)
+ *   - openTotal, avg, stats derivations are identical
+ *   - AddCustomerForm creates users + sites via POST /api/admin/customers
+ */
+
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAdminUser } from "@/lib/auth/require-admin";
 import { listAdminSites } from "@/lib/admin";
 import { AddCustomerForm } from "@/components/admin/AddCustomerForm";
 
-function scoreClass(score: number | null) {
-  if (score === null) return "bg-[var(--surface-2)] text-[var(--ink-600)]";
-  if (score >= 80) return "bg-[var(--color-sev-passed)]/15 text-[var(--color-sev-passed)] ring-1 ring-[var(--color-sev-passed)]/30";
-  if (score >= 60) return "bg-[var(--color-sev-moderate)]/15 text-[var(--color-sev-moderate)] ring-1 ring-[var(--color-sev-moderate)]/30";
-  return "bg-[var(--color-sev-critical)]/15 text-[var(--color-sev-critical)] ring-1 ring-[var(--color-sev-critical)]/30";
+/** Map a nullable score to a v7 pill tone class. */
+function scoreTone(score: number | null): string {
+  if (score === null) return "gray";
+  if (score >= 80) return "green";
+  if (score >= 60) return "med";
+  return "high";
 }
 
 export default async function AdminHome() {
@@ -18,104 +33,138 @@ export default async function AdminHome() {
 
   const openTotal = sites.reduce((n, s) => n + s.openRequests, 0);
   const scored = sites.filter((s) => s.lastScanScore !== null);
-  const avg = scored.length ? Math.round(scored.reduce((n, s) => n + (s.lastScanScore ?? 0), 0) / scored.length) : null;
+  const avg = scored.length
+    ? Math.round(scored.reduce((n, s) => n + (s.lastScanScore ?? 0), 0) / scored.length)
+    : null;
 
   const stats = [
-    { label: "Customers", value: sites.length },
-    { label: "Open requests", value: openTotal, accent: openTotal > 0 },
-    { label: "Avg. score", value: avg ?? "—" },
+    { label: "Customers", value: sites.length, icon: "ti ti-building-store" },
+    { label: "Open requests", value: openTotal, icon: "ti ti-message-dots", accent: openTotal > 0 },
+    { label: "Avg. score", value: avg ?? "—", icon: "ti ti-gauge" },
   ];
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="font-sans text-2xl font-bold tracking-tight">Customers</h1>
-          <p className="mt-1 text-sm text-[var(--ink-600)]">Everyone running Makoya — and who needs you.</p>
+    <div>
+      {/* ── Page header ──────────────────────────────────────────────── */}
+      <div className="between" style={{ marginBottom: "22px" }}>
+        <div className="pagehead" style={{ marginBottom: 0 }}>
+          Admin CRM
+          <b>Customers</b>
         </div>
-        <Link
-          href="/admin/requests"
-          className="transition-colors inline-flex items-center gap-2 rounded-xl bg-signal-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-signal-500"
-        >
+        <Link href="/admin/requests" className="btn pri">
+          <i className="ti ti-message-dots" aria-hidden="true" />
           Requests inbox
           {openTotal > 0 && (
-            <span className="rounded-full bg-white/20 px-1.5 text-xs font-bold">{openTotal}</span>
+            <span
+              className="pill high"
+              style={{ marginLeft: "2px", padding: "2px 7px", fontSize: "11px" }}
+              aria-label={`${openTotal} open`}
+            >
+              {openTotal}
+            </span>
           )}
         </Link>
       </div>
 
-      {/* Onboard a new customer (creates user + site, returns the handover). */}
+      {/* ── Onboard a new customer ───────────────────────────────────── */}
+      {/* AddCustomerForm is kept byte-for-byte — only the page layout changes */}
       <AddCustomerForm />
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      {/* ── Stat cards ────────────────────────────────────────────────── */}
+      <div className="admin-stats" style={{ marginTop: "24px" }}>
         {stats.map((s) => (
-          <div key={s.label} className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
-            <div className={`font-sans text-3xl font-extrabold ${s.accent ? "text-[var(--color-sev-moderate)]" : "text-[var(--ink-900)]"}`}>
+          <div key={s.label} className="mcard">
+            <div className="l">
+              <i className={s.icon} aria-hidden="true" />
+              {s.label}
+            </div>
+            <div
+              className="big"
+              style={s.accent ? { color: "var(--warn)" } : undefined}
+            >
               {s.value}
             </div>
-            <div className="mt-1 text-xs font-medium uppercase tracking-wide text-[var(--ink-600)]">{s.label}</div>
           </div>
         ))}
       </div>
 
-      {/* Table */}
-      <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-[var(--border)] text-xs uppercase tracking-wide text-[var(--ink-600)]">
-            <tr>
-              <th className="px-5 py-3 font-medium">Customer</th>
-              <th className="px-5 py-3 font-medium">Plan</th>
-              <th className="px-5 py-3 font-medium">Last score</th>
-              <th className="px-5 py-3 font-medium">Open</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[var(--border)]">
-            {sites.length === 0 && (
-              <tr>
-                <td colSpan={4} className="px-5 py-10 text-center text-[var(--ink-600)]">
-                  No customers yet — they&apos;ll appear here as people add sites.
-                </td>
-              </tr>
-            )}
-            {sites.map((s) => (
-              <tr key={s.id} className="transition-colors hover:bg-[var(--surface-2)]">
-                <td className="px-5 py-3">
-                  <Link href={`/admin/sites/${s.id}`} className="flex items-center gap-3">
-                    <span className="grid h-9 w-9 place-items-center rounded-xl bg-signal-600 text-sm font-bold text-white">
-                      {(s.domain[0] ?? "?").toUpperCase()}
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block truncate font-semibold text-[var(--ink-900)] underline-offset-2 group-hover:underline">
-                        {s.domain}
-                      </span>
-                      <span className="block truncate text-xs text-[var(--ink-600)]">{s.ownerEmail}</span>
-                    </span>
-                  </Link>
-                </td>
-                <td className="px-5 py-3">
-                  <span className="inline-flex items-center rounded-full bg-[var(--surface-2)] px-2.5 py-0.5 text-xs font-medium capitalize text-[var(--ink-900)]">
-                    {s.plan}
+      {/* ── Customer table ────────────────────────────────────────────── */}
+      <div className="tcard admin-tbl-customers" role="table" aria-label="Customer list">
+        {/* Header */}
+        <div className="thead" role="row">
+          <div role="columnheader">Customer</div>
+          <div role="columnheader">Plan</div>
+          <div role="columnheader">Last score</div>
+          <div role="columnheader">Open</div>
+        </div>
+
+        {/* Empty state */}
+        {sites.length === 0 && (
+          <div
+            className="trow"
+            style={{ gridTemplateColumns: "1fr", justifyItems: "center", color: "var(--t2)" }}
+            role="row"
+          >
+            <div role="cell">No customers yet — they&apos;ll appear here as people add sites.</div>
+          </div>
+        )}
+
+        {/* Rows */}
+        {sites.map((s) => (
+          <div className="trow" key={s.id} role="row">
+            {/* Customer: avatar + domain + email */}
+            <div role="cell">
+              <Link
+                href={`/admin/sites/${s.id}`}
+                style={{ display: "flex", alignItems: "center", gap: "12px", textDecoration: "none" }}
+              >
+                <span className="admin-dom-av" aria-hidden="true">
+                  {(s.domain[0] ?? "?").toUpperCase()}
+                </span>
+                <span>
+                  <span
+                    style={{
+                      display: "block",
+                      fontWeight: 700,
+                      color: "var(--deep)",
+                      fontSize: "13.5px",
+                    }}
+                  >
+                    {s.domain}
                   </span>
-                </td>
-                <td className="px-5 py-3">
-                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold ${scoreClass(s.lastScanScore)}`}>
-                    {s.lastScanScore ?? "—"}
+                  <span
+                    style={{ display: "block", fontSize: "12px", color: "var(--t2)", marginTop: "1px" }}
+                  >
+                    {s.ownerEmail}
                   </span>
-                </td>
-                <td className="px-5 py-3">
-                  {s.openRequests > 0 ? (
-                    <span className="inline-flex items-center rounded-full bg-[var(--color-sev-moderate)]/20 px-2 py-0.5 text-xs font-bold text-[var(--color-sev-moderate)]">
-                      {s.openRequests}
-                    </span>
-                  ) : (
-                    <span className="text-[var(--ink-600)]">0</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </span>
+              </Link>
+            </div>
+
+            {/* Plan */}
+            <div role="cell">
+              <span className="pill gray" style={{ textTransform: "capitalize" }}>
+                {s.plan}
+              </span>
+            </div>
+
+            {/* Last score */}
+            <div role="cell">
+              <span className={`pill ${scoreTone(s.lastScanScore)}`}>
+                {s.lastScanScore ?? "—"}
+              </span>
+            </div>
+
+            {/* Open requests */}
+            <div role="cell">
+              {s.openRequests > 0 ? (
+                <span className="pill high">{s.openRequests}</span>
+              ) : (
+                <span style={{ color: "var(--t3)", fontSize: "13px" }}>0</span>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

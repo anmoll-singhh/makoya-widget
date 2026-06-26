@@ -1,6 +1,10 @@
 /**
  * /admin/leads — operator view of funnel leads from the public scanner.
  *
+ * v7 restyle: replaces shadcn Table components with v7 .tcard/.thead/.trow
+ * div-grid table structure using the shared dashboard CSS token layer.
+ * All data-fetching, auth gating, sorting, and helper logic are unchanged.
+ *
  * Where these come from:
  *   Public /scan → visitor enters email → POST /api/scan-ingest → createLead()
  *   writes a row to the `leads` table (RLS-no-policy, service-role only). This
@@ -24,14 +28,6 @@ import { redirect } from "next/navigation";
 import { getAdminUser } from "@/lib/auth/require-admin";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { listLeads, type Lead, type LeadTotals } from "@/lib/leads";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
 // Always render fresh — leads change as the funnel runs.
 export const dynamic = "force-dynamic";
@@ -51,28 +47,26 @@ function domainOf(url: string): string {
   }
 }
 
-/** Score chip palette — maps to Redline severity tokens. */
-function scoreClass(score: number | null) {
-  if (score === null)
-    return "bg-[var(--surface-2)] text-[var(--ink-600)]";
-  if (score >= 80)
-    return "bg-[color-mix(in_srgb,var(--color-sev-passed)_15%,transparent)] text-[var(--color-sev-passed)] ring-1 ring-[color-mix(in_srgb,var(--color-sev-passed)_30%,transparent)]";
-  if (score >= 60)
-    return "bg-[color-mix(in_srgb,var(--color-sev-moderate)_15%,transparent)] text-[var(--color-sev-moderate)] ring-1 ring-[color-mix(in_srgb,var(--color-sev-moderate)_30%,transparent)]";
-  return "bg-[color-mix(in_srgb,var(--color-sev-critical)_15%,transparent)] text-[var(--color-sev-critical)] ring-1 ring-[color-mix(in_srgb,var(--color-sev-critical)_30%,transparent)]";
+/** Map a nullable score to a v7 pill tone. */
+function scoreTone(score: number | null): string {
+  if (score === null) return "gray";
+  if (score >= 80) return "green";
+  if (score >= 60) return "med";
+  return "high";
 }
 
-function statusClass(status: Lead["status"]) {
+/** Map lead status to a v7 pill tone. */
+function statusTone(status: Lead["status"]): string {
   switch (status) {
     case "won":
-      return "bg-[color-mix(in_srgb,var(--color-sev-passed)_15%,transparent)] text-[var(--color-sev-passed)]";
+      return "green";
     case "qualified":
     case "contacted":
-      return "bg-signal-600/20 text-signal-700";
+      return "low";
     case "lost":
-      return "bg-[var(--surface-2)] text-[var(--ink-600)]";
+      return "gray";
     default:
-      return "bg-[color-mix(in_srgb,var(--color-sev-moderate)_20%,transparent)] text-[var(--color-sev-moderate)]"; // "new"
+      return "med"; // "new" — needs attention
   }
 }
 
@@ -95,11 +89,15 @@ export default async function AdminLeads() {
   const newCount = leads.filter((l) => l.status === "new").length;
 
   return (
-    <div className="space-y-7">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      {/* ── Page header ──────────────────────────────────────────────── */}
+      <div className="between" style={{ marginBottom: "22px" }}>
         <div>
-          <h1 className="font-sans text-2xl font-bold tracking-tight">Leads</h1>
-          <p className="mt-1 text-sm text-[var(--ink-600)]">
+          <div className="pagehead" style={{ marginBottom: 0 }}>
+            Admin CRM
+            <b>Leads</b>
+          </div>
+          <p style={{ fontSize: "13px", color: "var(--t2)", marginTop: "4px" }}>
             {leads.length === 0
               ? "Scanner leads will appear here as people request their report."
               : `${leads.length} lead${leads.length === 1 ? "" : "s"} from the scanner` +
@@ -107,64 +105,82 @@ export default async function AdminLeads() {
                 " — worst-scoring sites first."}
           </p>
         </div>
-        <Link href="/admin" className="transition-colors text-sm font-medium text-[var(--ink-600)] hover:text-[var(--ink-900)]">
-          ← Customers
+        <Link href="/admin" className="btn">
+          <i className="ti ti-arrow-left" aria-hidden="true" />
+          Customers
         </Link>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
-        <Table>
-          <TableHeader>
-            <TableRow className="border-[var(--border)] hover:bg-transparent">
-              <TableHead className="px-5 py-3 text-xs uppercase tracking-wide text-[var(--ink-600)]">Email</TableHead>
-              <TableHead className="px-5 py-3 text-xs uppercase tracking-wide text-[var(--ink-600)]">Site</TableHead>
-              <TableHead className="px-5 py-3 text-xs uppercase tracking-wide text-[var(--ink-600)]">Score</TableHead>
-              <TableHead className="px-5 py-3 text-xs uppercase tracking-wide text-[var(--ink-600)]">Issues</TableHead>
-              <TableHead className="px-5 py-3 text-xs uppercase tracking-wide text-[var(--ink-600)]">Status</TableHead>
-              <TableHead className="px-5 py-3 text-xs uppercase tracking-wide text-[var(--ink-600)]">When</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {leads.length === 0 && (
-              <TableRow className="border-[var(--border)] hover:bg-transparent">
-                <TableCell colSpan={6} className="px-5 py-10 text-center text-[var(--ink-600)]">
-                  No leads yet — they appear when someone runs the public scanner and asks for the report.
-                </TableCell>
-              </TableRow>
-            )}
-            {leads.map((lead) => (
-              <TableRow key={lead.id} className="border-[var(--border)] transition-colors hover:bg-[var(--surface-2)]">
-                <TableCell className="px-5 py-3 font-medium text-[var(--ink-900)]">{lead.email}</TableCell>
-                <TableCell className="px-5 py-3 text-[var(--ink-600)]">
-                  <a
-                    href={lead.url}
-                    target="_blank"
-                    rel="noopener noreferrer nofollow"
-                    className="underline-offset-2 hover:underline"
-                  >
-                    {domainOf(lead.url)}
-                  </a>
-                </TableCell>
-                <TableCell className="px-5 py-3">
-                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold ${scoreClass(lead.score)}`}>
-                    {lead.score ?? "—"}
-                  </span>
-                </TableCell>
-                <TableCell className="px-5 py-3 font-semibold text-[var(--ink-900)]">
-                  {issueTotal(lead.totals)}
-                </TableCell>
-                <TableCell className="px-5 py-3">
-                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${statusClass(lead.status)}`}>
-                    {lead.status}
-                  </span>
-                </TableCell>
-                <TableCell className="px-5 py-3 text-[var(--ink-600)]">
-                  {new Date(lead.createdAt).toLocaleDateString()}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      {/* ── Leads table ───────────────────────────────────────────────── */}
+      <div className="tcard admin-tbl-leads" role="table" aria-label="Leads">
+        {/* Header */}
+        <div className="thead" role="row">
+          <div role="columnheader">Email</div>
+          <div role="columnheader">Site</div>
+          <div role="columnheader">Score</div>
+          <div role="columnheader">Issues</div>
+          <div role="columnheader">Status</div>
+          <div role="columnheader">When</div>
+        </div>
+
+        {/* Empty state */}
+        {leads.length === 0 && (
+          <div
+            className="trow"
+            style={{ gridTemplateColumns: "1fr", justifyItems: "center", color: "var(--t2)" }}
+            role="row"
+          >
+            <div role="cell">
+              No leads yet — they appear when someone runs the public scanner and asks for the report.
+            </div>
+          </div>
+        )}
+
+        {/* Rows */}
+        {leads.map((lead) => (
+          <div className="trow" key={lead.id} role="row">
+            {/* Email */}
+            <div role="cell" style={{ fontWeight: 600, color: "var(--deep)" }}>
+              {lead.email}
+            </div>
+
+            {/* Site domain */}
+            <div role="cell">
+              <a
+                href={lead.url}
+                target="_blank"
+                rel="noopener noreferrer nofollow"
+                style={{ color: "var(--primary-hover)", fontWeight: 600, textDecoration: "none" }}
+              >
+                {domainOf(lead.url)}
+              </a>
+            </div>
+
+            {/* Score */}
+            <div role="cell">
+              <span className={`pill ${scoreTone(lead.score)}`}>
+                {lead.score ?? "—"}
+              </span>
+            </div>
+
+            {/* Issue count */}
+            <div role="cell" style={{ fontWeight: 700, color: "var(--deep)", fontVariantNumeric: "tabular-nums" }}>
+              {issueTotal(lead.totals)}
+            </div>
+
+            {/* Status */}
+            <div role="cell">
+              <span className={`pill ${statusTone(lead.status)}`} style={{ textTransform: "capitalize" }}>
+                {lead.status}
+              </span>
+            </div>
+
+            {/* Date */}
+            <div role="cell" style={{ color: "var(--t3)", fontSize: "12.5px" }}>
+              {new Date(lead.createdAt).toLocaleDateString()}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

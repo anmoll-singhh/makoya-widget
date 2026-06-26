@@ -136,6 +136,40 @@
 
 ---
 
+---
+
+## Batch 3 "R" Review Fixes — 2026-06-26
+
+**Commit:** `f1eebee`  
+**CI result:** 72 test files, 605 passed, 6 skipped (RLS e2e — intentional). Widget: 59 tests pass. Typecheck: 0 errors.
+
+### I-1 — Broken org-name save (POST /api/org)
+- **Root cause:** only a GET handler existed; Account screen POSTing `{ name }` got 405.
+- **Fix:** added `POST` to `apps/web/app/api/org/route.ts` with full auth → membership → role check (`canManageTeam`, owner/admin) → Zod validation (`updateOrgBodySchema` in `lib/validation/org.ts`, min 1 / max 100) → service-role `updateOrg()` write (new helper in `lib/org.ts`) → returns `{ org }`.
+- **Test:** new `app/api/org/route.test.ts` (12 cases: 401/404/400 empty/400 too long/400 missing/403 developer/200 owner/500 error path + 5 GET cases).
+
+### I-2 — Pending invites never shown
+- **Root cause:** GET /api/team returned only `{ team }`, never `invites`.
+- **Fix:** added `listInvites(client, orgId)` to `lib/org.ts` (queries `team_invites` where `accepted_at IS NULL`, ordered newest-first, RLS-safe); GET now returns `{ team, invites }` via `Promise.all`. Field names (`id, orgId, email, role, invitedBy, acceptedAt, createdAt`) confirmed to match `TeamInvite` in `_AccountClient.tsx`. No `expiresAt` — not in DB schema.
+
+### M-3 — Fake contactSales confirmation
+- **Root cause:** `contactSales()` set a "Thanks — our team will reach out" toast with no network call.
+- **Fix:** removed the function entirely; replaced the Enterprise "Contact" `<button onClick={contactSales}>` with a real `<a href="mailto:sales@makoya.app?subject=Enterprise%20plan">` anchor. No phantom success state.
+
+### M-4 — Dead "Last 30 days" button
+- **Root cause:** `<button className="btn ghost">Last 30 days</button>` had no onClick; clicking it did nothing.
+- **Fix:** Changed to `<span className="btn ghost" style={{cursor:"default", userSelect:"none"}} aria-label="Showing last 30 days">` — visually identical but not a button; no misleading interactive affordance.
+
+### M-5 — Billing period toggle always initialises to "yearly"
+- **Root cause:** `useState<"yearly"|"monthly">("yearly")` hardcoded; `data` was loaded async so the real subscription period was never reflected.
+- **Fix:** inside the `load` callback's `.then`, after `setData(d)`, we now also call `setPeriod` from `d.subscription.period` (with fallback to `d.catalog.defaultPeriod`, then "yearly").
+
+### M-6 — "Across 0 tools" sub-label when featureActivations is zero
+- **Root cause:** the KPI sub-label unconditionally rendered `Across {data.usageByFeature.length} tool...`, giving "Across 0 tools" on empty data.
+- **Fix:** conditional render — when `data.usageByFeature.length > 0` show "Across N tool(s)"; otherwise show "No activations yet".
+
+---
+
 ## Concerns / Notes
 
 1. **Notifications PATCH:** The settings API accepts `notificationPrefs` in the body — this is supported by `lib/site-settings.ts` and the Zod schema. If the server rejects it (missing Zod field), the client shows a generic error. No breaking change.

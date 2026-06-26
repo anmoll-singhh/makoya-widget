@@ -1,0 +1,218 @@
+/*
+ * admin.css — Makoya Admin CRM, v7 design system
+ *
+ * Imports the shared dashboard CSS (fonts, design tokens, component classes)
+ * so the admin CRM and the client dashboard share the same visual identity:
+ * navy / royal-blue / sage palette, Manrope + Satoshi type, v7 card/table/pill
+ * components, and all a11y media-query guards.
+ *
+ * Admin uses a topbar-only layout (no sidebar grid) — the extra layout rules
+ * below extend dashboard.css for the admin shell without touching the shared layer.
+ *
+ * DO NOT hand-edit the dashboard.css import path; it is the single source of
+ * visual truth. Any token change goes there first.
+ */
+
+@import '../dashboard/dashboard.css';
+
+/* ── Admin shell layout ──────────────────────────────────────────────────── */
+
+.admin-layout {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--t1);
+}
+
+/*
+ * Sticky glass topbar — mirrors the v7 topbar craft but as a full-width bar
+ * rather than the floating card used inside the dashboard shell.
+ */
+.admin-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 28px;
+  height: 62px;
+  background: rgba(248, 250, 253, 0.90);
+  -webkit-backdrop-filter: blur(18px) saturate(var(--glass-sat));
+  backdrop-filter: blur(18px) saturate(var(--glass-sat));
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 1px 0 rgba(13, 27, 77, 0.04);
+}
+
+/* Brand mark: Logo component + "Admin" pill badge */
+.admin-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--deep);
+}
+
+/* "Admin" badge rendered beside the brand wordmark */
+.admin-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  font-family: 'Manrope', system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary-hover);
+}
+
+/* Nav links cluster — sits after the brand */
+.admin-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 18px;
+}
+
+.admin-nav a {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 13px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--t2);
+  font-family: 'Manrope', system-ui, sans-serif;
+  text-decoration: none;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.admin-nav a:hover {
+  background: var(--primary-soft);
+  color: var(--primary-hover);
+}
+
+/* Active nav link (set via className on the Link) */
+.admin-nav a.on {
+  background: var(--primary-soft);
+  color: var(--primary-hover);
+}
+
+/* Trailing cluster: My Dashboard link + sign-out button */
+.admin-topbar-end {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Admin main content wrapper */
+.admin-content {
+  max-width: 1216px;
+  margin: 0 auto;
+  padding: 28px 28px 56px;
+}
+
+/* Section group headings (above scan history, requests, etc.) */
+.admin-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--t3);
+  margin-bottom: 10px;
+}
+
+/* Stat card grid (3-up on the Customers page) */
+.admin-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+/* ── Table column templates ───────────────────────────────────────────────
+   Applied as class on the .tcard wrapper so both .thead and .trow inside
+   inherit the right grid-template-columns. */
+
+/* Customers table: Customer | Plan | Last score | Open */
+.admin-tbl-customers .thead,
+.admin-tbl-customers .trow {
+  grid-template-columns: 1fr 110px 100px 80px;
+}
+
+/* Leads table: Email | Site | Score | Issues | Status | When */
+.admin-tbl-leads .thead,
+.admin-tbl-leads .trow {
+  grid-template-columns: 1.2fr 130px 80px 70px 100px 110px;
+}
+
+/* Requests table: Site | Type | When | Status */
+.admin-tbl-requests .thead,
+.admin-tbl-requests .trow {
+  grid-template-columns: 1fr 130px 170px 150px;
+}
+
+/* ── Domain avatar ────────────────────────────────────────────────────────
+   Used in customer rows: a small coloured tile showing the first letter. */
+.admin-dom-av {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  flex: none;
+  box-shadow: var(--sh-tile);
+}
+
+/* ── a11y media guards ────────────────────────────────────────────────────
+   Strip purely-decorative depth when the user opts out. */
+@media (prefers-reduced-transparency: reduce) {
+  .admin-topbar {
+    background: var(--bg);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-nav a {
+    transition: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .admin-topbar {
+    background: Canvas;
+    border-color: CanvasText;
+    backdrop-filter: none;
+  }
+
+  .admin-badge {
+    border: 1px solid CanvasText;
+    background: Canvas;
+  }
+
+  .admin-dom-av {
+    border: 1px solid CanvasText;
+    background: Canvas;
+    color: CanvasText;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-tbl-customers .thead,
+  .admin-tbl-customers .trow { grid-template-columns: 1fr 90px 80px 60px; }
+
+  .admin-tbl-leads .thead,
+  .admin-tbl-leads .trow { grid-template-columns: 1fr 100px 70px 60px 90px 90px; }
+
+  .admin-tbl-requests .thead,
+  .admin-tbl-requests .trow { grid-template-columns: 1fr 110px 130px 120px; }
+
+  .admin-stats { grid-template-columns: 1fr 1fr 1fr; }
+}
