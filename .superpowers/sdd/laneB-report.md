@@ -108,6 +108,25 @@ test:widget ✓ (59 widget tests)
 
 ---
 
+---
+
+## Lane B Review Fixes (2026-06-26)
+
+Commit: `e1b3f4f` on `feat/v7-dashboard`
+
+| ID | File | Fix |
+|----|------|-----|
+| I-1 | `app/api/sites/route.test.ts` | Added 429 rate-limit test case; mocks `checkRateLimit.mockResolvedValue(true)`, asserts status 429 and `createSite` not called. |
+| M-1 | `app/api/sites/route.ts` | Corrected misleading file-header comment: token is returned in 201 body for API consumer convenience only; the `/install` page re-mints server-side (deterministic). Wizard does NOT pass token as URL param. |
+| M-2 | `app/dashboard/agents/new/AddAgent.tsx` | `rawDomain.startsWith("http")` → `rawDomain.startsWith("http://") \|\| rawDomain.startsWith("https://")` (prevents `httpsomething.com` false-positive). |
+| M-3 | `app/dashboard/agents/new/AddAgent.tsx` | Added `aria-current={now ? "step" : undefined}` to the active `StepBar` step `<div>`. |
+| M-4 | `app/dashboard/page.tsx` | No-user fallback now redirects to `/login?next=/dashboard` instead of `/dashboard/agents`. |
+| M-5 | `app/dashboard/agents/new/AddAgent.tsx` | Replaced `data.siteId!` non-null assertion with explicit falsy guard: sets `setError("Unexpected error. Please try again.")` and returns early if `data.siteId` is falsy. |
+
+CI result after fixes: `71 test files passed | 1 skipped`, `593 tests passed | 6 skipped`, typecheck ✓, sync:shared ✓, widget tests ✓.
+
+---
+
 ## Concerns / Notes
 
 - `lastAuditAt` in `AgentSummary` is a "YYYY-MM" period string (from monthly reports trend), not a full ISO timestamp. The UI can format this as needed. Future: expose `created_at` from `scans` table for exact dates.
