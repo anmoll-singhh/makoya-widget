@@ -7,6 +7,7 @@ import {
   rowToSubscription,
   getPlanQuota,
   getSubscription,
+  getMonthlyWidgetOpens,
   listPlanQuotas,
   DEFAULT_SUBSCRIPTION_SLUG,
 } from "./billing";
@@ -248,5 +249,99 @@ describe("listPlanQuotas", () => {
   it("throws on an infra error", async () => {
     const client = makeFakeClient({ error: { message: "boom" } });
     await expect(listPlanQuotas(client)).rejects.toBeTruthy();
+  });
+});
+
+// ── getMonthlyWidgetOpens: sum widget_event_daily opens within the current month ─
+//
+// A focused fake for the widget_event_daily rollup. It records the eq/gte/lt
+// filters the query applies and, when awaited, returns only the rows that match
+// site_id, event, and the half-open [gte(day), lt(day)) window — so the test can
+// prove the month-window summation drops rows outside the current calendar month.
+function makeEventClient(opts: { rows?: any[]; error?: any }) {
+  function from(_table: string) {
+    const f: { site_id?: string; event?: string; gteDay?: string; ltDay?: string } = {};
+    const builder: any = {
+      select() {
+        return builder;
+      },
+      eq(col: string, val: any) {
+        if (col === "site_id") f.site_id = val;
+        if (col === "event") f.event = val;
+        return builder;
+      },
+      gte(_col: string, val: string) {
+        f.gteDay = val;
+        return builder;
+      },
+      lt(_col: string, val: string) {
+        f.ltDay = val;
+        return builder;
+      },
+      then(resolve: (v: any) => void) {
+        if (opts.error) return resolve({ data: null, error: opts.error });
+        const data = (opts.rows ?? []).filter(
+          (r) =>
+            r.site_id === f.site_id &&
+            r.event === f.event &&
+            (f.gteDay === undefined || r.day >= f.gteDay) &&
+            (f.ltDay === undefined || r.day < f.ltDay)
+        );
+        return resolve({ data, error: null });
+      },
+    };
+    return builder;
+  }
+  return { from } as any;
+}
+
+describe("getMonthlyWidgetOpens", () => {
+  // Build day strings relative to "now" so the test tracks the real current month.
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const thisMonth = `${now.getUTCFullYear()}-${pad(now.getUTCMonth() + 1)}`;
+  const prev = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 15));
+  const lastMonth = `${prev.getUTCFullYear()}-${pad(prev.getUTCMonth() + 1)}`;
+  const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+  const nextMonth = `${next.getUTCFullYear()}-${pad(next.getUTCMonth() + 1)}`;
+
+  it("sums only this month's open rows for the site (drops other months/events/sites)", async () => {
+    const client = makeEventClient({
+      rows: [
+        { site_id: "s1", event: "open", day: `${thisMonth}-01`, count: 10 },
+        { site_id: "s1", event: "open", day: `${thisMonth}-17`, count: 5 },
+        // excluded: previous & next month
+        { site_id: "s1", event: "open", day: `${lastMonth}-28`, count: 100 },
+        { site_id: "s1", event: "open", day: `${nextMonth}-01`, count: 100 },
+        // excluded: a different event type
+        { site_id: "s1", event: "feature_activated", day: `${thisMonth}-10`, count: 100 },
+        // excluded: a different site
+        { site_id: "s2", event: "open", day: `${thisMonth}-10`, count: 100 },
+      ],
+    });
+    expect(await getMonthlyWidgetOpens(client, "s1")).toBe(15);
+  });
+
+  it("returns 0 when the site has no open rows this month", async () => {
+    const client = makeEventClient({
+      rows: [{ site_id: "s1", event: "open", day: `${lastMonth}-05`, count: 42 }],
+    });
+    expect(await getMonthlyWidgetOpens(client, "s1")).toBe(0);
+  });
+
+  it("ignores non-numeric/NaN counts when summing", async () => {
+    const client = makeEventClient({
+      rows: [
+        { site_id: "s1", event: "open", day: `${thisMonth}-02`, count: 7 },
+        { site_id: "s1", event: "open", day: `${thisMonth}-03`, count: NaN },
+        { site_id: "s1", event: "open", day: `${thisMonth}-04`, count: "bad" },
+      ],
+    });
+    expect(await getMonthlyWidgetOpens(client, "s1")).toBe(7);
+  });
+
+  it("throws on an infra error", async () => {
+    const client = makeEventClient({ error: { message: "boom" } });
+    await expect(getMonthlyWidgetOpens(client, "s1")).rejects.toBeTruthy();
   });
 });
