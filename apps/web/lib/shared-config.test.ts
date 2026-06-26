@@ -38,3 +38,31 @@ describe("expanded widget config", () => {
     expect(resolveConfig("s1", { defaultLanguage: "es" }).defaultLanguage).toBe("es");
   });
 });
+
+describe("widget runtime config extras (v3.1)", () => {
+  it("DEFAULT_CONFIG has the runtime-extra fields with safe defaults", () => {
+    expect(DEFAULT_CONFIG.customTriggerSelector).toBe("");
+    expect(DEFAULT_CONFIG.domObserverEnabled).toBe(true);
+    expect(DEFAULT_CONFIG.inheritFonts).toBe(false);
+    expect(DEFAULT_CONFIG.mobileEnabled).toBe(true);
+  });
+  it("resolveConfig fills runtime extras from defaults when absent", () => {
+    const c = resolveConfig("s1", {});
+    expect(c.customTriggerSelector).toBe("");
+    expect(c.domObserverEnabled).toBe(true);
+    expect(c.inheritFonts).toBe(false);
+    expect(c.mobileEnabled).toBe(true);
+  });
+  it("resolveConfig keeps provided runtime extras", () => {
+    const c = resolveConfig("s1", {
+      customTriggerSelector: "#a11y",
+      domObserverEnabled: false,
+      inheritFonts: true,
+      mobileEnabled: false,
+    });
+    expect(c.customTriggerSelector).toBe("#a11y");
+    expect(c.domObserverEnabled).toBe(false);
+    expect(c.inheritFonts).toBe(true);
+    expect(c.mobileEnabled).toBe(false);
+  });
+});

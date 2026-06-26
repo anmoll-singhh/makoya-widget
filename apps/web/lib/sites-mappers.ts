@@ -12,6 +12,11 @@ export interface SiteConfig {
   accessibilityStatementUrl: string;
   defaultLanguage: WidgetLanguage;
   panelTitle: string;
+  // v3.1 widget-runtime extras (served in the public config — safe display fields).
+  customTriggerSelector: string;
+  domObserverEnabled: boolean;
+  inheritFonts: boolean;
+  mobileEnabled: boolean;
 }
 
 export function rowToConfig(row: any): SiteConfig {
@@ -27,6 +32,10 @@ export function rowToConfig(row: any): SiteConfig {
     accessibilityStatementUrl: row.accessibility_statement_url ?? "",
     defaultLanguage: row.default_language ?? "en",
     panelTitle: row.panel_title ?? "",
+    customTriggerSelector: row.custom_trigger_selector ?? "",
+    domObserverEnabled: row.dom_observer_enabled ?? true,
+    inheritFonts: row.inherit_fonts ?? false,
+    mobileEnabled: row.mobile_enabled ?? true,
   };
 }
 
@@ -42,5 +51,9 @@ export function configToRow(patch: Partial<SiteConfig>): Record<string, unknown>
   if (patch.accessibilityStatementUrl !== undefined) out.accessibility_statement_url = patch.accessibilityStatementUrl;
   if (patch.defaultLanguage !== undefined) out.default_language = patch.defaultLanguage;
   if (patch.panelTitle !== undefined) out.panel_title = patch.panelTitle;
+  if (patch.customTriggerSelector !== undefined) out.custom_trigger_selector = patch.customTriggerSelector;
+  if (patch.domObserverEnabled !== undefined) out.dom_observer_enabled = patch.domObserverEnabled;
+  if (patch.inheritFonts !== undefined) out.inherit_fonts = patch.inheritFonts;
+  if (patch.mobileEnabled !== undefined) out.mobile_enabled = patch.mobileEnabled;
   return out;
 }

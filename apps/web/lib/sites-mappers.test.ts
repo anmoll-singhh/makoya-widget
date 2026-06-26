@@ -12,6 +12,8 @@ describe("sites mappers", () => {
       launcherIcon: "eye", featuresEnabled: ["textSize"], hideBranding: true,
       launcherSize: "md", defaultProfile: "none",
       accessibilityStatementUrl: "", defaultLanguage: "en", panelTitle: "",
+      customTriggerSelector: "", domObserverEnabled: true,
+      inheritFonts: false, mobileEnabled: true,
     });
   });
   it("configToRow only includes provided fields, snake_cased", () => {
@@ -41,5 +43,47 @@ describe("widget config v3 mapping", () => {
     expect(row.launcher_size).toBe("sm");
     expect(row.panel_title).toBe("Hi");
     expect(row.default_language).toBeUndefined();
+  });
+});
+
+describe("widget runtime config extras mapping (v3.1)", () => {
+  it("rowToConfig defaults runtime extras when columns are absent", () => {
+    const cfg = rowToConfig({
+      site_id: "s1", primary_color: "#000", position: "bottom-right",
+      launcher_icon: "eye", features_enabled: ["textSize"], hide_branding: false,
+    });
+    expect(cfg.customTriggerSelector).toBe("");
+    expect(cfg.domObserverEnabled).toBe(true);
+    expect(cfg.inheritFonts).toBe(false);
+    expect(cfg.mobileEnabled).toBe(true);
+  });
+  it("rowToConfig maps the runtime-extra columns when present", () => {
+    const cfg = rowToConfig({
+      site_id: "s1", primary_color: "#000", position: "bottom-right",
+      launcher_icon: "eye", features_enabled: ["textSize"], hide_branding: false,
+      custom_trigger_selector: "#open", dom_observer_enabled: false,
+      inherit_fonts: true, mobile_enabled: false,
+    });
+    expect(cfg.customTriggerSelector).toBe("#open");
+    expect(cfg.domObserverEnabled).toBe(false);
+    expect(cfg.inheritFonts).toBe(true);
+    expect(cfg.mobileEnabled).toBe(false);
+  });
+  it("configToRow round-trips the runtime extras in snake_case", () => {
+    const row = configToRow({
+      customTriggerSelector: "#open", domObserverEnabled: false,
+      inheritFonts: true, mobileEnabled: false,
+    });
+    expect(row.custom_trigger_selector).toBe("#open");
+    expect(row.dom_observer_enabled).toBe(false);
+    expect(row.inherit_fonts).toBe(true);
+    expect(row.mobile_enabled).toBe(false);
+  });
+  it("configToRow omits runtime extras that are not provided", () => {
+    const row = configToRow({ customTriggerSelector: "#open" });
+    expect(row.custom_trigger_selector).toBe("#open");
+    expect(row.dom_observer_enabled).toBeUndefined();
+    expect(row.inherit_fonts).toBeUndefined();
+    expect(row.mobile_enabled).toBeUndefined();
   });
 });
