@@ -18,6 +18,7 @@ import { useState, useRef, useEffect, useCallback, type ReactNode } from "react"
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { Site } from "@/lib/sites";
+import { Tour } from "./_components/Tour";
 
 interface ShellUser {
   name: string;
@@ -119,6 +120,9 @@ export function Shell({ sites, user, children }: ShellProps) {
 
   return (
     <div className="app" style={{ fontFamily: "'Manrope', system-ui, sans-serif" }}>
+      {/* First-login product tour — renders as a portal-style fixed overlay */}
+      <Tour />
+
       {/* Skip link */}
       <a href="#main" className="skip">
         Skip to main content
