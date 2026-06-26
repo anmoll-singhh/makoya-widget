@@ -170,6 +170,54 @@ export async function listPlanQuotas(client: SupabaseClient): Promise<PlanQuotaR
 }
 
 /**
+ * Sums a site's widget "open" events for the CURRENT UTC calendar month — the
+ * documented default usage metric the Billing screen compares against
+ * `quota.visitLimit` for its SOFT over-quota warning. Reads the same
+ * `widget_event_daily` rollup the Analytics screen uses (event='open'), scoped by
+ * RLS to the caller's own sites.
+ *
+ * The window is computed as YYYY-MM-DD day strings (matching the rollup's `day`
+ * column) — first day of this month (inclusive) up to first day of next month
+ * (exclusive). We deliberately do NOT reuse reports.monthRange here: it returns
+ * full ISO timestamps, and comparing the date-only `day` column against an ISO
+ * timestamp would lexically drop the month's first day ("2026-06-01" sorts before
+ * "2026-06-01T00:00:00.000Z").
+ *
+ * Supabase has no cheap server-side SUM without an RPC, so we select the bucket
+ * counts and sum in JS — the same approach getWidgetAnalytics takes. There is at
+ * most one row per (day, event='open') per site, so the row count is bounded by
+ * the days in a month. THROWS on infra error; the billing route catches it and
+ * degrades to `usage: null` so the screen never 500s on a usage hiccup.
+ */
+export async function getMonthlyWidgetOpens(
+  client: SupabaseClient,
+  siteId: string
+): Promise<number> {
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth(); // 0..11
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const startDay = `${year}-${pad(month + 1)}-01`;
+  // Date.UTC normalises December (month index 12) into January of the next year.
+  const next = new Date(Date.UTC(year, month + 1, 1));
+  const endDay = `${next.getUTCFullYear()}-${pad(next.getUTCMonth() + 1)}-01`;
+
+  const { data, error } = await client
+    .from("widget_event_daily")
+    .select("count")
+    .eq("site_id", siteId)
+    .eq("event", "open")
+    .gte("day", startDay)
+    .lt("day", endDay);
+  if (error) throw error;
+  return (data ?? []).reduce(
+    (sum: number, r: { count?: unknown }) =>
+      sum + (typeof r.count === "number" && Number.isFinite(r.count) ? r.count : 0),
+    0
+  );
+}
+
+/**
  * Reads a site's subscription. RLS scopes the read to the owner. Unlike most
  * reads this NEVER returns null: a site with no subscription row is, by
  * definition, on the Free / inactive default — returning that record keeps every
