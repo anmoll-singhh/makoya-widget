@@ -177,7 +177,10 @@ describe("getOverview", () => {
         error: null,
       },
       widget_heartbeats: {
-        data: { site_id: "s", first_seen_at: "2026-06-20T12:00:00Z", last_seen_at: "2026-06-26T11:59:00Z", ping_count: 100, last_url: null },
+        // last_seen_at must be relative-recent (deriveInstallStatus uses the REAL
+        // now): a fixed timestamp goes stale and flips active→monitoring once >30min
+        // of wall-clock pass. Keep it a minute ago so "active" is deterministic.
+        data: { site_id: "s", first_seen_at: "2026-06-20T12:00:00Z", last_seen_at: new Date(Date.now() - 60_000).toISOString(), ping_count: 100, last_url: null },
         error: null,
       },
       activity_log: {
