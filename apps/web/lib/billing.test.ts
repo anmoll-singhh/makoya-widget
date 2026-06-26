@@ -9,6 +9,7 @@ import {
   getSubscription,
   getMonthlyWidgetOpens,
   listPlanQuotas,
+  selectPlan,
   DEFAULT_SUBSCRIPTION_SLUG,
 } from "./billing";
 
@@ -343,5 +344,77 @@ describe("getMonthlyWidgetOpens", () => {
   it("throws on an infra error", async () => {
     const client = makeEventClient({ error: { message: "boom" } });
     await expect(getMonthlyWidgetOpens(client, "s1")).rejects.toBeTruthy();
+  });
+});
+
+// ── selectPlan: record the chosen plan as "trialing" (payment pending) ──────────
+//
+// A focused fake for the billing_subscriptions upsert. It captures the row + the
+// onConflict option the call passes, then returns that row back (mirroring
+// Postgres' `.upsert(...).select("*").single()`), so the test can assert the
+// SERVER-set fields (status:"trialing", renews_at:null) and the camelCase mapping
+// of the returned record. An `error` option proves infra failures throw.
+function makeUpsertClient(opts: { error?: any } = {}) {
+  const captured: { table?: string; row?: any; onConflict?: string } = {};
+  function from(table: string) {
+    captured.table = table;
+    const builder: any = {
+      upsert(row: any, options?: { onConflict?: string }) {
+        captured.row = row;
+        captured.onConflict = options?.onConflict;
+        return builder;
+      },
+      select() {
+        return builder;
+      },
+      single() {
+        if (opts.error) return Promise.resolve({ data: null, error: opts.error });
+        // Echo the written row straight back, like a real `returning` upsert.
+        return Promise.resolve({ data: captured.row, error: null });
+      },
+    };
+    return builder;
+  }
+  return { client: { from } as any, captured };
+}
+
+describe("selectPlan", () => {
+  it("upserts billing_subscriptions with SERVER-set status:trialing + null renews_at", async () => {
+    const { client, captured } = makeUpsertClient();
+    const sub = await selectPlan(client, "site-9", "growth", "monthly");
+
+    // Wrote to the right table, keyed on the site_id PK.
+    expect(captured.table).toBe("billing_subscriptions");
+    expect(captured.onConflict).toBe("site_id");
+
+    // The CLIENT only supplies planSlug + period; the SERVER fixes status + price.
+    expect(captured.row).toMatchObject({
+      site_id: "site-9",
+      plan_slug: "growth",
+      period: "monthly",
+      status: "trialing",
+      renews_at: null,
+    });
+    expect(typeof captured.row.updated_at).toBe("string");
+
+    // Returns the mapped (camelCase) subscription record.
+    expect(sub).toMatchObject({
+      siteId: "site-9",
+      planSlug: "growth",
+      period: "monthly",
+      status: "trialing",
+      renewsAt: null,
+    });
+  });
+
+  it("threads each purchasable plan + period through to the row", async () => {
+    const { client, captured } = makeUpsertClient();
+    await selectPlan(client, "site-1", "starter", "yearly");
+    expect(captured.row).toMatchObject({ plan_slug: "starter", period: "yearly", status: "trialing" });
+  });
+
+  it("throws on an infra error", async () => {
+    const { client } = makeUpsertClient({ error: { message: "boom" } });
+    await expect(selectPlan(client, "site-1", "scale", "yearly")).rejects.toBeTruthy();
   });
 });
