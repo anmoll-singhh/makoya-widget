@@ -3,7 +3,9 @@
 > **This is the single glance-able source of truth.** Read this first; it answers "where are we, what's in flight, what's blocked, what's next."
 > Detailed narrative history lives in [`SESSION.md`](./SESSION.md) (append-only log). This file is the *dashboard view* on top of it.
 >
-> **Last updated:** 2026-06-26 · **Updated by:** Claude (block 23 — v3.1 backend Waves 1–5 + wiring LIVE (14 migrations in prod, advisor clean); **minimal v3.1 frontend deployed + verified at `/v3`**; admin form + full pipeline verified end-to-end with a real scan)
+> **Last updated:** 2026-06-26 · **Updated by:** Claude (block 24 — **v7 PRODUCTION DASHBOARD SHIPPED + LIVE**: full cutover, v7 is now `/dashboard` (multi-site "Agents" + "Mike" audit), new login page, admin restyled to v7, honest Stripe stub. Multi-agent build: 4 lanes, every lane R-reviewed + Opus final whole-branch review (entitlement/honesty/security/XSS/cutover all PASS), ci 605 tests + prod build green, deployed `dpl_4snDZQbTP8quyZQpoEtTna4UCkzC`, live smoke green. `/v3` + old dashboard DELETED. See `docs/V7-PRODUCT-REVIEW.md`.)
+>
+> **Prior:** block 23 — v3.1 backend Waves 1–5 + wiring LIVE (14 migrations in prod); minimal v3.1 frontend at `/v3` (now superseded by v7).
 >
 > **Backup status:** ✅ All branches pushed to `origin` (github.com/anmoll-singhh/makoya-widget). No work is local-only.
 >
@@ -16,9 +18,9 @@
 
 | | |
 |---|---|
-| **Current phase** | **Phase H — bulletproofing (code+DB+CI DONE; rest founder-gated)** · then Phase 2 billing = **Stripe** |
+| **Current phase** | **v7 production dashboard LIVE** · next = **Stripe** (real payments) + **Supabase Pro** (free tier auto-pauses) |
 | **Prod URL** | https://makoya-gamma.vercel.app (deployed from `main`, manual `vercel --prod`) |
-| **Prod = state** | ✅ **LIVE on `main`** — Phase 1.5 (token wall + core-bypass close) + scanner second-engine deployed 2026-06-25 (`dpl_HWjCBHvCGdP5t52nwBQwE2kfheNi`). Verified live: loader forwards `?t=`, core.js fetch-gates, `/api/config?t=` → `no-store`+`active:true` (monitor), `/api/public-scan`→200. **Token + enforcement both ship OFF** (monitor). |
+| **Prod = state** | ✅ **v7 LIVE on `main`** (`dpl_4snDZQbTP8quyZQpoEtTna4UCkzC`, 2026-06-26). v7 IS `/dashboard` now (multi-site Agents + Mike audit + login + admin restyle + honest Stripe stub). `/v3` + old dashboard deleted. Smoke green: `/login` 200 (v7), `/dashboard`→`/login` 307, `GET /api/sites` 401, widget loader 200. Buy-now writes `trialing` (no charge); invoices = honest empty state; entitlement gates on `status==='active'` only. |
 | **Canonical branch** | `main` — all code merged + QA-green + deployed |
 | **Biggest risk right now** | Set `WIDGET_SIGNING_SECRET` in Vercel + watch monitor logs BEFORE ever flipping `WIDGET_ENFORCE` (avoid the two-flag lockout — plan A2 truth table). Shopify publish still founder-gated (Partner account). |
 | **Next founder unblock** | Stripe account · enable Supabase leaked-password toggle · free accounts (Sentry/PostHog/Upstash/Inngest) · rotate leaked keys |
