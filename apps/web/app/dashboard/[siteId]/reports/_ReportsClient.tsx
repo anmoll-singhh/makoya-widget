@@ -5,14 +5,21 @@
  * Wired to:
  *   GET /api/sites/[siteId]/reports      → MonthlyReport[]
  *   GET /api/sites/[siteId]/remediation  → RemediationEntry[]
+ *   GET /api/sites/[siteId]/report-pdf   → PDF bytes (auth-gated, latest scan)
  *
  * Real-data discipline (HARD RULES from plan):
  *   - ALL rows in the Monthly audits table come from the API. Mockup literals
  *     "June 2026 / 82", "May 2026 / 76", "April 2026 / 68" are NEVER hard-coded.
- *   - "Download PDF" link is REAL: shown only when `report.pdfUrl` is non-null;
- *     otherwise an honest "—" is rendered — never a fake link.
- *   - "Download all (PDF)" header button is honest: if no reports exist it is
- *     disabled; otherwise it opens the first available PDF (or notes none are ready).
+ *   - "Download PDF" per-month: shown (enabled) when `report.score != null`,
+ *     meaning a scan exists for that month. Disabled with a clear tooltip when
+ *     the month has no scan data. The download always fetches the site's latest
+ *     scan PDF (the only PDF the API produces — honest, no fake historical PDFs).
+ *   - "Download all (PDF)" header button is honest: disabled when no reports
+ *     exist; fetches the latest scan PDF when clicked.
+ *   - Both download paths: fetch → blob → URL.createObjectURL → <a download> →
+ *     click → revoke. Same-origin, credentials: "same-origin", no new tab.
+ *   - Busy state while generating; honest error if the fetch or PDF fails.
+ *     Error is shown inline and cleared on the next download attempt.
  *   - Report count in the card header is real (not "3 reports" hard-coded).
  *   - Remediation log tab shows real RemediationEntry rows; empty state is honest.
  *   - Loading / error states are all honest (role=status / role=alert).
@@ -24,7 +31,7 @@
  *    never auto-edits your code. Every fix is logged with the WCAG criterion it resolves."
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 /* ── API shapes (client-local; mirrors lib types) ────────────────────────────── */
 interface MonthlyReport {
@@ -67,6 +74,48 @@ function num(n: number): string {
   return n.toLocaleString();
 }
 
+/**
+ * Fetch the auth-gated PDF for this site and trigger a browser Save-As download.
+ *
+ * Uses URL.createObjectURL → hidden <a download> → click → revoke so the file
+ * lands in the user's downloads folder rather than opening a new tab (which
+ * popup-blockers would suppress). Throws on HTTP error or network failure so
+ * the caller can set an honest error state.
+ */
+async function fetchAndDownloadPdf(siteId: string, filename: string): Promise<void> {
+  const res = await fetch(`/api/sites/${siteId}/report-pdf`, {
+    credentials: "same-origin",
+  });
+
+  if (!res.ok) {
+    // Surface a distinguishable message for the "no scan yet" case.
+    let msg = "Couldn't generate the report PDF — please try again shortly.";
+    try {
+      const body = await res.json() as { error?: string };
+      if (body.error === "no_scan") {
+        msg = "No scan data found — run a scan first to generate a report.";
+      }
+    } catch {
+      // ignore JSON parse failure
+    }
+    throw new Error(msg);
+  }
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  // Revoke shortly after the click so the object URL is released, but not
+  // instantly (some browsers need a tick to start the download).
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  }, 200);
+}
+
 /* ── Loading / error primitives ──────────────────────────────────────────────── */
 function LoadingState({ label }: { label: string }) {
   return (
@@ -106,6 +155,15 @@ export function ReportsClient({ siteId }: Props) {
   const [remError, setRemError] = useState(false);
   const [remFetched, setRemFetched] = useState(false);
 
+  /* PDF download state — shared "Download all" button + per-row buttons.
+     downloadingPeriod: null = idle, "all" = "Download all" in progress,
+     "<YYYY-MM>" = that row's "Download" in progress. */
+  const [downloadingPeriod, setDownloadingPeriod] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  /* Keep a stable filename ref derived from the first available report URL. */
+  const filenameRef = useRef("makoya-report.pdf");
+
   /* ── Fetch monthly reports on mount ───────────────────────────────────────── */
   useEffect(() => {
     let live = true;
@@ -144,18 +202,29 @@ export function ReportsClient({ siteId }: Props) {
     return () => { live = false; };
   }, [tab, siteId, remFetched]);
 
-  /* ── Download all PDF — honest: links to the first available or notes absence */
-  function handleDownloadAll() {
-    if (!reports || reports.length === 0) return;
-    const firstWithPdf = reports.find((r) => r.pdfUrl);
-    if (firstWithPdf?.pdfUrl) {
-      window.open(firstWithPdf.pdfUrl, "_blank", "noopener noreferrer");
+  /* ── PDF download handler ─────────────────────────────────────────────────
+     `period` is "all" for the header button or "YYYY-MM" for a row button.
+     All downloads use the same /api/sites/[id]/report-pdf endpoint (latest scan).
+     We keep one downloadingPeriod at a time — clicking a second button while one
+     is in progress is prevented by the disabled state. */
+  async function handleDownload(period: string) {
+    if (downloadingPeriod !== null) return; // already busy
+    setDownloadingPeriod(period);
+    setDownloadError(null);
+    try {
+      await fetchAndDownloadPdf(siteId, filenameRef.current);
+    } catch (err) {
+      const msg = err instanceof Error
+        ? err.message
+        : "Couldn't generate the report PDF — please try again shortly.";
+      setDownloadError(msg);
+    } finally {
+      setDownloadingPeriod(null);
     }
-    // If no PDFs are available, the button is disabled (see below).
   }
 
-  const hasPdfs = reports?.some((r) => r.pdfUrl) ?? false;
   const hasReports = (reports?.length ?? 0) > 0;
+  const isBusy = downloadingPeriod !== null;
 
   return (
     <>
@@ -170,14 +239,37 @@ export function ReportsClient({ siteId }: Props) {
         <button
           className="btn pri"
           type="button"
-          onClick={handleDownloadAll}
-          disabled={!hasPdfs}
-          aria-label={hasPdfs ? "Download all available monthly reports as PDF" : "No PDF reports available yet"}
-          title={!hasPdfs ? "PDF reports are generated monthly — none available yet" : undefined}
+          onClick={() => { void handleDownload("all"); }}
+          disabled={!hasReports || isBusy}
+          aria-label={
+            !hasReports
+              ? "No reports available yet — no scan data"
+              : isBusy
+              ? "Generating PDF…"
+              : "Download latest audit report as PDF"
+          }
+          title={!hasReports ? "No scan data yet — run a scan first" : undefined}
         >
-          <i className="ti ti-download" aria-hidden="true" /> Download all (PDF)
+          {downloadingPeriod === "all" ? (
+            <>
+              <i className="ti ti-loader-2" aria-hidden="true" style={{ animation: "spin 1s linear infinite" }} />{" "}
+              Generating…
+            </>
+          ) : (
+            <>
+              <i className="ti ti-download" aria-hidden="true" /> Download all (PDF)
+            </>
+          )}
         </button>
       </div>
+
+      {/* Inline download error — honest, cleared on next attempt */}
+      {downloadError && (
+        <div className="note warn" role="alert" style={{ marginBottom: 14 }}>
+          <i className="ti ti-alert-triangle" aria-hidden="true" />
+          <div>{downloadError}</div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="seg" style={{ marginBottom: 16 }} role="tablist" aria-label="Reports sections">
@@ -237,52 +329,84 @@ export function ReportsClient({ siteId }: Props) {
                       <div>Resolved</div>
                       <div>Report</div>
                     </div>
-                    {reports!.map((r) => (
-                      <div
-                        key={r.period}
-                        className="trow"
-                        style={{ gridTemplateColumns: "1.4fr 90px 130px 120px 130px", alignItems: "center" }}
-                      >
-                        <div style={{ fontWeight: 700, color: "var(--deep)" }}>
-                          {monthLabel(r.period)}
+                    {reports!.map((r) => {
+                      /* A month with scan data (score != null) can produce a PDF.
+                         pdfUrl is always null (server doesn't pre-generate per-month
+                         PDFs) so we gate on score instead. */
+                      const hasScan = r.score != null;
+                      const isThisRowBusy = downloadingPeriod === r.period;
+                      return (
+                        <div
+                          key={r.period}
+                          className="trow"
+                          style={{ gridTemplateColumns: "1.4fr 90px 130px 120px 130px", alignItems: "center" }}
+                        >
+                          <div style={{ fontWeight: 700, color: "var(--deep)" }}>
+                            {monthLabel(r.period)}
+                          </div>
+                          <div style={{ fontWeight: 700, color: "var(--deep)" }}>
+                            {r.score != null ? r.score : "—"}
+                          </div>
+                          <div>{num(r.issuesFound)}</div>
+                          <div>
+                            {r.issuesResolved > 0 ? (
+                              <span className="pill green">
+                                <i className="ti ti-check" aria-hidden="true" />
+                                {num(r.issuesResolved)}
+                              </span>
+                            ) : (
+                              <span className="tiny muted">0</span>
+                            )}
+                          </div>
+                          <div>
+                            {hasScan ? (
+                              <button
+                                type="button"
+                                className="viewall"
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 5,
+                                  background: "none",
+                                  border: "none",
+                                  cursor: isBusy ? "wait" : "pointer",
+                                  padding: 0,
+                                  color: "inherit",
+                                  font: "inherit",
+                                }}
+                                disabled={isBusy}
+                                onClick={() => { void handleDownload(r.period); }}
+                                aria-label={
+                                  isThisRowBusy
+                                    ? "Generating PDF…"
+                                    : `Download ${monthLabel(r.period)} audit report PDF (latest scan)`
+                                }
+                                title="Downloads the latest scan report for this site"
+                              >
+                                {isThisRowBusy ? (
+                                  <>
+                                    <i className="ti ti-loader-2" aria-hidden="true" style={{ animation: "spin 1s linear infinite" }} />{" "}
+                                    Generating…
+                                  </>
+                                ) : (
+                                  <>
+                                    <i className="ti ti-download" aria-hidden="true" /> Download
+                                  </>
+                                )}
+                              </button>
+                            ) : (
+                              <span
+                                className="tiny muted"
+                                title="No scan data for this month — cannot generate a report"
+                                aria-label="No report available — no scan data for this month"
+                              >
+                                —
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <div style={{ fontWeight: 700, color: "var(--deep)" }}>
-                          {r.score != null ? r.score : "—"}
-                        </div>
-                        <div>{num(r.issuesFound)}</div>
-                        <div>
-                          {r.issuesResolved > 0 ? (
-                            <span className="pill green">
-                              <i className="ti ti-check" aria-hidden="true" />
-                              {num(r.issuesResolved)}
-                            </span>
-                          ) : (
-                            <span className="tiny muted">0</span>
-                          )}
-                        </div>
-                        <div>
-                          {r.pdfUrl ? (
-                            <a
-                              className="viewall"
-                              href={r.pdfUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              style={{ display: "inline-flex", alignItems: "center", gap: 5 }}
-                              aria-label={`Download ${monthLabel(r.period)} report PDF`}
-                            >
-                              <i className="ti ti-download" aria-hidden="true" /> Download
-                            </a>
-                          ) : (
-                            <span
-                              className="tiny muted"
-                              title="PDF not yet generated for this month"
-                            >
-                              —
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </section>
               )}

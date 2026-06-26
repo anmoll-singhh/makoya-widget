@@ -3,7 +3,8 @@
  * app/dashboard/[siteId]/proof/_ProofClient.tsx — v7 Proof of effort screen (CLIENT).
  *
  * Wired to:
- *   GET /api/sites/[siteId]/proof-pack → ProofPack
+ *   GET /api/sites/[siteId]/proof-pack  → ProofPack
+ *   GET /api/sites/[siteId]/report-pdf  → PDF bytes (auth-gated, latest scan)
  *
  * Real-data discipline (HARD RULES from plan):
  *   - NEVER shows a fake "Ready" / "Up to date" when an evidence item is absent.
@@ -12,9 +13,17 @@
  *   - Audit history count, remediation count, install days, VPAT count, manual
  *     audit count — ALL come from the API. Mockup literals "12 monthly Mike audits",
  *     "71 fixes logged", "142 days · 99.9% uptime" etc. are replaced with real data.
- *   - Download proof pack button is present but honest: there is no PDF generation
- *     endpoint yet — the button states this clearly rather than silently no-oping.
+ *   - "Download proof pack" fetches a REAL PDF from /api/sites/[id]/report-pdf
+ *     (the latest scan audit report). If no scan exists yet the button is disabled
+ *     with an honest tooltip explaining why. Never fakes a download or shows a
+ *     success state without a file.
  *   - Loading / error states are honest (role=status / role=alert).
+ *
+ * Download behaviour:
+ *   fetch → blob → URL.createObjectURL → hidden <a download> → click → revoke.
+ *   Same-origin fetch with credentials: "same-origin". No new tabs (popup-safe).
+ *   Busy state ("Generating…") while the server renders the PDF. Inline error
+ *   state on failure (network error, 500, or "no scan yet").
  *
  * Evidence items shown (6, matching the mockup):
  *   1. Audit history           → auditHistory.count + latestScore
@@ -60,6 +69,44 @@ function shortDate(iso: string | null): string {
 
 function plural(n: number, word: string): string {
   return `${n} ${word}${n === 1 ? "" : "s"}`;
+}
+
+/**
+ * Fetch the auth-gated PDF for this site and trigger a browser Save-As download.
+ * Throws on HTTP error or network failure so the caller can set an honest error state.
+ * Returns a distinguishable message for the "no scan yet" case.
+ */
+async function fetchAndDownloadPdf(siteId: string): Promise<void> {
+  const res = await fetch(`/api/sites/${siteId}/report-pdf`, {
+    credentials: "same-origin",
+  });
+
+  if (!res.ok) {
+    let msg = "Couldn't generate the proof pack PDF — please try again shortly.";
+    try {
+      const body = await res.json() as { error?: string };
+      if (body.error === "no_scan") {
+        msg = "No scan data found yet — run a scan first, then download the proof pack.";
+      }
+    } catch {
+      // ignore JSON parse failure
+    }
+    throw new Error(msg);
+  }
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  // Suggest a sensible filename; the Content-Disposition header in the response
+  // will override this in browsers that respect it.
+  a.download = "makoya-proof-pack.pdf";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  }, 200);
 }
 
 /* ── Evidence item component ─────────────────────────────────────────────────── */
@@ -112,7 +159,10 @@ export function ProofClient({ siteId, domain }: Props) {
   const [data, setData] = useState<ProofPack | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [downloadNote, setDownloadNote] = useState(false);
+
+  /* PDF download state */
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -130,6 +180,26 @@ export function ProofClient({ siteId, domain }: Props) {
       });
     return () => { live = false; };
   }, [siteId]);
+
+  /* ── PDF download handler ──────────────────────────────────────────────── */
+  async function handleDownload() {
+    if (downloading) return;
+    setDownloading(true);
+    setDownloadError(null);
+    try {
+      await fetchAndDownloadPdf(siteId);
+    } catch (err) {
+      const msg = err instanceof Error
+        ? err.message
+        : "Couldn't generate the proof pack PDF — please try again shortly.";
+      setDownloadError(msg);
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  /* Whether the site has at least one scan (needed to generate a PDF). */
+  const hasScan = data !== null && data.auditHistory.count > 0;
 
   /* ── Loading ─────────────────────────────────────────────────────────────── */
   if (loading) {
@@ -213,21 +283,50 @@ export function ProofClient({ siteId, domain }: Props) {
           <button
             className="btn pri"
             type="button"
-            onClick={() => setDownloadNote(true)}
-            aria-label="Download proof pack (PDF generation coming soon)"
+            onClick={() => { void handleDownload(); }}
+            disabled={downloading || !hasScan}
+            aria-label={
+              !hasScan
+                ? "Download proof pack — no scan data yet"
+                : downloading
+                ? "Generating PDF…"
+                : "Download proof pack as PDF"
+            }
+            title={
+              !hasScan
+                ? "No scan data yet — run a scan first to generate a proof pack"
+                : undefined
+            }
           >
-            <i className="ti ti-download" aria-hidden="true" /> Download proof pack
+            {downloading ? (
+              <>
+                <i className="ti ti-loader-2" aria-hidden="true" style={{ animation: "spin 1s linear infinite" }} />{" "}
+                Generating…
+              </>
+            ) : (
+              <>
+                <i className="ti ti-download" aria-hidden="true" /> Download proof pack
+              </>
+            )}
           </button>
         </div>
       </div>
 
-      {/* Download coming-soon note */}
-      {downloadNote && (
-        <div className="note info" role="status" style={{ marginBottom: 14 }}>
+      {/* Download error — honest, inline, cleared on next attempt */}
+      {downloadError && (
+        <div className="note warn" role="alert" style={{ marginBottom: 14 }}>
+          <i className="ti ti-alert-triangle" aria-hidden="true" />
+          <div>{downloadError}</div>
+        </div>
+      )}
+
+      {/* No-scan notice — shown only when the site has never been scanned */}
+      {!hasScan && (
+        <div className="note info" style={{ marginBottom: 14 }}>
           <i className="ti ti-info-circle" aria-hidden="true" />
           <div>
-            PDF proof pack generation is not yet available — your evidence items are recorded
-            and will be included when PDF export ships. Close this notice by refreshing.
+            No scan data yet — the proof pack PDF will be available once your site has been scanned.
+            Run a scan from the Overview screen.
           </div>
         </div>
       )}
