@@ -148,7 +148,7 @@ export default function AcceptInvitePage() {
               Your access is ready.
             </p>
             <a
-              href="/v3"
+              href="/dashboard"
               style={{
                 display: "inline-block",
                 marginTop: 18,
@@ -173,7 +173,7 @@ export default function AcceptInvitePage() {
               sent to a different email. Ask whoever invited you to send a fresh invite.
             </p>
             <a
-              href="/v3"
+              href="/dashboard"
               style={{
                 display: "inline-block",
                 marginTop: 18,
