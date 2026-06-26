@@ -13,9 +13,11 @@
     "typecheck": "npm run typecheck -w @makoya/web && npm run typecheck -w @makoya/widget",
     "test": "npm run test -w @makoya/web",
     "test:widget": "npm run test -w @makoya/widget",
-    "ci": "npm run sync:shared && npm run typecheck && npm run test && npm run test:widget"
+    "ci": "npm run sync:shared && npm run typecheck && npm run test && npm run test:widget",
+    "verify:db": "node scripts/verify-db.mjs"
   },
   "devDependencies": {
-    "jsdom": "^29.1.1"
+    "jsdom": "^29.1.1",
+    "pg": "^8.13.1"
   }
 }

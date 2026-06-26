@@ -1,0 +1,51 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# DB verification — proves every Supabase migration applies cleanly to a real
+# Postgres 16 and that RLS / triggers / the tenancy backfill behave.
+#
+# This reuses scripts/verify-db.mjs unchanged: the script targets $DATABASE_URL
+# when set (this job points it at the `postgres` service container) and otherwise
+# spins its own Docker container for local runs. One script, two environments.
+# ─────────────────────────────────────────────────────────────────────────────
+name: db-verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify-db:
+    runs-on: ubuntu-latest
+
+    # A throwaway Postgres 16 the script connects to via DATABASE_URL.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: ci_throwaway_password
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        # Wait until Postgres accepts connections before the job's steps run.
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      DATABASE_URL: postgres://postgres:ci_throwaway_password@localhost:5432/postgres
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # Only `pg` is needed at runtime, but a full install keeps the lockfile honest.
+      - run: npm ci
+
+      - name: Verify database schema (migrations + RLS + triggers + backfill)
+        run: node scripts/verify-db.mjs
