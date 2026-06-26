@@ -4,9 +4,15 @@
  * This constant is the SINGLE source the pricing cards (and any plan-aware UI)
  * map over. Every number here is transcribed EXACTLY from
  * docs/PRICING-STRATEGY-V3.1.md — names, taglines, prices, limits, the one
- * highlighted tier (Growth), CTA labels, the 4–6 feature bullets per tier, and
- * the three high-margin add-ons. `lib/billing/plans.test.ts` guards its
+ * highlighted tier (Growth), CTA labels, the feature comparison matrix per tier,
+ * and the three high-margin add-ons. `lib/billing/plans.test.ts` guards its
  * integrity so a drift from the doc breaks CI.
+ *
+ * Each plan's `features` array is the CANONICAL feature comparison matrix.
+ * `included: true` items appear with a green check on the card; `included: false`
+ * items appear muted with a dash to signal the upgrade trigger — without hiding
+ * what the buyer is missing. The billing client renders directly from this array;
+ * NEVER hard-code the matrix in the component.
  *
  * Slugs are the v3.1 catalog set (`free|starter|growth|scale|enterprise`),
  * deliberately DECOUPLED from the legacy `sites.plan` values (`free|pro|managed`)
@@ -27,9 +33,17 @@ export type PlanSlug = "free" | "starter" | "growth" | "scale" | "enterprise";
 /** Billing cadence. Yearly is the default (≈8× monthly, ~26–30% saving). */
 export type BillingPeriod = "monthly" | "yearly";
 
-/** One feature bullet rendered on a plan card. */
+/**
+ * One row in the per-plan feature comparison matrix.
+ * `included: true`  → green check, full-opacity text  (this tier has it).
+ * `included: false` → muted dash, reduced-opacity text (upgrade to get it).
+ *
+ * The billing card renders ALL rows so a buyer can see both what they get
+ * and what they would gain by upgrading — without hunting across columns.
+ */
 export interface PlanFeature {
   text: string;
+  included: boolean;
 }
 
 /** A high-margin service sold per-quote / fixed — NOT a subscription tier. */
@@ -75,7 +89,10 @@ export interface PlanCatalog {
   footnote: string;
 }
 
-const f = (text: string): PlanFeature => ({ text });
+/** Shorthand: feature IS included in this tier. */
+const f = (text: string): PlanFeature => ({ text, included: true });
+/** Shorthand: feature is NOT in this tier (shown muted — upgrade trigger). */
+const x = (text: string): PlanFeature => ({ text, included: false });
 
 export const PLAN_CATALOG: PlanCatalog = {
   defaultPeriod: "yearly",
@@ -97,6 +114,8 @@ export const PLAN_CATALOG: PlanCatalog = {
       badge: null,
       ctaLabel: "Start free",
       features: [
+        // Free is a try-before-you-buy funnel entry. No "not included" rows here —
+        // upgrade-trigger gaps are surfaced on the paid plan cards instead.
         f("Widget + your accessibility score"),
         f("1 scan per month"),
         f("View your top 3 issues"),
@@ -120,9 +139,13 @@ export const PLAN_CATALOG: PlanCatalog = {
       features: [
         f("Widget — 15 tools, 9 profiles, 4 languages"),
         f("Weekly scans + Mike's monthly audit"),
-        f("Monitoring and score-drop alerts"),
+        f("Monitoring & score-drop alerts"),
         f("Statement generator"),
-        f("1 site, email support"),
+        f("1 site, 1 seat, email support"),
+        // Upgrade triggers — surfaced so buyers know what Growth adds:
+        x("Proof-of-effort pack"),
+        x("Remove branding, multiple sites & seats"),
+        x("VPAT / ACR"),
       ],
     },
     {
@@ -143,9 +166,12 @@ export const PLAN_CATALOG: PlanCatalog = {
         f("Everything in Starter, for 3 sites"),
         f("Proof-of-effort pack"),
         f("Remediation log (WCAG-mapped)"),
-        f("VPAT/ACR (1 per year)"),
+        f("VPAT / ACR (1 per year)"),
         f("Remove branding, 3 seats + roles"),
-        f("Daily scans, priority support"),
+        f("Daily scans, read-only API"),
+        // Upgrade triggers — surfaced so buyers see what Scale adds:
+        x("Full API & 24-month analytics"),
+        x("White-label & SSO / SAML"),
       ],
     },
     {
@@ -164,11 +190,13 @@ export const PLAN_CATALOG: PlanCatalog = {
       ctaLabel: "Choose Scale",
       features: [
         f("Everything in Growth, for 10 sites"),
-        f("Unlimited VPAT"),
-        f("10 seats + roles"),
-        f("Full API, 24-month retention"),
-        f("Partner-eligible, white-label add-on"),
+        f("Unlimited VPAT / ACR"),
+        f("10 seats + roles, full API"),
+        f("24-month analytics, partner-eligible"),
+        f("White-label (add-on)"),
         f("Priority + chat support"),
+        // Upgrade trigger — surfaced so buyers see what Enterprise adds:
+        x("SSO / SAML + dedicated CSM & SLA"),
       ],
     },
     {

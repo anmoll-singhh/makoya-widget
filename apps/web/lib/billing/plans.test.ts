@@ -56,12 +56,26 @@ describe("PLAN_CATALOG integrity", () => {
     expect(by("enterprise")).toMatchObject({ visitLimit: null, siteLimit: null, seats: null });
   });
 
-  it("gives every plan 4–6 feature bullets and a CTA label", () => {
+  it("gives every plan 4–10 feature rows (included + not-included) and a CTA label", () => {
+    // Feature rows now include both `included: true` (checks) and `included: false`
+    // (upgrade-trigger dashes), so the count can exceed the original 4–6 range.
+    // The upper bound of 10 is a sanity guard against runaway copy.
     for (const plan of PLAN_CATALOG.plans) {
       expect(plan.features.length).toBeGreaterThanOrEqual(4);
-      expect(plan.features.length).toBeLessThanOrEqual(6);
-      for (const f of plan.features) expect(f.text.length).toBeGreaterThan(0);
+      expect(plan.features.length).toBeLessThanOrEqual(10);
+      for (const f of plan.features) {
+        expect(f.text.length).toBeGreaterThan(0);
+        expect(typeof f.included).toBe("boolean");
+      }
       expect(plan.ctaLabel.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("has at least one included feature per paid plan", () => {
+    const paid = PLAN_CATALOG.plans.filter((p) => p.slug !== "free");
+    for (const plan of paid) {
+      const included = plan.features.filter((f) => f.included);
+      expect(included.length).toBeGreaterThanOrEqual(1);
     }
   });
 
