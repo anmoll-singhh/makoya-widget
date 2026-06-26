@@ -12,6 +12,7 @@
  *   - Current plan badge    → data.subscription.planSlug === p.slug (from API)
  *   - Plan prices           → data.catalog.plans[].yearlyPrice / monthlyPrice (real)
  *   - Visit limit text      → data.catalog.plans[].visitLimit (real)
+ *   - Feature matrix        → data.catalog.plans[].features (real; included boolean per row)
  *   - Invoices              → HONEST EMPTY STATE only — never fake "Paid" rows
  *   - PostHog               → plan_buy_now event fired on successful checkout
  *
@@ -21,6 +22,12 @@
  *   The "current plan" card label shows whichever matches the real status.
  *   A trialing subscription IS shown as the current plan visually — the entitlement
  *   for feature access elsewhere in the product is separately gated on 'active'.
+ *
+ * FEATURE MATRIX:
+ *   Each plan card renders the per-plan feature list from PLAN_CATALOG.features[].
+ *   `included: true`  → green check + full-weight text (you have this).
+ *   `included: false` → muted dash + lighter text (upgrade to unlock).
+ *   Source of truth is lib/billing/plans.ts — NEVER hard-code the matrix here.
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -36,7 +43,11 @@ interface Plan {
   highlighted: boolean;
   badge: string | null;
   ctaLabel: string;
-  features: { text: string }[];
+  /**
+   * Feature comparison matrix from PLAN_CATALOG. `included: true` = green check;
+   * `included: false` = muted dash (upgrade trigger). Rendered in catalog order.
+   */
+  features: { text: string; included: boolean }[];
 }
 interface BillingData {
   subscription: {
@@ -83,6 +94,111 @@ function firePlanBuyNow(slug: string, period: string) {
   } catch {
     // Fail silently — telemetry never breaks the UI
   }
+}
+
+/* ── Feature list sub-component ─────────────────────────────────────────────── */
+/**
+ * Renders the per-plan feature comparison matrix.
+ * Included items: green check icon + dark readable text.
+ * Not-included items: muted dash icon + lighter text (signals the upgrade gap).
+ *
+ * Readability guardrail: font-size ≥ 12.5px, weight ≥ 500. No tiny light-gray text.
+ */
+function PlanFeatureList({ features }: { features: Plan["features"] }) {
+  // Split into included/not-included so included items always come first
+  const included = features.filter((f) => f.included);
+  const notIncluded = features.filter((f) => !f.included);
+
+  return (
+    <ul
+      aria-label="Plan features"
+      style={{
+        listStyle: "none",
+        margin: "12px 0 16px",
+        padding: 0,
+        display: "flex",
+        flexDirection: "column",
+        gap: 7,
+      }}
+    >
+      {included.map((feat, i) => (
+        <li
+          key={`inc-${i}`}
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 8,
+          }}
+        >
+          <i
+            className="ti ti-check"
+            aria-hidden="true"
+            style={{
+              fontSize: 15,
+              flexShrink: 0,
+              marginTop: 1,
+              color: "var(--green-ink)",
+            }}
+          />
+          <span
+            style={{
+              fontSize: 13,
+              fontWeight: 500,
+              color: "var(--t1)",
+              lineHeight: 1.4,
+            }}
+          >
+            {feat.text}
+          </span>
+        </li>
+      ))}
+      {notIncluded.length > 0 && (
+        <>
+          {/* Visual separator between included and upgrade-trigger rows */}
+          <li
+            aria-hidden="true"
+            style={{
+              height: 1,
+              background: "var(--border)",
+              margin: "4px 0",
+              listStyle: "none",
+            }}
+          />
+          {notIncluded.map((feat, i) => (
+            <li
+              key={`exc-${i}`}
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 8,
+              }}
+            >
+              <i
+                className="ti ti-minus"
+                aria-hidden="true"
+                style={{
+                  fontSize: 15,
+                  flexShrink: 0,
+                  marginTop: 1,
+                  color: "var(--t3)",
+                }}
+              />
+              <span
+                style={{
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: "var(--t3)",
+                  lineHeight: 1.4,
+                }}
+              >
+                {feat.text}
+              </span>
+            </li>
+          ))}
+        </>
+      )}
+    </ul>
+  );
 }
 
 /* ── Props ─────────────────────────────────────────────────────────────────────── */
@@ -300,6 +416,7 @@ export function BillingClient({ siteId }: Props) {
                   }}
                 >
                   <div className="cpad" style={{ display: "flex", flexDirection: "column", flex: 1 }}>
+                    {/* Plan name + badge/status pill */}
                     <div className="between" style={{ marginBottom: 4 }}>
                       <div
                         className="tiny muted"
@@ -321,6 +438,8 @@ export function BillingClient({ siteId }: Props) {
                         <span className="pill b-blue">{p.badge}</span>
                       )}
                     </div>
+
+                    {/* Price */}
                     <div
                       style={{
                         fontFamily: "Satoshi",
@@ -341,11 +460,26 @@ export function BillingClient({ siteId }: Props) {
                         </>
                       )}
                     </div>
-                    <div className="tiny muted" style={{ marginBottom: 14 }}>
+
+                    {/* Visit limit */}
+                    <div className="tiny muted" style={{ marginBottom: 4 }}>
                       {p.visitLimit == null
                         ? "100k+ monthly visits"
                         : `Up to ${p.visitLimit.toLocaleString()} monthly visits`}
                     </div>
+
+                    {/*
+                     * Feature comparison matrix.
+                     * Source of truth: lib/billing/plans.ts PLAN_CATALOG.
+                     * Green check = included in this tier.
+                     * Muted dash  = not in this tier (upgrade trigger).
+                     * Never hard-code plan features in this component.
+                     */}
+                    {p.features.length > 0 && (
+                      <PlanFeatureList features={p.features} />
+                    )}
+
+                    {/* CTA — pushed to bottom of the card */}
                     <div style={{ marginTop: "auto" }}>
                       {isCurrent ? (
                         <button
