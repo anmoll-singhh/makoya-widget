@@ -1085,24 +1085,94 @@ function AnalyticsScreen({ base }: { base: string }) {
  * BILLING
  * ════════════════════════════════════════════════════════════════════════ */
 function BillingScreen({ base }: { base: string }) {
-  const { loading, error, data } = useApi<BillingData>(`${base}/billing`);
+  // `reload` busts the per-URL cache so a successful checkout re-reads the
+  // subscription and the chosen card flips to "Current plan" (see useApi).
+  const [reload, setReload] = useState(0);
+  const { loading, error, data } = useApi<BillingData>(`${base}/billing`, reload);
   const [period, setPeriod] = useState<"yearly" | "monthly">("yearly");
+  // `busy` holds the slug whose checkout POST is in flight (disables that card's
+  // button + shows a pending label). `ok`/`err` are the inline result banners —
+  // never an alert(), never a fabricated paid state (status comes from the API).
+  const [busy, setBusy] = useState<string | null>(null);
+  const [ok, setOk] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
 
   if (loading) return <><div className="h1" style={{ fontSize: 22 }}>Plan &amp; billing</div><Loading /></>;
   if (error || !data) return <><div className="h1" style={{ fontSize: 22 }}>Plan &amp; billing</div><Failed /></>;
 
   const currentSlug = data.subscription.planSlug;
+  const currentStatus = data.subscription.status;
   const currentPlan = data.catalog.plans.find((p) => p.slug === currentSlug);
+  // A plan counts as the live "Current plan" only when the subscription for that
+  // exact slug is active or trialing — an inactive/canceled row still lets the
+  // owner re-pick it. Status is read from the API; we never invent it locally.
+  const isActiveCurrent = (slug: string) =>
+    slug === currentSlug && (currentStatus === "active" || currentStatus === "trialing");
+
+  /**
+   * Buy now → POST {planSlug, period} to the checkout endpoint (built in a
+   * parallel lane). Contract: 200 `{ok:true, subscription, paymentPending:true}`
+   * (no real charge yet) / 400 on a bad request. On success we surface a calm
+   * confirmation and refetch the billing data so the card flips to Current plan.
+   * Any non-ok / thrown error shows a generic inline message — the page never
+   * crashes and no "paid" state is fabricated.
+   */
+  async function buy(slug: string) {
+    setErr(null);
+    setOk(null);
+    setBusy(slug);
+    try {
+      const res = await fetch(`${base}/billing/checkout`, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planSlug: slug, period }),
+      });
+      if (!res.ok) {
+        setErr("Couldn't switch your plan just now — please try again shortly.");
+        return;
+      }
+      const body = (await res.json().catch(() => null)) as { ok?: boolean; paymentPending?: boolean } | null;
+      if (!body?.ok) {
+        setErr("Couldn't switch your plan just now — please try again shortly.");
+        return;
+      }
+      const plan = data?.catalog.plans.find((p) => p.slug === slug);
+      setOk(
+        `You're on the ${plan?.name ?? slug} plan${body.paymentPending ? " (trial)" : ""}. No charge yet — we'll let you know before any billing starts once checkout is live.`
+      );
+      cache.delete(`${base}/billing`);
+      setReload((n) => n + 1);
+    } catch {
+      setErr("Network error — please try again shortly.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  /** Enterprise has no self-serve price — acknowledge inline, no fake action. */
+  function contactSales() {
+    setErr(null);
+    setOk("Thanks — our team will reach out about an Enterprise plan.");
+  }
 
   return (
     <section className="screen on">
       <div className="h1" style={{ fontSize: 22, marginBottom: 4 }}>Plan &amp; billing</div>
       <div className="muted" style={{ fontSize: 13.5, marginBottom: 16 }}>This agent is on the {currentPlan?.name ?? currentSlug} plan. Manage your subscription and invoices.</div>
+
+      <div className="note warn" style={{ marginBottom: 14, maxWidth: 980 }}><i className="ti ti-credit-card-off" aria-hidden /><div>
+        Payments aren&apos;t connected yet — choosing a plan activates it in trial; you&apos;ll be billed once we finish setting up checkout.
+      </div></div>
+
       <div className="note info" style={{ marginBottom: 18, maxWidth: 980 }}><i className="ti ti-calendar-event" aria-hidden /><div>
         Status <b>{data.subscription.status}</b>{data.subscription.renewsAt ? ` · renews ${shortDate(data.subscription.renewsAt)}` : ""}
         {data.usage && !data.usage.unlimited ? ` · ${num(data.usage.used)} / ${num(data.usage.limit)} monthly opens` : data.usage?.unlimited ? " · unlimited visits" : ""}
         {data.usage?.exceeded ? " — over plan limit" : ""}
       </div></div>
+
+      {ok && <div className="note good" style={{ marginBottom: 16, maxWidth: 980 }}><i className="ti ti-check" aria-hidden /><div>{ok}</div></div>}
+      {err && <div className="note warn" style={{ marginBottom: 16, maxWidth: 980 }}><i className="ti ti-alert-triangle" aria-hidden /><div>{err}</div></div>}
 
       <div className="between" style={{ marginBottom: 12, maxWidth: 980 }}>
         <b style={{ fontSize: 15 }}>Plans</b>
@@ -1115,7 +1185,9 @@ function BillingScreen({ base }: { base: string }) {
       <div className="grid4" style={{ maxWidth: 980, alignItems: "stretch" }}>
         {data.catalog.plans.filter((p) => p.slug !== "free").map((p) => {
           const price = period === "yearly" ? p.yearlyPrice : p.monthlyPrice;
-          const isCurrent = p.slug === currentSlug;
+          const isCurrent = isActiveCurrent(p.slug);
+          const isEnterprise = p.slug === "enterprise";
+          const submitting = busy === p.slug;
           return (
             <div className="card pad" key={p.slug} style={{ display: "flex", flexDirection: "column", border: p.highlighted ? "2px solid var(--blue)" : undefined }}>
               {p.badge && <span className="pill p-blue tiny" style={{ alignSelf: "flex-start", marginBottom: 8 }}>{p.badge}</span>}
@@ -1125,7 +1197,13 @@ function BillingScreen({ base }: { base: string }) {
                 {price == null ? "Custom" : `$${price.toLocaleString()}`}<span style={{ fontSize: 12, color: "var(--t3)", fontWeight: 500 }}>{price == null ? "" : period === "yearly" ? " /yr" : " /mo"}</span>
               </div>
               <div className="tiny muted" style={{ marginBottom: 14 }}>{p.visitLimit == null ? "100k+ visits" : `up to ${p.visitLimit.toLocaleString()} visits`}</div>
-              <button className={`btn ${isCurrent ? "" : "pri"}`} type="button" style={{ marginTop: "auto", justifyContent: "center" }}>{isCurrent ? "Current" : p.ctaLabel}</button>
+              {isCurrent ? (
+                <button className="btn" type="button" disabled aria-disabled="true" style={{ marginTop: "auto", justifyContent: "center" }}>Current plan</button>
+              ) : isEnterprise ? (
+                <button className="btn" type="button" onClick={contactSales} style={{ marginTop: "auto", justifyContent: "center" }}>Contact sales</button>
+              ) : (
+                <button className="btn pri" type="button" onClick={() => buy(p.slug)} disabled={busy !== null} aria-busy={submitting} style={{ marginTop: "auto", justifyContent: "center" }}>{submitting ? "Activating…" : "Buy now"}</button>
+              )}
             </div>
           );
         })}
