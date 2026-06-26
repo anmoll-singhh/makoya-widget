@@ -12,7 +12,7 @@
  *  - Forgot password link (mailto stub; no magic-link mode in v7)
  *  - DISABLED "Continue with Google" button: aria-disabled, "coming soon" badge
  *  - "New to Makoya? Start free" → /login?mode=signup or existing signup flow
- *  - Trust row: SOC 2 · GDPR-ready · WCAG-built
+ *  - Trust row: GDPR-ready · WCAG-built (SOC 2 dropped — not held)
  *
  * The form does NOT wire OAuth — Google SSO is intentionally stubbed with
  * aria-disabled="true" and a "coming soon" label, visible but not operable.
@@ -177,7 +177,7 @@ export function LoginForm() {
       {/* Trust row */}
       <div className="login-trust">
         <i className="ti ti-shield-check" aria-hidden="true" style={{ fontSize: 14 }} />
-        SOC 2 · GDPR-ready · WCAG-built
+        GDPR-ready · WCAG-built
       </div>
     </form>
   );
