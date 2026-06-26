@@ -91,6 +91,11 @@ returns boolean language sql security definer stable set search_path = public as
   select exists (select 1 from team_members tm where tm.org_id = org and tm.user_id = auth.uid());
 $$;
 revoke all on function is_org_member(uuid) from public, anon;
+-- Re-grant to the authenticated app role + service role. The blanket revoke above
+-- strips the default PUBLIC execute grant from EVERYONE (including `authenticated`),
+-- which would make the org-read policies error the moment a site has an org_id.
+-- We deliberately keep `anon` excluded.
+grant execute on function is_org_member(uuid) to authenticated, service_role;
 
 alter table organizations enable row level security;
 alter table team_members  enable row level security;
