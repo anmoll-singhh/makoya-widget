@@ -127,6 +127,10 @@ export async function getMembershipForUser(
     .from("team_members")
     .select("org_id, role")
     .eq("user_id", userId)
+    // Deterministic pick (review L2): one membership per user holds today, but
+    // order by created_at so the authorization basis can't flip if a second
+    // membership ever appears (accepted invites in a later wave).
+    .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
   if (error) throw error;
