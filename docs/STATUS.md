@@ -3,9 +3,9 @@
 > **This is the single glance-able source of truth.** Read this first; it answers "where are we, what's in flight, what's blocked, what's next."
 > Detailed narrative history lives in [`SESSION.md`](./SESSION.md) (append-only log). This file is the *dashboard view* on top of it.
 >
-> **Last updated:** 2026-06-26 · **Updated by:** Claude (block 24 — **v7 PRODUCTION DASHBOARD SHIPPED + LIVE**: full cutover, v7 is now `/dashboard` (multi-site "Agents" + "Mike" audit), new login page, admin restyled to v7, honest Stripe stub. Multi-agent build: 4 lanes, every lane R-reviewed + Opus final whole-branch review (entitlement/honesty/security/XSS/cutover all PASS), ci 605 tests + prod build green, deployed `dpl_4snDZQbTP8quyZQpoEtTna4UCkzC`, live smoke green. `/v3` + old dashboard DELETED. See `docs/V7-PRODUCT-REVIEW.md`.)
+> **Last updated:** 2026-06-27 · **Updated by:** Claude (block 25 — post-launch hardening + demo + UX wave. **Widget licensing enforcement now LIVE** (foreign-domain/unknown-site blocked, licensed sites load). Seeded a full **demo client (3 agents)** + admin so every screen is populated. **Wave-2 UX fixes shipped** (readability, default-agent, PDF downloads, plan feature matrix, first-login tour, interactive scan). **CRITICAL deploy gotcha found + fixed** — see §⚠️ DEPLOY below. Current prod build = `makoya-2da2afnji` on `main` @ `b537147`.)
 >
-> **Prior:** block 23 — v3.1 backend Waves 1–5 + wiring LIVE (14 migrations in prod); minimal v3.1 frontend at `/v3` (now superseded by v7).
+> **Prior:** block 24 — v7 production dashboard SHIPPED + LIVE (full cutover, multi-agent build, Opus final review). block 23 — v3.1 backend Waves 1–5 LIVE (14 migrations).
 >
 > **Backup status:** ✅ All branches pushed to `origin` (github.com/anmoll-singhh/makoya-widget). No work is local-only.
 >
@@ -20,10 +20,47 @@
 |---|---|
 | **Current phase** | **v7 production dashboard LIVE** · next = **Stripe** (real payments) + **Supabase Pro** (free tier auto-pauses) |
 | **Prod URL** | https://makoya-gamma.vercel.app (deployed from `main`, manual `vercel --prod`) |
-| **Prod = state** | ✅ **v7 LIVE on `main`** (`dpl_4snDZQbTP8quyZQpoEtTna4UCkzC`, 2026-06-26). v7 IS `/dashboard` now (multi-site Agents + Mike audit + login + admin restyle + honest Stripe stub). `/v3` + old dashboard deleted. Smoke green: `/login` 200 (v7), `/dashboard`→`/login` 307, `GET /api/sites` 401, widget loader 200. Buy-now writes `trialing` (no charge); invoices = honest empty state; entitlement gates on `status==='active'` only. |
-| **Canonical branch** | `main` — all code merged + QA-green + deployed |
-| **Biggest risk right now** | Set `WIDGET_SIGNING_SECRET` in Vercel + watch monitor logs BEFORE ever flipping `WIDGET_ENFORCE` (avoid the two-flag lockout — plan A2 truth table). Shopify publish still founder-gated (Partner account). |
-| **Next founder unblock** | Stripe account · enable Supabase leaked-password toggle · free accounts (Sentry/PostHog/Upstash/Inngest) · rotate leaked keys |
+| **Prod = state** | ✅ **v7 LIVE on `main` @ `b537147`**, prod build **`makoya-2da2afnji`** (aliased to makoya-gamma). v7 IS `/dashboard` (multi-site Agents + Mike + login + admin restyle + honest Stripe stub) **+ wave-2 UX** (readability, default-agent, PDF downloads, plan feature matrix, first-login tour, interactive scan). **Widget licensing ENFORCEMENT now ON** (`WIDGET_ENFORCE=true` + `WIDGET_SIGNING_SECRET` set in prod) — verified: foreign origin/unknown site → `active:false` (blocked), licensed site+domain → `active:true` (widget loads). Buy-now writes `trialing` (no charge); invoices honest empty; entitlement gates on `status==='active'`. |
+| **Canonical branch** | `main` — all merged + ci 606 green + prod build green + deployed |
+| **⚠️ DEPLOY METHOD (do not break)** | Deploy **ONLY** via `cd apps/web && vercel --prod --yes`. **GitHub auto-deploy is DISCONNECTED** (it was building from repo-root → empty 4s deploys that 404'd prod on every push). `git push origin main` = backup only, will NOT deploy. After any deploy, VERIFY `makoya-gamma` alias + routes (`/login`→200, `/dashboard`→307). Git author email is now `anmol.singhh17@gmail.com` (Vercel rejected the old `creativesgpt@` author). See §⚠️ DEPLOY. |
+| **Biggest risk right now** | None blocking. Enforcement is ON + verified safe (all live sites licensed+allowlisted). If re-enabling push-to-deploy, set Vercel **Root Directory = `apps/web`** first. |
+| **Next founder unblock** | Stripe account (real payments) · Supabase Pro ($25/mo — free tier auto-pauses) · enable Supabase leaked-password toggle |
+
+---
+
+## ⚠️ DEPLOY — read before deploying (block 25 hard-won)
+
+**Symptom seen twice:** the whole prod site 404'd (`bom1::… NOT_FOUND`) right after `git push`.
+**Root cause:** the Vercel project had **GitHub auto-deploy connected but misconfigured for this monorepo** — it built from the **repo root** (not `apps/web`), producing an **empty 4-second deployment** that 404'd everything, and Vercel **auto-promoted it to production on every push**.
+**Fix applied:** ran `vercel git disconnect` → *"will no longer create deployments when you push."* Push is now backup-only.
+
+**Rules going forward:**
+1. Deploy with **`cd apps/web && vercel --prod --yes`** — nothing else. Wait for `readyState: READY`.
+2. After deploying, **verify**: `vercel inspect makoya-gamma.vercel.app` → url should be your new `dpl`; then curl `/login`→200, `/dashboard`→307, and `GET /api/config/<siteId>` foreign-origin→`active:false`.
+3. If prod ever 404s again: `vercel ls` → find the last **good** `Ready` deploy (a real ~1m build, NOT a 4s one) → `vercel alias set <good-url> makoya-gamma.vercel.app`, then `vercel rm <bad-url> --yes`.
+4. **Git author email must be `anmol.singhh17@gmail.com`** (repo-local override was `creativesgpt@wavesmvmnt.com`, which Vercel rejected → "Not authorized" hung builds). Already set.
+5. To restore push-to-deploy later: in Vercel dashboard set **Root Directory = `apps/web`** BEFORE reconnecting Git, else it breaks again.
+
+## 🔐 Demo accounts & data (LIVE on makoya-gamma — for showing the product)
+
+> Seeded block 25 so every screen is populated. **Issues / analytics / uptime / monthly-reports are realistic DEMO SEED** (a real Mike scan via the daily cron — or a manual trigger — will replace them; the manual `/api/cron/rescan` trigger was rejected because local `.env.local` `CRON_SECRET` ≠ prod's — pull prod env or trigger from Vercel).
+
+| Role | Login | Goes to |
+|---|---|---|
+| **Admin (CRM)** | `anmols@wavesmvmnt.com` / `Mk-H3KZb1BRdHt6` | lands on empty `/dashboard/agents` (owns no site) → **navigate to `/admin`** for the CRM |
+| **Client (dashboard)** | `client@wavesmvmnt.com` / `Mk-Huml7hD7Spz0` | `/dashboard` → first agent's Overview (default-selected) |
+
+**Client owns 3 agents** (portfolio + switcher): wavesmvmnt.com `ba535d2e-7442-44cd-b7b7-c2cdd7bcb2ca` (Scale/active, widget INSTALLED + live) · crmmvmnt.com `67b81570-f76e-4e93-816f-b5c38ad45abe` (Growth/active) · blog.wavesmvmnt.com `061a4464-5b00-48ae-a347-11231ada31c3` (Growth/trial). Plus the old `demo@makoya.test` (W3C bad site, score 0) shows in admin.
+Widget snippet pattern: `<script src="https://makoya-gamma.vercel.app/widget/loader.js" data-site="<siteId>" defer></script>` (wavesmvmnt.com already has it; enforcement now requires the page's Origin to be the agent's allowlisted domain).
+**Two plan systems** (known): admin shows legacy `sites.plan` (free/pro/managed); the client billing screen reads the newer `billing_subscriptions` (scale/growth/…). Unify later.
+
+## 🎯 Up next (founder's queue for tomorrow — block 25 requests + gaps)
+
+- **Real Mike scan** of the live sites (replace the demo-seed issues): trigger `/api/cron/rescan` with the PROD `CRON_SECRET` (Bearer), or wait for the 6am cron (wavesmvmnt.com is marked stale so it'll re-scan). `runAndStoreScan` reconciles seeded issues.
+- **Stripe** (real payments) + **Supabase Pro** (free tier auto-pauses a live project) — the two things between demo and real business. See `docs/V7-PRODUCT-REVIEW.md` paid-tools register.
+- **Google OAuth** (login button is a stub) + **password reset** (currently a support mailto).
+- Founder feedback still open to iterate: readability (pass-1 shipped — darker tokens/heavier small text; iterate if still tight), keep polishing any screen that "feels off."
+- Optional: unify the dual plan system; remove the W3C demo customer; set Vercel Root Directory + reconnect Git if push-to-deploy wanted.
 
 ---
 

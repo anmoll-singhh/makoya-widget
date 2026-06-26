@@ -102,3 +102,26 @@ Anthropic API key (rotate) · Resend key (rotate; domain verified) · **Stripe**
 **Honest gaps (documented):** real Stripe payments (stub), Google OAuth (disabled stub), self-serve password reset (support mailto), partner commission $/real invoices (Stripe-gated). **Next:** Stripe + Supabase Pro (free tier auto-pauses a live project after 1 wk idle).
 
 **Spec/plan:** `docs/superpowers/specs/2026-06-26-makoya-v7-dashboard-design.md`, `docs/superpowers/plans/2026-06-26-makoya-v7-dashboard.md`.
+
+---
+
+## Block 25 — post-launch: enforcement, demo seeding, UX wave, deploy root-cause (2026-06-26→27)
+
+Continuation after v7 went live (block 24). Founder-driven, iterative.
+
+**1. Widget licensing enforcement — turned ON + proven.** Verified the config-endpoint verdict logic (`app/api/config/[siteId]/route.ts`): `active = enforce ? (siteExists && licenseActive && domainAllowed && tokenOk) : true`, with grace (missing token passes; only a WRONG token fails) and empty-allowlist/no-Origin → no block. Confirmed all live sites are `license_status=active` + allowlisted, then set `WIDGET_SIGNING_SECRET` (random) + `WIDGET_ENFORCE=true` in prod env (stdin pipe — never argv). Proved enforcement first **locally** (ran the app with `WIDGET_ENFORCE=true` against real prod data: correct-origin→active, foreign/unknown→blocked, cross-domain-id-reuse→blocked), then **on prod** after the deploy landed: foreign `evil.com`→`active:false`, licensed site+domain→`active:true`. Re-ran the live Playwright widget test under enforcement: widget still loads (Shadow DOM, 23 controls, effects apply, 0 errors). Net: licensing works and enforces without breaking legit installs.
+
+**2. Demo seeding (so the founder can SEE a populated product).** Created auth users via the Auth Admin REST API (native fetch — supabase-js realtime needs WebSocket that Node 20 lacks): **admin `anmols@wavesmvmnt.com`** (already in `ADMIN_EMAILS`) and **client `client@wavesmvmnt.com`**. Seeded (via Supabase MCP `execute_sql`, service role) **3 agents** under the client — wavesmvmnt.com (Scale/active), crmmvmnt.com (Growth/active), blog.wavesmvmnt.com (Growth/trial) — each with a scan + grouped issues + `widget_heartbeats` + `widget_event_daily` (30d) + `monthly_reports` + `remediation_log` + `accessibility_statements` + `activity_log`, so Overview/Mike/Reports/Analytics/Proof/Install/Billing all populate. The onboarding trigger auto-provisioned org+membership per site (Account/Partners work). Founder installed the real widget on wavesmvmnt.com (verified live). **Issues/analytics/uptime are DEMO SEED** — real Mike scan pending (manual `/api/cron/rescan` was 403 because local `.env.local` `CRON_SECRET` ≠ prod's; daily cron will re-scan — wavesmvmnt.com backdated to stale).
+
+**3. Wave-2 UX (founder feedback: "text not readable", glitches, missing bits).** Took live authed screenshots to diagnose, then shipped 6 fixes — built 4 in **parallel git worktrees** (disjoint files), R-reviewed the combined diff (security on the new PDF route CLEAR, honesty CLEAR; fixed 1 Important a11y [nested live regions] + 3 minors):
+   - **Readability pass** (`dashboard.css`): darker muted tokens (`--t2:#333A49`,`--t3:#4F576A`), base 14.5px, heavier/darker small text + sidebar.
+   - **Default-agent**: `/dashboard` now lands on the first agent's Overview (not a blank portfolio).
+   - **PDF downloads**: new owner-scoped `app/api/sites/[id]/report-pdf/route.ts` + wired Reports/Proof buttons (real blob download; disabled w/ reason when no scan).
+   - **Plan feature matrix**: `lib/billing/plans.ts` gains per-tier `features{included}` + billing cards render included(✓)/excluded(–).
+   - **First-login tour**: `app/dashboard/_components/Tour.tsx` (5 steps, skippable, focus-trapped, localStorage-gated) mounted in `Shell.tsx`.
+   - **Interactive scan**: `AddAgent.tsx` animated audit checklist over the REAL `/api/public-scan` (reduced-motion fallback).
+   ci 606 green, prod build green.
+
+**4. DEPLOY ROOT CAUSE (the recurring 404).** Twice the whole prod site 404'd right after `git push`. Diagnosed: the Vercel project had **GitHub auto-deploy connected but misconfigured for the monorepo** — building from repo root → **empty 4-second deployments** that 404 everything, auto-promoted to production on every push. Also hit earlier: builds hung "Not authorized" because the **git commit-author email** (`creativesgpt@wavesmvmnt.com`, a repo-local override) wasn't recognized by Vercel → fixed repo `user.email` to `anmol.singhh17@gmail.com`. **Permanent fix:** `vercel git disconnect` (push no longer deploys); deploy only via `cd apps/web && vercel --prod`. When prod 404'd, restored via `vercel alias set <good-dpl> makoya-gamma.vercel.app` + `vercel rm <bad-dpl>`. **Lesson for STATUS:** documented the deploy method + recovery in `STATUS.md §⚠️ DEPLOY`.
+
+**State at end of block 25:** `main @ b537147` (pushed to origin), prod build `makoya-2da2afnji` (aliased to makoya-gamma), enforcement ON + verified, all routes healthy. Open for tomorrow: real Mike scan, Stripe, Supabase Pro, Google OAuth/password-reset, continued UX polish. Credentials + siteIds + demo notes in `STATUS.md §🔐 Demo accounts & data`.
