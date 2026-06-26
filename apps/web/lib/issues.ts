@@ -262,6 +262,45 @@ export async function getIssueSiteId(
 }
 
 /**
+ * Reads one issue's owning `site_id` AND its CURRENT lifecycle `status` (or null
+ * if it doesn't exist / isn't visible to the caller). RLS scopes the read the
+ * same way as `getIssueSiteId`. The PATCH route uses this to BOTH confirm the
+ * issue belongs to the route's site AND learn the previous status, so it can fire
+ * a remediation/activity log only when an issue actually TRANSITIONS into
+ * `passing` (see `shouldLogResolve`). Throws on infra error.
+ */
+export async function getIssueMeta(
+  client: SupabaseClient,
+  issueId: string
+): Promise<{ siteId: string; status: IssueStatus } | null> {
+  const { data, error } = await client
+    .from("issues")
+    .select("site_id, status")
+    .eq("id", issueId)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? { siteId: data.site_id as string, status: data.status as IssueStatus } : null;
+}
+
+/**
+ * PURE: should flipping an issue from `prev` to `next` count as a "resolved"
+ * event worth logging to the remediation + activity logs?
+ *
+ * Only a real TRANSITION into `passing` counts: `prev !== 'passing'` AND
+ * `next === 'passing'`. A no-op (`passing` → `passing`) or any move that does not
+ * land on `passing` (e.g. → `failing`, → `needs_review`) is NOT logged, so the
+ * "issues resolved this month" metric never double-counts a re-save. `next` is
+ * the value from the validated PATCH body and may be undefined (assignee-only
+ * edit) → not a resolve.
+ */
+export function shouldLogResolve(
+  prev: IssueStatus,
+  next: IssueStatus | undefined
+): boolean {
+  return next === "passing" && prev !== "passing";
+}
+
+/**
  * Updates only `status` and/or `assignee_id` on one issue. With the cookie-bound
  * client the owner-update RLS policy enforces tenancy (a row the caller doesn't
  * own simply matches nothing). Throws on infra error.
