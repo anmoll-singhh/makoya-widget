@@ -26,7 +26,9 @@ export const jurisdictionSchema = z.enum(["ada", "aoda", "aca", "eaa"]);
  */
 export const statementBodySchema = z.object({
   brandName: z.string().min(1).max(120),
-  jurisdictions: z.array(jurisdictionSchema),
+  // Only 4 distinct legal values exist — cap the array so a caller can't write a
+  // huge `text[]` (storage/DoS amplification). The generator also de-dupes.
+  jurisdictions: z.array(jurisdictionSchema).max(4),
   conformanceTarget: z.string().min(1).max(60),
   contactEmail: z.string().min(1).max(254).email(),
 });

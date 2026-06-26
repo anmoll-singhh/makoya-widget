@@ -149,10 +149,13 @@ export async function upsertStatement(
 ): Promise<StatementRecord> {
   const html = generateStatementHtml(input);
   const nowIso = new Date().toISOString();
+  // De-dupe before persisting (defence-in-depth with the schema's .max(4)): the
+  // generator already de-dupes for display, but the stored array should match.
+  const jurisdictions = Array.from(new Set(input.jurisdictions));
   const row = {
     site_id: siteId,
     brand_name: input.brandName,
-    jurisdictions: input.jurisdictions,
+    jurisdictions,
     conformance_target: input.conformanceTarget,
     contact_email: input.contactEmail,
     html,
