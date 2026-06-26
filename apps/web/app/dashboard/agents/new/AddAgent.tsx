@@ -381,14 +381,13 @@ function ScanningAnimation({
       </div>
 
       {/*
-       * Visually-hidden live region — the only text AT reads aloud.
-       * aria-atomic="true" ensures the full phrase is read, not just the diff.
+       * Visually-hidden span — carries the current phase text for AT.
+       * aria-live / aria-atomic are intentionally absent here: the parent
+       * wrapper already has role="status" aria-live="polite", which announces
+       * subtree changes. Nesting a second live region would cause double-
+       * announcements on screen readers that support ARIA 1.1+ nesting rules.
        */}
-      <span
-        className="sr-only"
-        aria-live="polite"
-        aria-atomic="true"
-      >
+      <span className="sr-only">
         {`Scanning ${domain}: ${currentPhase}`}
       </span>
     </div>
@@ -618,8 +617,13 @@ export function AddAgent() {
     rawDomain: string
   ) {
     stopPhaseTimer();
-    // Jump to all-phases-done visually.
-    setScanPhaseIndex(SCAN_PHASES.length);
+    // Only tick all phases to ✓ on success — showing "all done" before
+    // revealing a failure state is dishonest UX. On failure we leave the
+    // phase ticker at whatever index it reached so the UI reflects that the
+    // scan stopped partway through, not that it completed successfully.
+    if (data !== null) {
+      setScanPhaseIndex(SCAN_PHASES.length);
+    }
     setScanResult(data);
 
     if (data) {

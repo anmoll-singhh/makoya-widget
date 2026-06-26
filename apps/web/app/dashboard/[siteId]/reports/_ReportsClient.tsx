@@ -31,7 +31,7 @@
  *    never auto-edits your code. Every fix is logged with the WCAG criterion it resolves."
  */
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 
 /* ── API shapes (client-local; mirrors lib types) ────────────────────────────── */
 interface MonthlyReport {
@@ -161,9 +161,6 @@ export function ReportsClient({ siteId }: Props) {
   const [downloadingPeriod, setDownloadingPeriod] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
-  /* Keep a stable filename ref derived from the first available report URL. */
-  const filenameRef = useRef("makoya-report.pdf");
-
   /* ── Fetch monthly reports on mount ───────────────────────────────────────── */
   useEffect(() => {
     let live = true;
@@ -212,7 +209,7 @@ export function ReportsClient({ siteId }: Props) {
     setDownloadingPeriod(period);
     setDownloadError(null);
     try {
-      await fetchAndDownloadPdf(siteId, filenameRef.current);
+      await fetchAndDownloadPdf(siteId, "makoya-report.pdf");
     } catch (err) {
       const msg = err instanceof Error
         ? err.message

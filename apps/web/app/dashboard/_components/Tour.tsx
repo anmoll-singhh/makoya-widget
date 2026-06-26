@@ -242,7 +242,7 @@ export function Tour() {
               aria-live="polite"
               aria-atomic="true"
               style={{
-                fontSize: 12,
+                fontSize: 12.5,
                 fontWeight: 700,
                 color: "var(--t3)",
                 letterSpacing: "0.06em",
