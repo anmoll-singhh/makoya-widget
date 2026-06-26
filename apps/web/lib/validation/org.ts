@@ -22,6 +22,13 @@ export const createInviteBodySchema = z.object({
 });
 export type CreateInviteBody = z.infer<typeof createInviteBodySchema>;
 
+// ── POST /api/org (rename org) ───────────────────────────────────────────────
+// Only owner/admin may rename the org. Name must be non-empty and bounded.
+export const updateOrgBodySchema = z.object({
+  name: z.string().min(1).max(100),
+});
+export type UpdateOrgBody = z.infer<typeof updateOrgBodySchema>;
+
 // ── POST /api/org/api-keys ────────────────────────────────────────────────────
 // Mint an API key. Name is a short human label for the key list.
 export const createApiKeyBodySchema = z.object({

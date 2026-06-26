@@ -123,9 +123,10 @@ export function AnalyticsClient({ siteId }: Props) {
         <p className="muted" style={{ maxWidth: "62ch", margin: 0 }}>
           How visitors use the accessibility widget on this agent.
         </p>
-        <button className="btn ghost" type="button">
+        {/* M-4: no day-range selector implemented — render as non-interactive label, not a button */}
+        <span className="btn ghost" style={{ cursor: "default", userSelect: "none" }} aria-label="Showing last 30 days">
           <i className="ti ti-calendar" aria-hidden="true" /> Last 30 days
-        </button>
+        </span>
       </div>
 
       {/* No-data honest empty state */}
@@ -154,9 +155,14 @@ export function AnalyticsClient({ siteId }: Props) {
             <i className="ti ti-click" aria-hidden="true" /> Feature activations
           </div>
           <div className="big">{num(data.featureActivations)}</div>
-          <div className="d muted">
-            Across {data.usageByFeature.length} tool{data.usageByFeature.length === 1 ? "" : "s"}
-          </div>
+          {/* M-6: only show "Across X tools" when there are actually activations */}
+          {data.usageByFeature.length > 0 ? (
+            <div className="d muted">
+              Across {data.usageByFeature.length} tool{data.usageByFeature.length === 1 ? "" : "s"}
+            </div>
+          ) : (
+            <div className="d muted">No activations yet</div>
+          )}
         </div>
         <div className="mcard">
           <div className="l">

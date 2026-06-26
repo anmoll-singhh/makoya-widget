@@ -1,7 +1,7 @@
 /**
  * /api/team — the caller's org roster + team invites.
  *
- *   GET  → list members of the caller's org (RLS-scoped read).
+ *   GET  → list members + pending invites of the caller's org. Returns { team, invites }.
  *   POST → invite a teammate. Gated by role: only owner/admin (`canManageTeam`)
  *          may invite. Returns the raw invite token EXACTLY ONCE so the caller can
  *          build the invite link; the token is never persisted (only its hash).
@@ -15,7 +15,7 @@
 import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
-import { getMembershipForUser, listTeam, createInvite } from "@/lib/org";
+import { getMembershipForUser, listTeam, listInvites, createInvite } from "@/lib/org";
 import { canManageTeam } from "@/lib/roles";
 import { captureError } from "@/lib/observability";
 import { parseBody } from "@/lib/validation/api";
@@ -31,8 +31,11 @@ export async function GET() {
   try {
     const membership = await getMembershipForUser(supabase, user.id);
     if (!membership) return NextResponse.json({ error: "not found" }, { status: 404 });
-    const team = await listTeam(supabase, membership.orgId);
-    return NextResponse.json({ team });
+    const [team, invites] = await Promise.all([
+      listTeam(supabase, membership.orgId),
+      listInvites(supabase, membership.orgId),
+    ]);
+    return NextResponse.json({ team, invites });
   } catch (err) {
     captureError(err, { route: "GET /api/team", userId: user.id });
     return NextResponse.json({ error: "server error" }, { status: 500 });

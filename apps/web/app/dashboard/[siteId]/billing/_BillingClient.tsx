@@ -109,7 +109,19 @@ export function BillingClient({ siteId }: Props) {
     fetch(`${base}/billing`, { credentials: "same-origin" })
       .then((r) => (r.ok ? (r.json() as Promise<BillingData>) : Promise.reject(r.status)))
       .then((d) => {
-        if (live) { setData(d); setLoading(false); }
+        if (live) {
+          setData(d);
+          setLoading(false);
+          // M-5: initialise period toggle from the real subscription period (fall back
+          // to catalog default then "yearly" so the toggle is never stale on reload).
+          const sub = d?.subscription?.period;
+          if (sub === "monthly" || sub === "yearly") {
+            setPeriod(sub);
+          } else {
+            const def = d?.catalog?.defaultPeriod;
+            setPeriod(def === "monthly" ? "monthly" : "yearly");
+          }
+        }
       })
       .catch(() => {
         if (live) { setError(true); setLoading(false); }
@@ -185,11 +197,6 @@ export function BillingClient({ siteId }: Props) {
     } finally {
       setBusy(null);
     }
-  }
-
-  function contactSales() {
-    setErr(null);
-    setOk("Thanks — our team will reach out about an Enterprise plan.");
   }
 
   const paidPlans = data.catalog.plans.filter((p) => p.slug !== "free");
@@ -351,14 +358,14 @@ export function BillingClient({ siteId }: Props) {
                           {currentStatus === "trialing" ? "Trial active" : "Current"}
                         </button>
                       ) : isEnterprise ? (
-                        <button
+                        // M-3: real mailto — no fake "thanks" confirmation
+                        <a
                           className="btn"
-                          type="button"
-                          style={{ width: "100%" }}
-                          onClick={contactSales}
+                          href="mailto:sales@makoya.app?subject=Enterprise%20plan"
+                          style={{ width: "100%", textDecoration: "none", display: "flex", justifyContent: "center", alignItems: "center", gap: 6 }}
                         >
-                          <i className="ti ti-mail" aria-hidden="true" /> Contact
-                        </button>
+                          <i className="ti ti-mail" aria-hidden="true" /> Contact sales
+                        </a>
                       ) : (
                         <button
                           className="btn pri"
