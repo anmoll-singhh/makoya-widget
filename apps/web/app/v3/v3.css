@@ -122,6 +122,8 @@
 .v3app .btn.pri{background:var(--blue);border-color:var(--blue);color:#fff;box-shadow:0 4px 12px rgba(30,99,255,.25)}
 .v3app .btn.pri:hover{background:var(--blue-d)}
 .v3app .btn i{font-size:17px}
+.v3app .btn:disabled,.v3app .btn[disabled]{opacity:.55;cursor:not-allowed;box-shadow:none}
+.v3app .btn:disabled:hover,.v3app .btn[disabled]:hover{background:var(--surface)}
 
 /* metric / glass cards */
 .v3app .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
