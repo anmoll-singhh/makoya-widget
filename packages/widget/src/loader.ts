@@ -74,7 +74,8 @@ export async function boot(): Promise<void> {
   // Only the explicit `false` suppresses the widget.
   if (active === false) return;
 
-  window.MakoyaWidget?.init({ ...DEFAULT_CONFIG, ...config, siteId });
+  // Forward the per-site token so the core's telemetry can attach it to beacons.
+  window.MakoyaWidget?.init({ ...DEFAULT_CONFIG, ...config, siteId, token });
 }
 
 // Auto-run on load (the real client snippet path). Guarded so test harnesses

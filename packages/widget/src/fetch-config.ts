@@ -50,8 +50,12 @@ export interface GatedConfig {
  * Resolve the config endpoint base the SAME way loader.ts does, so both bundles
  * agree. Overridable via the `MAKOYA_CONFIG_BASE` window global (set by the
  * build env); falls back to the production CDN.
+ *
+ * Exported so the telemetry module can derive the backend origin from the EXACT
+ * same mechanism (it takes `new URL(configBase()).origin`), guaranteeing usage
+ * beacons always target the same backend the widget already fetches config from.
  */
-function configBase(): string {
+export function configBase(): string {
   return (
     (window as any).MAKOYA_CONFIG_BASE ||
     "https://makoya-gamma.vercel.app/api/config"
