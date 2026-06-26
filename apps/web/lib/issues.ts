@@ -242,6 +242,26 @@ export async function listIssues(
 }
 
 /**
+ * Reads one issue's owning `site_id` (or null if it doesn't exist / isn't
+ * visible to the caller). With the cookie-bound client RLS already hides issues
+ * on sites the caller doesn't own, so the PATCH route uses this to turn a
+ * foreign/missing issue into a clean 404 and to confirm the issue belongs to the
+ * site in the route path. Throws on infra error.
+ */
+export async function getIssueSiteId(
+  client: SupabaseClient,
+  issueId: string
+): Promise<string | null> {
+  const { data, error } = await client
+    .from("issues")
+    .select("site_id")
+    .eq("id", issueId)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? (data.site_id as string) : null;
+}
+
+/**
  * Updates only `status` and/or `assignee_id` on one issue. With the cookie-bound
  * client the owner-update RLS policy enforces tenancy (a row the caller doesn't
  * own simply matches nothing). Throws on infra error.

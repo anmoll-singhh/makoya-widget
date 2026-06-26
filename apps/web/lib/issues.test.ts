@@ -6,6 +6,7 @@ import {
   upsertIssuesFromScan,
   listIssues,
   updateIssue,
+  getIssueSiteId,
   type IssueStatus,
 } from "./issues";
 
@@ -161,6 +162,10 @@ function makeFakeClient() {
         state.inFilter = { col, vals };
         return builder;
       },
+      maybeSingle() {
+        const found = rows.filter(matches);
+        return Promise.resolve({ data: found[0] ?? null, error: null });
+      },
       then(resolve: (v: any) => void) {
         if (state.op === "update") {
           const affected = rows.filter(matches);
@@ -263,6 +268,20 @@ describe("listIssues", () => {
     expect(grouped.failing.map((i) => i.ruleId).sort()).toEqual(["color-contrast", "image-alt"]);
     expect(grouped.needs_review.map((i) => i.ruleId)).toEqual(["region"]);
     expect(grouped.passing).toEqual([]);
+  });
+});
+
+describe("getIssueSiteId", () => {
+  it("returns the owning site_id for an existing issue", async () => {
+    const client = makeFakeClient();
+    await upsertIssuesFromScan(client, SITE, SCAN, groupedIssues());
+    const target = client._rows.find((r: any) => r.rule_id === "region");
+    expect(await getIssueSiteId(client, target.id)).toBe(SITE);
+  });
+
+  it("returns null for an unknown issue", async () => {
+    const client = makeFakeClient();
+    expect(await getIssueSiteId(client, "does-not-exist")).toBeNull();
   });
 });
 
