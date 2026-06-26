@@ -7,6 +7,8 @@ import {
   listIssues,
   updateIssue,
   getIssueSiteId,
+  getIssueMeta,
+  shouldLogResolve,
   type IssueStatus,
 } from "./issues";
 
@@ -282,6 +284,58 @@ describe("getIssueSiteId", () => {
   it("returns null for an unknown issue", async () => {
     const client = makeFakeClient();
     expect(await getIssueSiteId(client, "does-not-exist")).toBeNull();
+  });
+});
+
+// ── getIssueMeta: owning site_id + CURRENT status (powers the resolve-log gate) ─
+describe("getIssueMeta", () => {
+  it("returns the owning site_id and current status for an existing issue", async () => {
+    const client = makeFakeClient();
+    await upsertIssuesFromScan(client, SITE, SCAN, groupedIssues());
+    const target = client._rows.find((r: any) => r.rule_id === "region");
+    expect(await getIssueMeta(client, target.id)).toEqual({
+      siteId: SITE,
+      status: "needs_review",
+    });
+  });
+
+  it("reflects an updated status (so a re-save reads 'passing')", async () => {
+    const client = makeFakeClient();
+    await upsertIssuesFromScan(client, SITE, SCAN, groupedIssues());
+    const target = client._rows.find((r: any) => r.rule_id === "region");
+    await updateIssue(client, target.id, { status: "passing" as IssueStatus });
+    expect(await getIssueMeta(client, target.id)).toEqual({
+      siteId: SITE,
+      status: "passing",
+    });
+  });
+
+  it("returns null for an unknown issue", async () => {
+    const client = makeFakeClient();
+    expect(await getIssueMeta(client, "does-not-exist")).toBeNull();
+  });
+});
+
+// ── shouldLogResolve: PURE "log only on transition INTO passing" decision ──────
+describe("shouldLogResolve", () => {
+  it("logs when a non-passing issue transitions to passing", () => {
+    expect(shouldLogResolve("failing", "passing")).toBe(true);
+    expect(shouldLogResolve("needs_review", "passing")).toBe(true);
+  });
+
+  it("does NOT log a passing → passing no-op (avoids double counting)", () => {
+    expect(shouldLogResolve("passing", "passing")).toBe(false);
+  });
+
+  it("does NOT log moves that don't land on passing", () => {
+    expect(shouldLogResolve("passing", "failing")).toBe(false);
+    expect(shouldLogResolve("failing", "needs_review")).toBe(false);
+    expect(shouldLogResolve("needs_review", "failing")).toBe(false);
+  });
+
+  it("does NOT log an assignee-only edit (next status undefined)", () => {
+    expect(shouldLogResolve("failing", undefined)).toBe(false);
+    expect(shouldLogResolve("passing", undefined)).toBe(false);
   });
 });
 
