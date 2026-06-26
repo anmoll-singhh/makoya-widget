@@ -14,6 +14,7 @@ import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getSite } from "@/lib/sites";
 import { getWidgetAnalytics } from "@/lib/analytics";
+import { captureError } from "@/lib/observability";
 
 const DEFAULT_DAYS = 30;
 const MIN_DAYS = 1;
@@ -43,7 +44,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   try {
     const analytics = await getWidgetAnalytics(supabase, id, days);
     return NextResponse.json(analytics);
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? "failed to load analytics" }, { status: 500 });
+  } catch (e) {
+    // Generic message only — never echo a raw DB error to the client (it could
+    // leak table/column internals). Route the detail through the observability
+    // seam instead, matching the install-status route.
+    captureError(e, { route: "sites/[id]/analytics" });
+    return NextResponse.json({ error: "failed to load analytics" }, { status: 500 });
   }
 }
