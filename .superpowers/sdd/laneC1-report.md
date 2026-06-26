@@ -133,3 +133,45 @@
 | C1 | `e33dcd9` |
 | C2 | `5dfec2b` |
 | C3 | `e19d628` |
+
+---
+
+## Batch 1 Review Fixes — `9d7d422`
+
+**Date:** 2026-06-26  
+**Reviewer finding source:** Lane C batch 1 "R" review
+
+### I-1 — server-only guard (`lib/agent-context.ts`)
+Added `import "server-only";` as the first line. This prevents any client bundle
+from accidentally importing `mintSiteToken` (which calls `node:crypto`) via this
+module. Matches the pattern used by other server-only modules in the repo.
+
+### I-2 — unused `token` prop removed (`_OverviewClient.tsx`, `page.tsx`)
+Removed `token: string` from `OverviewClient`'s `Props` interface. Updated
+`page.tsx` to destructure only `{ site }` from `requireAgent(siteId)` and removed
+the `token={token}` JSX attribute. `requireAgent` is still called for auth/ownership
+enforcement; the token is simply not forwarded to the Overview screen, which never
+needed it.
+
+### M-1 — fabricated benchmark removed (`_OverviewClient.tsx`)
+Deleted the hardcoded "Industry avg. 89" dotted reference `<line>` from
+`TrendChart`'s SVG and its matching legend entry. No real industry-benchmark data
+exists; the line was a fabricated number. The chart now shows only the real score
+line/area.
+
+### M-2 — honest denominator (`_MikeClient.tsx`)
+Replaced `const WCAG_TOTAL = 50` with a runtime-computed `trackedCriteria`: the
+count of DISTINCT non-null `wcagCriterion` values present across *all* issues
+(failing + needs_review + passing). The display reads "X of N tracked criteria"
+where N is what the scanner actually checked. When `trackedCriteria === 0` (no
+scan data yet), the stat shows "No criteria checked yet" instead of dividing by
+zero.
+
+### M-3 — Escape key handler (`_MikeClient.tsx`)
+Added `onKeyDown` on the assignment dropdown `<div role="listbox">` that calls
+`setAssignOpen(false)` on `e.key === "Escape"`. Also added `tabIndex={-1}` so the
+div can receive keyboard focus. Closes the popover without requiring a mouse click.
+
+### CI result
+`npm run ci` — green. sync:shared (no drift), tsc (0 errors), vitest 71 files /
+593 tests passed, widget 59 assertions passed.
