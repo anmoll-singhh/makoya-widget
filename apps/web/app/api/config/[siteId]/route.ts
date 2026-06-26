@@ -161,6 +161,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ siteId: 
         accessibilityStatementUrl: DEFAULT_CONFIG.accessibilityStatementUrl,
         defaultLanguage: DEFAULT_CONFIG.defaultLanguage,
         panelTitle: DEFAULT_CONFIG.panelTitle,
+        customTriggerSelector: DEFAULT_CONFIG.customTriggerSelector,
+        domObserverEnabled: DEFAULT_CONFIG.domObserverEnabled,
+        inheritFonts: DEFAULT_CONFIG.inheritFonts,
+        mobileEnabled: DEFAULT_CONFIG.mobileEnabled,
       },
       { headers }
     );
@@ -182,6 +186,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ siteId: 
       accessibilityStatementUrl: cfg.accessibilityStatementUrl,
       defaultLanguage: cfg.defaultLanguage,
       panelTitle: cfg.panelTitle,
+      customTriggerSelector: cfg.customTriggerSelector,
+      domObserverEnabled: cfg.domObserverEnabled,
+      inheritFonts: cfg.inheritFonts,
+      mobileEnabled: cfg.mobileEnabled,
     },
     { headers }
   );

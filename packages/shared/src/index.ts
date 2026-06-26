@@ -71,6 +71,25 @@ export interface WidgetConfig {
   defaultLanguage: WidgetLanguage;
   /** Optional custom panel title (paid). Empty = built-in localized title. */
   panelTitle: string;
+  /**
+   * CSS selector for a host-page element that, when clicked, opens the panel
+   * (a "bring your own launcher" hook). Empty = use the built-in launcher only.
+   * Widget-runtime only; safe to serve publicly.
+   */
+  customTriggerSelector: string;
+  /**
+   * Re-apply the visitor's prefs after dynamic DOM changes (SPA re-renders,
+   * lazy content). Default on so single-page apps keep their accessibility
+   * settings; can be disabled on very busy pages for performance.
+   */
+  domObserverEnabled: boolean;
+  /**
+   * Inherit the host site's own fonts instead of forcing the widget's stack on
+   * the page. Off by default (predictable rendering); on for brand fidelity.
+   */
+  inheritFonts: boolean;
+  /** Show the widget on small/mobile viewports. Default on. */
+  mobileEnabled: boolean;
 }
 
 /** Safe defaults. The widget MUST render even if config never loads. */
@@ -91,6 +110,10 @@ export const DEFAULT_CONFIG: WidgetConfig = {
   accessibilityStatementUrl: "",
   defaultLanguage: "en",
   panelTitle: "",
+  customTriggerSelector: "",
+  domObserverEnabled: true,
+  inheritFonts: false,
+  mobileEnabled: true,
 };
 
 /** Merge a partial config (from the network) over safe defaults. */
