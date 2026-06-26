@@ -1,22 +1,49 @@
+/**
+ * app/admin/sites/[id]/page.tsx — Admin customer detail
+ *
+ * v7 restyle: replaces Tailwind-class cards and lists with v7 .card/.cpad,
+ * .tcard/.trow, .pill classes from the shared dashboard CSS token layer.
+ * All data-fetching, auth gating, PlanSelect, and request/scan display
+ * are unchanged — this is a visual-only restyle.
+ *
+ * Functionality preserved byte-for-byte:
+ *   - getAdminUser() gates access
+ *   - getAdminSiteDetail(id) fetches site + scan history + requests
+ *   - PlanSelect drives PATCH /api/admin/sites/[id] plan changes
+ */
+
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getAdminUser } from "@/lib/auth/require-admin";
 import { getAdminSiteDetail } from "@/lib/admin";
 import { PlanSelect } from "@/components/admin/PlanSelect";
 
-function scoreClass(score: number) {
-  if (score >= 80) return "text-[var(--color-sev-passed)]";
-  if (score >= 60) return "text-[var(--color-sev-moderate)]";
-  return "text-[var(--color-sev-critical)]";
+/** Map a scan score to a v7 pill tone. */
+function scoreTone(score: number): string {
+  if (score >= 80) return "green";
+  if (score >= 60) return "med";
+  return "high";
 }
-const STATUS_CLASS: Record<string, string> = {
-  new: "bg-signal-500/20 text-signal-600 ring-signal-500/30",
-  contacted: "bg-[var(--color-sev-moderate)]/20 text-[var(--color-sev-moderate)] ring-[var(--color-sev-moderate)]/30",
-  won: "bg-[var(--color-sev-passed)]/20 text-[var(--color-sev-passed)] ring-[var(--color-sev-passed)]/30",
-  lost: "bg-[var(--surface-2)] text-[var(--ink-600)] ring-[var(--border)]/30",
-};
 
-export default async function AdminSiteDetail({ params }: { params: Promise<{ id: string }> }) {
+/** Map a request status to a v7 pill tone. */
+function statusTone(status: string): string {
+  switch (status) {
+    case "won":
+      return "green";
+    case "contacted":
+      return "low";
+    case "new":
+      return "high";
+    default:
+      return "gray"; // lost
+  }
+}
+
+export default async function AdminSiteDetail({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const admin = await getAdminUser();
   if (!admin) redirect("/dashboard");
   const { id } = await params;
@@ -24,59 +51,121 @@ export default async function AdminSiteDetail({ params }: { params: Promise<{ id
   if (!site) notFound();
 
   return (
-    <div className="space-y-7">
-      <Link href="/admin" className="transition-colors inline-flex items-center gap-1 text-sm font-medium text-[var(--ink-600)] hover:text-[var(--ink-900)]">
-        <span aria-hidden>←</span> All customers
-      </Link>
+    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+      {/* ── Back link ────────────────────────────────────────────────── */}
+      <div>
+        <Link href="/admin" className="btn">
+          <i className="ti ti-arrow-left" aria-hidden="true" />
+          All customers
+        </Link>
+      </div>
 
-      {/* Customer header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6">
-        <div className="flex items-center gap-4">
-          <span className="grid h-12 w-12 place-items-center rounded-2xl bg-signal-600 text-lg font-bold text-white">
+      {/* ── Customer header card ──────────────────────────────────────── */}
+      <div className="card cpad between">
+        {/* Domain avatar + identity */}
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          <span className="admin-dom-av" style={{ width: "46px", height: "46px", fontSize: "18px", borderRadius: "13px" }} aria-hidden="true">
             {(site.domain[0] ?? "?").toUpperCase()}
           </span>
           <div>
-            <h1 className="font-sans text-xl font-bold tracking-tight text-[var(--ink-900)]">{site.domain}</h1>
-            <p className="text-sm text-[var(--ink-600)]">
+            <h1
+              style={{
+                fontFamily: "'Satoshi', system-ui, sans-serif",
+                fontSize: "20px",
+                fontWeight: 700,
+                color: "var(--deep)",
+                letterSpacing: "-.02em",
+              }}
+            >
+              {site.domain}
+            </h1>
+            <p style={{ fontSize: "13px", color: "var(--t2)", marginTop: "2px" }}>
               {site.ownerEmail} · joined {new Date(site.createdAt).toLocaleDateString()}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2.5">
-          <span className="text-sm text-[var(--ink-600)]">Plan</span>
+
+        {/* Plan select — PlanSelect client component, functionality unchanged */}
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <span style={{ fontSize: "13px", color: "var(--t2)", fontWeight: 600 }}>Plan</span>
           <PlanSelect siteId={site.id} plan={site.plan} />
         </div>
       </div>
 
-      {/* Scan history */}
+      {/* ── Scan history ──────────────────────────────────────────────── */}
       <section>
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-[var(--ink-600)]">Scan history</h2>
-        <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] divide-y divide-[var(--border)]">
-          {site.scans.length === 0 && <p className="px-5 py-4 text-sm text-[var(--ink-600)]">No scans yet.</p>}
+        <p className="admin-section-label">Scan history</p>
+        <div className="tcard">
+          {site.scans.length === 0 && (
+            <div className="trow" style={{ gridTemplateColumns: "1fr" }}>
+              <p style={{ color: "var(--t2)", fontSize: "13px" }}>No scans yet.</p>
+            </div>
+          )}
           {site.scans.map((sc) => (
-            <div key={sc.id} className="flex items-center justify-between px-5 py-3 text-sm">
-              <span className={`font-sans text-lg font-bold ${scoreClass(sc.score)}`}>
+            <div
+              key={sc.id}
+              className="trow"
+              style={{
+                gridTemplateColumns: "auto 1fr",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              {/* Score pill */}
+              <span className={`pill ${scoreTone(sc.score)}`}>
                 {sc.score}
-                <span className="text-xs font-normal text-[var(--ink-600)]">/100</span>
+                <span style={{ opacity: 0.7, fontWeight: 500 }}>/100</span>
               </span>
-              <span className="text-[var(--ink-600)]">{new Date(sc.createdAt).toLocaleString()}</span>
+              {/* Timestamp */}
+              <span
+                style={{
+                  color: "var(--t3)",
+                  fontSize: "12.5px",
+                  textAlign: "right",
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                {new Date(sc.createdAt).toLocaleString()}
+              </span>
             </div>
           ))}
         </div>
       </section>
 
-      {/* Requests */}
+      {/* ── Consultation requests ─────────────────────────────────────── */}
       <section>
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-[var(--ink-600)]">Consultation requests</h2>
-        <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] divide-y divide-[var(--border)]">
-          {site.requests.length === 0 && <p className="px-5 py-4 text-sm text-[var(--ink-600)]">No requests.</p>}
+        <p className="admin-section-label">Consultation requests</p>
+        <div className="tcard">
+          {site.requests.length === 0 && (
+            <div className="trow" style={{ gridTemplateColumns: "1fr" }}>
+              <p style={{ color: "var(--t2)", fontSize: "13px" }}>No requests.</p>
+            </div>
+          )}
           {site.requests.map((r) => (
-            <div key={r.id} className="flex items-center justify-between px-5 py-3 text-sm">
-              <div>
-                <span className="font-medium text-[var(--ink-900)]">{r.type === "book_call" ? "Book a call" : "Full report"}</span>
-                <span className="ml-2 text-xs text-[var(--ink-600)]">{new Date(r.createdAt).toLocaleDateString()}</span>
-              </div>
-              <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ring-1 ${STATUS_CLASS[r.status] ?? STATUS_CLASS.lost}`}>
+            <div
+              key={r.id}
+              className="trow"
+              style={{
+                gridTemplateColumns: "1fr auto auto",
+                alignItems: "center",
+              }}
+            >
+              {/* Type */}
+              <span style={{ fontWeight: 700, color: "var(--deep)", fontSize: "13.5px" }}>
+                {r.type === "book_call" ? "Book a call" : "Full report"}
+              </span>
+              {/* Date */}
+              <span
+                style={{
+                  color: "var(--t3)",
+                  fontSize: "12px",
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                {new Date(r.createdAt).toLocaleDateString()}
+              </span>
+              {/* Status pill */}
+              <span className={`pill ${statusTone(r.status)}`} style={{ textTransform: "capitalize" }}>
                 {r.status}
               </span>
             </div>

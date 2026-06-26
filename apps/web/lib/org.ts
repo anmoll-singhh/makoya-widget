@@ -165,6 +165,23 @@ export async function listTeam(client: SupabaseClient, orgId: string): Promise<T
   return (data ?? []).map(teamMemberRowToRecord);
 }
 
+/**
+ * All PENDING (un-accepted) invites for an org, newest first.
+ * RLS-safe: the `members read invites` policy scopes the read to the caller's org,
+ * so this can be called with either the cookie-bound OR the admin client.
+ * Throws on infra error.
+ */
+export async function listInvites(client: SupabaseClient, orgId: string): Promise<TeamInvite[]> {
+  const { data, error } = await client
+    .from("team_invites")
+    .select("*")
+    .eq("org_id", orgId)
+    .is("accepted_at", null)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map(inviteRowToRecord);
+}
+
 /** All API keys for an org, newest first. Never includes key_hash. Throws on infra error. */
 export async function listApiKeys(client: SupabaseClient, orgId: string): Promise<ApiKeyRecord[]> {
   const { data, error } = await client
@@ -225,6 +242,29 @@ export async function createApiKey(
     .single();
   if (error) throw error;
   return { record: apiKeyRowToRecord(data), rawKey: raw };
+}
+
+/**
+ * Update an org's mutable fields. Service-role required: organizations has no
+ * member WRITE policy, so this is called with getAdminSupabase() AFTER the route
+ * has resolved the caller's role and confirmed they may manage the org.
+ * Returns the updated org record. Throws on infra error.
+ */
+export async function updateOrg(
+  service: SupabaseClient,
+  orgId: string,
+  patch: { name?: string }
+): Promise<Organization> {
+  const updates: Record<string, unknown> = {};
+  if (patch.name !== undefined) updates["name"] = patch.name;
+  const { data, error } = await service
+    .from("organizations")
+    .update(updates)
+    .eq("id", orgId)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return orgRowToRecord(data);
 }
 
 /** Revoke an API key by id (soft delete via revoked_at). Throws on infra error. */

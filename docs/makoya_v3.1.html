@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Makoya — UI v3 (light)</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
+<style>
+:root{
+  --bg:#F2F4F7; --surface:#ffffff; --ink:#0D1B4D; --navy2:#16285f;
+  --t1:#141A2E; --t2:#5b647a; --t3:#98a1b4;
+  --line:#E7EAF1; --line2:#F0F2F7;
+  --blue:#1E63FF; --blue-d:#1A4FD0; --blue-bg:#EEF3FF; --blue-line:#D6E2FF;
+  --green:#2F8F62; --green-bg:#EAF6EF; --green-line:#CFEBDB; --cgreen:#8AB39B;
+  --amber:#B26A00; --amber-bg:#FBF1E2; --amber-line:#F2DEBE;
+  --red:#CF4242; --red-bg:#FCECEC; --red-line:#F6D6D6;
+  --sh-sm:0 1px 2px rgba(16,24,40,.06); --sh:0 8px 24px rgba(15,28,77,.08); --sh-lg:0 18px 46px rgba(15,28,77,.13); --sh-card:0 4px 18px rgba(15,28,77,.07);
+  --r:12px; --r-lg:16px; --r-pill:999px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Manrope','Inter',system-ui,sans-serif;background:var(--bg);color:var(--t1);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+a{text-decoration:none;color:inherit}
+.mono{font-variant-numeric:tabular-nums}
+.app{display:grid;grid-template-columns:250px 1fr;min-height:100vh}
+
+/* sidebar (light) */
+.side{background:var(--surface);border-right:1px solid var(--line);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;padding:0 12px}
+.brand{display:flex;align-items:center;gap:10px;padding:18px 10px 14px;font-family:'Satoshi';font-weight:700;font-size:17px;color:var(--ink)}
+.brand .col{margin-left:auto;color:var(--t3);font-size:18px}
+.sbar{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 11px;color:var(--t3);font-size:13px;margin:0 0 14px}
+.sbar .k{margin-left:auto;font-size:11px;color:var(--t3)}
+.glabel{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--t3);font-weight:600;margin:14px 10px 6px;display:flex;align-items:center;gap:6px}
+.nav{display:flex;flex-direction:column;gap:1px}
+.nav a{display:flex;align-items:center;gap:11px;padding:8px 11px;border-radius:9px;color:var(--t2);font-size:13.5px;font-weight:500}
+.nav a i{font-size:18px;width:19px;text-align:center;color:var(--t3)}
+.nav a:hover{background:var(--bg);color:var(--t1)}
+.nav a.on{background:var(--blue-bg);color:var(--blue-d);font-weight:600}
+.nav a.on i{color:var(--blue-d)}
+.nav a .ct{margin-left:auto;font-size:11px;color:var(--t3);font-weight:600}
+.side .foot{margin-top:auto;padding:12px 4px 16px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.side .foot a{font-size:12.5px;color:var(--t2);display:flex;align-items:center;gap:9px}
+.side .foot a i{font-size:16px;color:var(--t3)}
+
+/* main */
+.main{min-width:0;position:relative}
+.glow{position:absolute;top:-80px;right:-60px;width:520px;height:380px;border-radius:50%;background:radial-gradient(closest-side,rgba(30,99,255,.10),rgba(138,179,155,.05),transparent);filter:blur(10px);pointer-events:none}
+.wrap{position:relative;padding:22px 34px 40px;max-width:1280px}
+.topc{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-bottom:6px}
+.agentpill{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-size:13px;font-weight:600;box-shadow:var(--sh-sm)}
+.agentpill .dot{width:7px;height:7px;border-radius:50%;background:var(--cgreen)}
+.av{border-radius:50%;display:grid;place-items:center;font-weight:600;flex:none}
+.tibtn{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;color:var(--t2);font-size:17px;box-shadow:var(--sh-sm);cursor:pointer}
+
+.h1{font-family:'Satoshi';font-size:25px;font-weight:700;letter-spacing:-.02em;color:var(--ink)}
+.screen{display:none}.screen.on{display:block}
+
+/* stat strip */
+.stats{display:flex;gap:34px;margin:16px 0 4px;flex-wrap:wrap}
+.stat .lab{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--t3);font-weight:600;margin-bottom:8px}
+.stat .v{display:flex;align-items:center;gap:10px;font-size:20px;font-weight:700;color:var(--ink)}
+.stat .v small{font-size:13px;color:var(--t3);font-weight:600}
+
+/* tabs */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:18px 0 16px}
+.tabs a{display:flex;align-items:center;gap:7px;padding:9px 12px;font-size:13.5px;font-weight:600;color:var(--t2);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs a i{font-size:16px}
+.tabs a.on{color:var(--blue-d);border-color:var(--blue)}
+
+/* chips */
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.chip{display:inline-flex;align-items:center;gap:7px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:7px 12px;font-size:13px;font-weight:600;color:var(--t2);cursor:pointer;box-shadow:var(--sh-sm)}
+.chip .n{color:var(--t3);font-weight:700}
+.chip.on{border-color:var(--blue-line);background:var(--blue-bg);color:var(--blue-d)}
+.chip i{font-size:15px}
+
+/* toolbar */
+.toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.fwstack{display:flex;align-items:center}
+.fw{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font-size:8.5px;font-weight:700;color:#fff;border:2px solid #fff;margin-left:-7px;box-shadow:var(--sh-sm)}
+.fw:first-child{margin-left:0}
+.seg{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:3px;box-shadow:var(--sh-sm)}
+.seg button{border:none;background:transparent;padding:6px 12px;border-radius:8px;font-size:12.5px;font-weight:600;color:var(--t2);cursor:pointer;font-family:inherit}
+.seg button.on{background:var(--blue-bg);color:var(--blue-d)}
+.tb{display:inline-flex;align-items:center;gap:7px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:7px 11px;font-size:13px;font-weight:600;color:var(--t2);box-shadow:var(--sh-sm);cursor:pointer}
+.tb i{font-size:16px;color:var(--t3)}
+.tbsearch{flex:1;min-width:150px;max-width:280px;color:var(--t3);font-weight:400}
+
+/* table */
+.tcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--sh);overflow:hidden}
+.thead{display:grid;grid-template-columns:1fr 190px 130px;gap:12px;padding:11px 22px;border-bottom:1px solid var(--line);font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--t3);font-weight:600}
+.grp{display:flex;align-items:center;gap:8px;padding:10px 20px;background:#FBFCFE;font-size:12px;letter-spacing:.03em;text-transform:uppercase;font-weight:700;color:var(--t2);border-bottom:1px solid var(--line2)}
+.grp .n{color:var(--t3)}
+.trow{display:grid;grid-template-columns:1fr 190px 130px;gap:12px;padding:17px 22px;border-bottom:1px solid var(--line2);align-items:center}
+.ev{display:none}
+.trow:hover{background:#FBFCFE}
+.cname{font-weight:600;font-size:14px;color:var(--t1)}
+.csub{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--t2);margin-top:3px}
+.ctrl-left{display:flex;align-items:center;gap:11px}
+.mini-ring{width:16px;height:16px;flex:none}
+.owner{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500}
+.assign{display:flex;align-items:center;gap:7px;color:var(--blue-d);font-weight:600;font-size:13px;cursor:pointer}
+.ev{display:none}
+.ev span{display:flex;align-items:center;gap:6px}
+.ev i{font-size:15px;color:var(--t3)}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:4px 11px;border-radius:var(--r-pill);border:1px solid}
+.p-red{background:var(--red-bg);color:var(--red);border-color:var(--red-line)}
+.p-amber{background:var(--amber-bg);color:var(--amber);border-color:var(--amber-line)}
+.p-green{background:var(--green-bg);color:var(--green);border-color:var(--green-line)}
+.p-blue{background:var(--blue-bg);color:var(--blue-d);border-color:var(--blue-line)}
+.p-gray{background:var(--bg);color:var(--t2);border-color:var(--line)}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 14px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--t1);font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;box-shadow:var(--sh-sm)}
+.btn:hover{background:var(--bg)}
+.btn.pri{background:var(--blue);border-color:var(--blue);color:#fff;box-shadow:0 4px 12px rgba(30,99,255,.25)}
+.btn i{font-size:17px}
+
+/* metric / glass cards */
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.mcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:17px 18px;box-shadow:var(--sh-card)}
+.mcard.grn{background:linear-gradient(180deg,#F3FAF5,#fff 60%);border-color:var(--green-line)}
+.mcard.grn .l i{color:var(--green)}
+.mcard .l{font-size:12.5px;color:var(--t2);font-weight:600;display:flex;align-items:center;gap:7px}
+.mcard .l i{font-size:16px;color:var(--t3)}
+.mcard .big{font-size:28px;font-weight:700;color:var(--ink);margin-top:8px;letter-spacing:-.02em}
+.mcard .d{font-size:12px;font-weight:600;margin-top:2px}
+.up{color:var(--green)}.down{color:var(--red)}
+.glass{background:linear-gradient(135deg,rgba(255,255,255,.94),rgba(234,246,239,.86));backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(15,28,77,.07);border-radius:var(--r-lg);box-shadow:var(--sh-lg)}
+.hero{display:flex;align-items:center;gap:18px;padding:22px 24px;margin-bottom:18px;position:relative;overflow:hidden}
+.hero .av{width:54px;height:54px;background:var(--blue);color:#fff;font-size:18px}
+.sitecell{display:flex;align-items:center;gap:11px}
+.fav{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;color:#fff;font-size:15px;flex:none}
+.bar{height:7px;border-radius:6px;background:var(--line);overflow:hidden;width:84px}
+.bar span{display:block;height:100%}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--sh-card)}
+.pad{padding:18px 20px}
+.muted{color:var(--t2)}.tiny{font-size:12px}
+.between{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.note{display:flex;gap:11px;padding:13px 15px;border-radius:12px;font-size:13px}
+.note.warn{background:var(--amber-bg);color:#8a5200;border:1px solid var(--amber-line)}
+.note i{font-size:19px;flex:none}
+.note.info{background:var(--blue-bg);color:#173a8a;border:1px solid var(--blue-line)}
+.note.good{background:var(--green-bg);color:#1d5e3f;border:1px solid var(--green-line)}
+.inp{width:100%;height:42px;border:1px solid var(--line);border-radius:10px;padding:0 13px;font-size:13.5px;font-family:inherit;color:var(--t1);background:#fbfcfe;margin-top:6px}
+.inp:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(30,99,255,.12)}
+.fl{font-size:12.5px;font-weight:600;color:var(--t1);display:block;margin-top:14px}
+.toggle{width:38px;height:22px;border-radius:20px;background:#d6dbe5;position:relative;cursor:pointer;flex:none}
+.toggle::after{content:"";position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;top:2px;left:2px;box-shadow:var(--sh-sm)}
+.toggle.on{background:var(--blue)}.toggle.on::after{left:18px}
+.feat{display:flex;align-items:center;gap:12px;padding:13px 15px;border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:var(--sh-sm)}
+.feat .ic{width:34px;height:34px;border-radius:9px;background:var(--bg);display:grid;place-items:center;color:var(--t2);font-size:18px;flex:none}
+.feat .nm{font-weight:600;font-size:13.5px}.feat .de{font-size:12px;color:var(--t2);margin-top:1px}
+.ptile{border:1px solid var(--line);border-radius:11px;padding:13px 6px;text-align:center;background:#fff;box-shadow:var(--sh-sm)}
+.ptile.act{border-color:var(--blue);background:var(--blue-bg)}
+.ptile .pi{width:32px;height:32px;border-radius:8px;background:var(--bg);display:grid;place-items:center;margin:0 auto 7px;color:var(--t2);font-size:17px}
+.ptile.act .pi{background:#fff;color:var(--blue-d)}
+.wpv{width:300px;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff;box-shadow:var(--sh-lg);flex:none}
+.wpv .hd{background:var(--blue);color:#fff;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;font-weight:600;font-size:13px}
+.wpv .t2{display:flex;border-bottom:1px solid var(--line);font-size:12px}
+.wpv .t2 span{flex:1;text-align:center;padding:9px;color:var(--t2);font-weight:600}
+.wpv .t2 span.on{color:var(--blue-d);border-bottom:2px solid var(--blue)}
+.wpv .g2{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--t3);font-weight:600;padding:11px 14px 6px}
+.wpv .tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 12px 12px}
+.wpv .tile{border:1px solid var(--line);border-radius:10px;padding:11px 6px;text-align:center;font-size:11px;color:var(--t1);font-weight:500}
+.wpv .tile i{font-size:18px;display:block;margin-bottom:5px;color:var(--t2)}
+.wpv .tile.act{border-color:var(--blue);background:var(--blue-bg);color:var(--blue-d)}.wpv .tile.act i{color:var(--blue-d)}
+.barchart{display:flex;align-items:flex-end;gap:9px;height:140px;padding-top:10px}
+.barchart .col{flex:1;display:flex;align-items:flex-end;height:100%}
+.bar2{width:100%;background:var(--blue);border-radius:5px 5px 0 0}
+.fcard{border:1px solid var(--line);border-radius:11px;padding:12px 13px;display:flex;align-items:center;gap:11px;box-shadow:var(--sh-sm)}
+.fcard .ic{width:34px;height:34px;border-radius:9px;background:var(--blue-bg);color:var(--blue-d);display:grid;place-items:center;font-size:18px;flex:none}
+.fcard .n{font-size:19px;font-weight:700;color:var(--ink);line-height:1}
+.codebox{background:#0c1426;border-radius:12px;padding:14px 16px;color:#c8d3ea;font-size:12.5px;overflow:auto;font-family:ui-monospace,Menlo,monospace}
+.codebox .k{color:#7db5ff}.codebox .s{color:#9ad29a}
+.steps{display:flex;align-items:center;margin:6px 0 24px}
+.step{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--t3);font-weight:600}
+.step .num{width:24px;height:24px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;font-size:12px;background:#fff;color:var(--t3)}
+.step.done .num{background:var(--blue);border-color:var(--blue);color:#fff}
+.step.now .num{border-color:var(--blue);color:var(--blue-d)}.step.now,.step.done{color:var(--t1)}
+.sep2{flex:1;height:1.5px;background:var(--line);margin:0 12px}.sep2.done{background:var(--blue)}
+.ringbig{width:118px;height:118px}
+.gauge{position:relative;width:168px;height:168px;flex:none}
+.gauge .ctr{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.gauge .ctr .n{font-family:'Satoshi';font-size:42px;font-weight:700;color:var(--ink);line-height:1;letter-spacing:-.02em}
+.gauge .ctr .u{font-size:11px;color:var(--t3);font-weight:600;margin-top:3px}
+.journey{display:flex;align-items:center;gap:9px;margin-top:18px;font-size:12.5px;font-weight:600;color:var(--t2)}
+.journey .j{display:flex;align-items:center;gap:7px}
+.journey .jbar{width:66px;height:6px;border-radius:6px;background:var(--line);overflow:hidden}
+.feed .it{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--line2)}
+.feed .it:last-child{border-bottom:none}
+.feed .ic{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-size:15px;flex:none}
+.feed .tx{font-size:13px;color:var(--t1);line-height:1.45}
+.feed .tm{font-size:11.5px;color:var(--t3);margin-top:2px}
+.fwrow{display:flex;align-items:center;gap:12px;margin:12px 0}
+.fwrow .lab{width:66px;font-size:12.5px;font-weight:600;color:var(--t1)}
+.fwrow .track{flex:1;height:8px;border-radius:6px;background:var(--line);overflow:hidden}
+.fwrow .val{width:38px;text-align:right;font-size:12.5px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
+.months{display:flex;justify-content:space-between;font-size:11px;color:var(--t3);margin-top:6px}
+/* Accessibility: respect user OS preferences — our own dashboard is WCAG AA */
+@media (prefers-reduced-transparency: reduce){.glass{background:#fff;backdrop-filter:none;-webkit-backdrop-filter:none;border-color:var(--line)}}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand">
+      <svg width="26" height="26" viewBox="0 0 32 32" fill="none"><path d="M16 2.5L27.7 9.2L27.7 22.8L16 29.5L4.3 22.8L4.3 9.2Z" stroke="#0D1B4D" stroke-width="2"/><path d="M14 11L9 16L14 21" stroke="#0D1B4D" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M18 11L23 16L18 21" stroke="#1E63FF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Makoya <i class="ti ti-layout-sidebar-left-collapse col"></i>
+    </div>
+    <div class="sbar"><i class="ti ti-search" style="font-size:15px"></i> Search <span class="k">⌘K</span></div>
+    <nav class="nav">
+      <a data-go="overview"><i class="ti ti-layout-dashboard"></i> Dashboard</a>
+      <a data-go="agents"><i class="ti ti-stack-2"></i> Agents</a>
+    </nav>
+    <div class="glabel"><i class="ti ti-shield-check" style="font-size:13px"></i> Compliance</div>
+    <nav class="nav">
+      <a data-go="audit" class="on"><i class="ti ti-robot"></i> Mike — audit</a>
+      <a data-go="install"><i class="ti ti-code"></i> Install widget</a>
+      <a data-go="customize"><i class="ti ti-adjustments"></i> Customize widget</a>
+      <a data-go="statement"><i class="ti ti-certificate"></i> Statement</a>
+      <a data-go="proof"><i class="ti ti-shield-check"></i> Proof of effort</a>
+    </nav>
+    <div class="glabel"><i class="ti ti-activity" style="font-size:13px"></i> Monitoring</div>
+    <nav class="nav">
+      <a data-go="reports"><i class="ti ti-file-description"></i> Reports</a>
+      <a data-go="analytics"><i class="ti ti-chart-bar"></i> Analytics</a>
+    </nav>
+    <div class="glabel"><i class="ti ti-building" style="font-size:13px"></i> Account</div>
+    <nav class="nav">
+      <a data-go="billing"><i class="ti ti-credit-card"></i> Plan &amp; billing</a>
+      <a data-go="settings"><i class="ti ti-settings"></i> Agent settings</a>
+      <a data-go="account"><i class="ti ti-users"></i> Account</a>
+      <a data-go="partners"><i class="ti ti-affiliate"></i> Partners</a>
+    </nav>
+    <div class="foot">
+      <a><i class="ti ti-help"></i> Help &amp; docs</a>
+      <a><i class="ti ti-activity-heartbeat"></i> System status</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="glow"></div>
+    <div class="wrap">
+      <div class="topc">
+        <div class="agentpill"><span class="dot"></span> superdemo.jewlx.ai <i class="ti ti-selector" style="font-size:15px;color:var(--t3)"></i></div>
+        <button class="tibtn"><i class="ti ti-bell"></i></button>
+        <div class="av" style="width:34px;height:34px;background:var(--blue-bg);color:var(--blue-d);font-size:12px;box-shadow:var(--sh-sm);border:1px solid var(--line)">WV</div>
+      </div>
+
+      <!-- ===== AUDIT (flagship, Fathom-style) ===== -->
+      <section class="screen on" data-screen="audit">
+        <div class="h1">Accessibility overview</div>
+        <div class="stats">
+          <div class="stat"><div class="lab">Passing checks</div><div class="v">
+            <svg class="" width="34" height="34" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15" fill="none" stroke="#E7EAF1" stroke-width="5"/><circle cx="18" cy="18" r="15" fill="none" stroke="#2F8F62" stroke-width="5" stroke-linecap="round" stroke-dasharray="94.2" stroke-dashoffset="25.4" transform="rotate(-90 18 18)"/></svg>
+            73% <small>· 65/89</small></div></div>
+          <div class="stat"><div class="lab">Unassigned</div><div class="v">8 <small>issues</small></div></div>
+          <div class="stat"><div class="lab">Criteria met</div><div class="v">16<small>/33 WCAG AA</small></div></div>
+        </div>
+        <div class="tabs">
+          <a><i class="ti ti-layout-grid"></i> Overview</a>
+          <a class="on"><i class="ti ti-list-check"></i> Issues</a>
+          <a><i class="ti ti-checklist"></i> Criteria</a>
+        </div>
+        <div class="chips">
+          <div class="chip on">All issues</div>
+          <div class="chip"><i class="ti ti-x" style="color:var(--red)"></i> Failing <span class="n">3</span></div>
+          <div class="chip"><i class="ti ti-flag" style="color:var(--amber)"></i> Needs review <span class="n">2</span></div>
+          <div class="chip"><i class="ti ti-checks" style="color:var(--green)"></i> Passing <span class="n">65</span></div>
+        </div>
+        <div class="toolbar">
+          <div class="tb tbsearch"><i class="ti ti-search"></i> Search issues…</div>
+          <div class="tb"><i class="ti ti-filter"></i> Filter</div>
+          <div class="tb" style="margin-left:auto"><i class="ti ti-download"></i> Export</div>
+        </div>
+        <div class="tcard">
+          <div class="thead"><div>Issue</div><div>Owner</div><div>Status</div></div>
+
+          <div class="grp"><i class="ti ti-x" style="color:var(--red)"></i> Failing <span class="n">3</span></div>
+          <div class="trow">
+            <div class="ctrl-left"><svg class="mini-ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15" fill="none" stroke="#F0F2F7" stroke-width="6"/><circle cx="18" cy="18" r="15" fill="none" stroke="#CF4242" stroke-width="6" stroke-dasharray="94.2" stroke-dashoffset="67" transform="rotate(-90 18 18)"/></svg><div><div class="cname">Images missing meaningful alt text</div><div class="csub">2 of 7 checks passing <span class="fw" style="width:18px;height:18px;font-size:6px;background:#0D1B4D;margin:0">ADA</span></div></div></div>
+            <div class="owner"><div class="av" style="width:26px;height:26px;background:#E6ECFF;color:#1A4FD0;font-size:10px">TA</div> Tanvir A.</div>
+            <div class="ev"><span><i class="ti ti-paperclip"></i> 2 documents</span></div>
+            <div><span class="pill p-red"><i class="ti ti-x" style="font-size:13px"></i> Failing</span></div>
+          </div>
+          <div class="trow">
+            <div class="ctrl-left"><svg class="mini-ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15" fill="none" stroke="#F0F2F7" stroke-width="6"/><circle cx="18" cy="18" r="15" fill="none" stroke="#CF4242" stroke-width="6" stroke-dasharray="94.2" stroke-dashoffset="78" transform="rotate(-90 18 18)"/></svg><div><div class="cname">Form fields without programmatic labels</div><div class="csub">1 of 6 checks passing <span class="fw" style="width:18px;height:18px;font-size:6px;background:#1E63FF;margin:0">WCAG</span></div></div></div>
+            <div class="assign"><i class="ti ti-user-plus"></i> Assign</div>
+            <div class="ev muted">Not provided yet</div>
+            <div><span class="pill p-red"><i class="ti ti-x" style="font-size:13px"></i> Failing</span></div>
+          </div>
+          <div class="trow">
+            <div class="ctrl-left"><svg class="mini-ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15" fill="none" stroke="#F0F2F7" stroke-width="6"/><circle cx="18" cy="18" r="15" fill="none" stroke="#CF4242" stroke-width="6" stroke-dasharray="94.2" stroke-dashoffset="60" transform="rotate(-90 18 18)"/></svg><div><div class="cname">Custom widgets missing name &amp; role</div><div class="csub">3 of 9 checks passing <span class="fw" style="width:18px;height:18px;font-size:6px;background:#0D1B4D;margin:0">ADA</span></div></div></div>
+            <div class="owner"><div class="av" style="width:26px;height:26px;background:#EAF6EF;color:#2F8F62;font-size:10px">FS</div> Felix S.</div>
+            <div class="ev"><span><i class="ti ti-paperclip"></i> 2 documents</span><span><i class="ti ti-file-text"></i> 1 policy</span></div>
+            <div><span class="pill p-red"><i class="ti ti-x" style="font-size:13px"></i> Failing</span></div>
+          </div>
+
+          <div class="grp"><i class="ti ti-flag" style="color:var(--amber)"></i> Needs review <span class="n">2</span></div>
+          <div class="trow">
+            <div class="ctrl-left"><svg class="mini-ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15" fill="none" stroke="#F0F2F7" stroke-width="6"/><circle cx="18" cy="18" r="15" fill="none" stroke="#B26A00" stroke-width="6" stroke-dasharray="94.2" stroke-dashoffset="38" transform="rotate(-90 18 18)"/></svg><div><div class="cname">Low contrast text on marketing pages</div><div class="csub">4 of 6 checks passing <span class="fw" style="width:18px;height:18px;font-size:6px;background:#1E63FF;margin:0">WCAG</span></div></div></div>
+            <div class="owner"><div class="av" style="width:26px;height:26px;background:#E6ECFF;color:#1A4FD0;font-size:10px">TA</div> Tanvir A.</div>
+            <div class="ev"><span><i class="ti ti-paperclip"></i> 2 documents</span></div>
+            <div><span class="pill p-amber"><i class="ti ti-flag" style="font-size:13px"></i> Needs review</span></div>
+          </div>
+          <div class="trow">
+            <div class="ctrl-left"><svg class="mini-ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15" fill="none" stroke="#F0F2F7" stroke-width="6"/><circle cx="18" cy="18" r="15" fill="none" stroke="#B26A00" stroke-width="6" stroke-dasharray="94.2" stroke-dashoffset="35" transform="rotate(-90 18 18)"/></svg><div><div class="cname">Keyboard focus order on checkout</div><div class="csub">5 of 8 checks passing <span class="fw" style="width:18px;height:18px;font-size:6px;background:#2F8F62;margin:0">AODA</span></div></div></div>
+            <div class="owner"><div class="av" style="width:26px;height:26px;background:#EAF6EF;color:#2F8F62;font-size:10px">FS</div> Felix S.</div>
+            <div class="ev"><span><i class="ti ti-file-text"></i> 1 policy</span></div>
+            <div><span class="pill p-amber"><i class="ti ti-flag" style="font-size:13px"></i> Needs review</span></div>
+          </div>
+
+          <div class="grp"><i class="ti ti-checks" style="color:var(--green)"></i> Passing <span class="n">65</span></div>
+          <div class="trow">
+            <div class="ctrl-left"><svg class="mini-ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15" fill="none" stroke="#EAF6EF" stroke-width="6"/><circle cx="18" cy="18" r="15" fill="none" stroke="#2F8F62" stroke-width="6" transform="rotate(-90 18 18)"/></svg><div><div class="cname">Page language declared</div><div class="csub">All 4 checks passing <span class="fw" style="width:18px;height:18px;font-size:6px;background:#1E63FF;margin:0">WCAG</span></div></div></div>
+            <div class="owner"><div class="av" style="width:26px;height:26px;background:#F4ECFF;color:#7A5AF8;font-size:10px">IW</div> Isabella W.</div>
+            <div class="ev"><span><i class="ti ti-file-text"></i> 1 policy</span></div>
+            <div><span class="pill p-green"><i class="ti ti-checks" style="font-size:13px"></i> Passing</span></div>
+          </div>
+          <div class="trow">
+            <div class="ctrl-left"><svg class="mini-ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15" fill="none" stroke="#EAF6EF" stroke-width="6"/><circle cx="18" cy="18" r="15" fill="none" stroke="#2F8F62" stroke-width="6" transform="rotate(-90 18 18)"/></svg><div><div class="cname">Status messages announced to AT</div><div class="csub">All 5 checks passing <span class="fw" style="width:18px;height:18px;font-size:6px;background:#0D1B4D;margin:0">ADA</span></div></div></div>
+            <div class="owner"><div class="av" style="width:26px;height:26px;background:#E6ECFF;color:#1A4FD0;font-size:10px">TA</div> Tanvir A.</div>
+            <div class="ev"><span><i class="ti ti-file-text"></i> 1 policy</span></div>
+            <div><span class="pill p-green"><i class="ti ti-checks" style="font-size:13px"></i> Passing</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== AGENTS ===== -->
+      <section class="screen" data-screen="agents">
+        <div class="between" style="margin-bottom:16px"><div class="h1">Agents</div><button class="btn pri"><i class="ti ti-plus"></i> New agent</button></div>
+        <div class="grid4" style="margin-bottom:18px">
+          <div class="mcard"><div class="l"><i class="ti ti-stack-2"></i> Total agents</div><div class="big">3</div><div class="d up">▲ 1 this month</div></div>
+          <div class="mcard grn"><div class="l"><i class="ti ti-gauge"></i> Avg. score</div><div class="big">62<span style="font-size:15px;color:var(--t3)">/100</span></div><div class="d up">▲ 6 pts</div></div>
+          <div class="mcard"><div class="l"><i class="ti ti-alert-triangle"></i> Open issues</div><div class="big">214</div><div class="d up">▼ 23</div></div>
+          <div class="mcard"><div class="l"><i class="ti ti-urgent"></i> Need attention</div><div class="big" style="color:var(--red)">1</div><div class="d muted">1 not installed</div></div>
+        </div>
+        <div class="tcard">
+          <div class="thead" style="grid-template-columns:1fr 150px 110px 150px 120px"><div>Agent</div><div>Status</div><div>Plan</div><div>Compliance score</div><div>Last audit</div></div>
+          <div class="trow" style="grid-template-columns:1fr 150px 110px 150px 120px">
+            <div class="sitecell"><div class="fav" style="background:#1E63FF"><i class="ti ti-diamond"></i></div><div><div class="cname">superdemo.jewlx.ai</div><div class="csub">Jewelry · e-commerce</div></div></div>
+            <div><span class="pill p-green"><span style="width:6px;height:6px;border-radius:50%;background:var(--green)"></span> Active</span></div>
+            <div class="tiny" style="font-weight:600">Growth</div>
+            <div style="display:flex;align-items:center;gap:9px"><div class="bar"><span style="width:82%;background:var(--green)"></span></div><b>82</b></div>
+            <div class="tiny muted">Jun 22, 2026</div>
+          </div>
+          <div class="trow" style="grid-template-columns:1fr 150px 110px 150px 120px">
+            <div class="sitecell"><div class="fav" style="background:#0D1B4D"><i class="ti ti-building"></i></div><div><div class="cname">sandersalbania.com</div><div class="csub">Real estate</div></div></div>
+            <div><span class="pill p-blue"><span style="width:6px;height:6px;border-radius:50%;background:var(--blue)"></span> Monitoring</span></div>
+            <div class="tiny" style="font-weight:600">Trial</div>
+            <div style="display:flex;align-items:center;gap:9px"><div class="bar"><span style="width:61%;background:var(--amber)"></span></div><b>61</b></div>
+            <div class="tiny muted">Jun 20, 2026</div>
+          </div>
+          <div class="trow" style="grid-template-columns:1fr 150px 110px 150px 120px">
+            <div class="sitecell"><div class="fav" style="background:#8AB39B"><i class="ti ti-flower"></i></div><div><div class="cname">wellness.waves.co</div><div class="csub">Wellness</div></div></div>
+            <div><span class="pill p-red"><span style="width:6px;height:6px;border-radius:50%;background:var(--red)"></span> Action needed</span></div>
+            <div class="tiny muted">—</div>
+            <div style="display:flex;align-items:center;gap:9px"><div class="bar"><span style="width:44%;background:var(--red)"></span></div><b>44</b></div>
+            <div class="tiny muted">Not installed</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== OVERVIEW ===== -->
+      <section class="screen" data-screen="overview">
+        <div class="hero glass" style="gap:26px;padding:24px 28px">
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><span class="pill p-green tiny"><span style="width:6px;height:6px;border-radius:50%;background:var(--green)"></span> Monitoring live</span><span class="tiny muted"><i class="ti ti-flame" style="font-size:13px;vertical-align:-2px;color:var(--amber)"></i> 142-day streak · 38 pages</span></div>
+            <div style="font-family:'Satoshi';font-size:25px;font-weight:700;letter-spacing:-.02em;color:var(--ink)">You're <span style="color:var(--blue-d)">8 points</span> from AA-ready</div>
+            <div class="muted" style="font-size:13.5px;margin:7px 0 16px;max-width:460px">Strong momentum on superdemo.jewlx.ai — score up 14 this month. Close 18 human-review issues to hit your 90 target.</div>
+            <div style="display:flex;gap:10px"><button class="btn pri"><i class="ti ti-robot"></i> Review with Mike</button><button class="btn"><i class="ti ti-file-text"></i> View report</button></div>
+            <div class="journey">
+              <div class="j" style="color:var(--green)"><i class="ti ti-circle-check"></i> Level A</div>
+              <i class="ti ti-chevron-right" style="color:var(--t3);font-size:15px"></i>
+              <div class="j"><span>AA</span><div class="jbar"><span style="display:block;height:100%;width:82%;background:linear-gradient(90deg,var(--blue),var(--green))"></span></div><span style="color:var(--blue-d)">82%</span></div>
+              <i class="ti ti-chevron-right" style="color:var(--t3);font-size:15px"></i>
+              <div class="j" style="color:var(--t3)">AAA</div>
+            </div>
+          </div>
+          <div class="gauge">
+            <svg width="168" height="168" viewBox="0 0 36 36"><defs><linearGradient id="gg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1E63FF"/><stop offset="1" stop-color="#2F8F62"/></linearGradient></defs><circle cx="18" cy="18" r="15.6" fill="none" stroke="#E7EAF1" stroke-width="3"/><circle cx="18" cy="18" r="15.6" fill="none" stroke="url(#gg)" stroke-width="3" stroke-linecap="round" stroke-dasharray="98" stroke-dashoffset="17.6" transform="rotate(-90 18 18)"/></svg>
+            <div class="ctr"><div class="n">82</div><div class="u">/ 100 · WCAG AA</div><span class="pill p-green tiny" style="margin-top:9px">▲ 14 this month</span></div>
+          </div>
+        </div>
+        <div class="grid4" style="margin-bottom:18px">
+          <div class="mcard grn"><div class="between"><div class="l"><i class="ti ti-checks"></i> Issues resolved</div><span class="pill p-green tiny">this month</span></div><div class="big">71</div>
+            <svg viewBox="0 0 240 40" style="width:100%;height:34px;margin-top:6px"><polyline fill="none" stroke="#2F8F62" stroke-width="2.5" points="0,34 40,28 80,30 120,20 160,22 200,12 240,7"/></svg></div>
+          <div class="mcard"><div class="between"><div class="l"><i class="ti ti-alert-triangle"></i> Open issues</div><span class="pill p-blue tiny">▼ 23</span></div><div class="big">61</div>
+            <svg viewBox="0 0 240 40" style="width:100%;height:34px;margin-top:6px"><polyline fill="none" stroke="#1E63FF" stroke-width="2.5" points="0,9 40,13 80,11 120,19 160,18 200,26 240,31"/></svg></div>
+          <div class="mcard"><div class="between"><div class="l"><i class="ti ti-user-cog"></i> Needs human</div><span class="pill p-amber tiny">action</span></div><div class="big">18</div><div class="d muted" style="margin-top:7px">Routes to remediation</div></div>
+          <div class="mcard grn"><div class="between"><div class="l"><i class="ti ti-click"></i> Widget opens</div><span class="pill p-green tiny">▲ 12%</span></div><div class="big">3,418</div>
+            <svg viewBox="0 0 240 40" style="width:100%;height:34px;margin-top:6px"><polyline fill="none" stroke="#8AB39B" stroke-width="2.5" points="0,30 40,26 80,28 120,20 160,24 200,14 240,9"/></svg></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1.7fr 1fr;gap:18px;margin-bottom:18px">
+          <div class="card pad">
+            <div class="between" style="margin-bottom:3px"><b style="font-size:14px">Compliance trend</b><span class="tiny" style="color:var(--green);font-weight:600"><span style="display:inline-block;width:14px;border-top:2px dashed var(--green);vertical-align:middle"></span> Target 90 · AA-ready</span></div>
+            <div class="muted tiny" style="margin-bottom:10px">Last 7 months · estimated WCAG 2.1 AA</div>
+            <svg viewBox="0 0 600 180" style="width:100%;height:172px;display:block"><defs><linearGradient id="area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1E63FF" stop-opacity="0.16"/><stop offset="1" stop-color="#1E63FF" stop-opacity="0"/></linearGradient></defs><line x1="0" y1="48" x2="600" y2="48" stroke="#2F8F62" stroke-width="1.5" stroke-dasharray="5 6"/><path d="M10,150 L110,131 L210,122 L310,106 L410,93 L510,83 L590,74 L590,180 L10,180 Z" fill="url(#area)"/><polyline fill="none" stroke="#1E63FF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="10,150 110,131 210,122 310,106 410,93 510,83 590,74"/><circle cx="590" cy="74" r="5" fill="#1E63FF" stroke="#fff" stroke-width="2.5"/></svg>
+            <div class="months"><span>Dec</span><span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span></div>
+          </div>
+          <div class="card pad" style="display:flex;flex-direction:column">
+            <div class="between" style="margin-bottom:10px"><b style="font-size:14px">Next best action</b><span class="pill p-amber tiny">Hit 90</span></div>
+            <div style="font-family:'Satoshi';font-size:23px;font-weight:700;color:var(--ink);letter-spacing:-.02em">18 issues</div>
+            <div class="muted" style="font-size:13px;margin:4px 0 14px">need human judgment — alt text, link purpose, custom widgets. These can't be auto-fixed.</div>
+            <div class="bar" style="width:100%;height:8px;margin-bottom:7px"><span style="width:72%;background:linear-gradient(90deg,var(--blue),var(--green))"></span></div>
+            <div class="tiny muted" style="margin-bottom:16px">Closing these lifts you <b style="color:var(--t1)">82 → ~90</b></div>
+            <button class="btn pri" style="width:100%;justify-content:center;margin-top:auto"><i class="ti ti-arrow-right"></i> Get remediation quote</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:18px">
+          <div class="card">
+            <div class="pad between" style="border-bottom:1px solid var(--line)"><b style="font-size:14px">Recent activity</b><a style="color:var(--blue-d);font-weight:600;font-size:13px" data-go="reports">View all →</a></div>
+            <div class="pad feed" style="padding:6px 20px 14px">
+              <div class="it"><div class="ic" style="background:var(--green-bg);color:var(--green)"><i class="ti ti-check"></i></div><div><div class="tx"><b>Felix</b> resolved <b>Low contrast text</b> across 9 pages</div><div class="tm">WCAG 1.4.3 · 2 hours ago</div></div></div>
+              <div class="it"><div class="ic" style="background:var(--blue-bg);color:var(--blue-d)"><i class="ti ti-robot"></i></div><div><div class="tx">Mike completed the <b>June site audit</b> — score rose to 82</div><div class="tm">38 pages scanned · 4 hours ago</div></div></div>
+              <div class="it"><div class="ic" style="background:var(--amber-bg);color:var(--amber)"><i class="ti ti-alert-triangle"></i></div><div><div class="tx">New issue found: <b>Form fields without labels</b></div><div class="tm">WCAG 3.3.2 · yesterday</div></div></div>
+              <div class="it"><div class="ic" style="background:var(--green-bg);color:var(--green)"><i class="ti ti-click"></i></div><div><div class="tx">Widget used <b>3,418 times</b> this month — up 12%</div><div class="tm">superdemo.jewlx.ai · this week</div></div></div>
+            </div>
+          </div>
+          <div class="card pad">
+            <b style="font-size:14px">Coverage by framework</b>
+            <div style="margin-top:12px">
+              <div class="fwrow"><span class="lab">WCAG AA</span><div class="track"><span style="display:block;height:100%;width:73%;background:var(--blue)"></span></div><span class="val">73%</span></div>
+              <div class="fwrow"><span class="lab">ADA</span><div class="track"><span style="display:block;height:100%;width:78%;background:var(--blue)"></span></div><span class="val">78%</span></div>
+              <div class="fwrow"><span class="lab">AODA</span><div class="track"><span style="display:block;height:100%;width:69%;background:var(--green)"></span></div><span class="val">69%</span></div>
+              <div class="fwrow"><span class="lab">EAA</span><div class="track"><span style="display:block;height:100%;width:64%;background:var(--green)"></span></div><span class="val">64%</span></div>
+            </div>
+            <div class="note info" style="margin-top:14px;font-size:12px"><i class="ti ti-info-circle" style="font-size:16px"></i><div>16 of 33 AA criteria fully met — estimates from automated checks.</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ADD AGENT -->
+      <section class="screen" data-screen="add">
+        <div class="h1" style="margin-bottom:4px">Add an agent</div>
+        <div class="muted" style="font-size:13.5px;margin-bottom:22px">Point a new agent at your website. We scan the homepage free, then you choose how to protect it.</div>
+        <div class="card pad" style="max-width:900px">
+          <div class="steps">
+            <div class="step done"><span class="num"><i class="ti ti-check" style="font-size:13px"></i></span> Add agent</div><div class="sep2 done"></div>
+            <div class="step now"><span class="num">2</span> Free scan</div><div class="sep2"></div>
+            <div class="step"><span class="num">3</span> Choose plan</div><div class="sep2"></div>
+            <div class="step"><span class="num">4</span> Install</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1.1fr .9fr;gap:30px;align-items:center">
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><i class="ti ti-world" style="font-size:18px;color:var(--blue-d)"></i><b style="font-size:15px">superdemo.jewlx.ai</b></div>
+              <div class="h1" style="font-size:19px;margin-bottom:6px">We scanned your homepage</div>
+              <div class="muted" style="font-size:13.5px;margin-bottom:16px">Found <b style="color:var(--t1)">23 issues</b> across 6 WCAG criteria on this page alone. A full-site audit by Mike usually finds more.</div>
+              <div style="display:flex;gap:8px;margin-bottom:16px"><span class="pill p-red">6 High</span><span class="pill p-amber">11 Medium</span><span class="pill p-gray">6 Low</span></div>
+              <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden">
+                <div class="between" style="padding:12px 14px;border-bottom:1px solid var(--line2)"><span style="font-size:13.5px">Images missing alt text <span class="tiny muted mono">1.1.1</span></span><span class="pill p-red">High</span></div>
+                <div style="padding:12px 14px;background:var(--bg)"><span class="tiny muted"><i class="ti ti-lock" style="font-size:13px;vertical-align:-2px"></i> 21 more — install to unlock the full-site audit</span></div>
+              </div>
+            </div>
+            <div style="text-align:center">
+              <svg class="ringbig" viewBox="0 0 36 36" style="margin:0 auto 12px"><circle cx="18" cy="18" r="15" fill="none" stroke="#E7EAF1" stroke-width="3.5"/><circle cx="18" cy="18" r="15" fill="none" stroke="#B26A00" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="94.2" stroke-dashoffset="54.6" transform="rotate(-90 18 18)"/><text x="18" y="17.5" text-anchor="middle" font-size="9" font-weight="700" fill="#0D1B4D" font-family="Satoshi">42</text><text x="18" y="23" text-anchor="middle" font-size="3.4" fill="#98a1b4">/ 100</text></svg>
+              <div style="margin-bottom:14px"><span class="pill p-amber"><i class="ti ti-alert-triangle" style="font-size:13px"></i> Not yet conformant</span></div>
+              <button class="btn pri" style="width:100%;justify-content:center"><i class="ti ti-arrow-right"></i> Continue — get the widget</button>
+              <div style="margin-top:10px;font-size:13px;font-weight:600;color:var(--blue-d)">See full audit with Mike</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- INSTALL -->
+      <section class="screen" data-screen="install">
+        <div class="h1" style="font-size:22px;margin-bottom:4px">Install widget</div>
+        <div class="muted" style="font-size:13.5px;margin-bottom:16px">One snippet. The widget loads on every page and starts monitoring automatically.</div>
+        <div class="note warn" style="margin-bottom:18px;max-width:880px"><i class="ti ti-info-circle"></i><div>The widget adds a personalization toolbar + live monitoring. It is a <b>helper</b> — it doesn't by itself make your site legally compliant. Real conformance comes from Mike's audit + remediation.</div></div>
+        <div class="card pad" style="margin-bottom:16px;max-width:880px">
+          <div class="between" style="margin-bottom:12px"><b>1 · Copy your install code</b><span class="pill p-gray tiny mono">agent: 019ef02e…fceb0</span></div>
+          <div class="codebox"><span class="k">&lt;script</span> <span class="s">src</span>=<span class="s">"https://cdn.makoya.app/agent/019ef02e-1068-72eb-8eb7-7c12938fceb0/loader.js"</span><span class="k">&gt;&lt;/script&gt;</span></div>
+          <div style="display:flex;gap:10px;margin-top:12px"><button class="btn pri"><i class="ti ti-copy"></i> Copy to clipboard</button><button class="btn"><i class="ti ti-send"></i> Send to developer</button></div>
+        </div>
+        <div class="card pad" style="margin-bottom:16px;max-width:880px">
+          <b>2 · Pick your platform for step-by-step help</b>
+          <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:14px">
+            <div class="ptile"><div class="pi"><i class="ti ti-code"></i></div><div class="tiny" style="font-weight:600">Direct</div></div>
+            <div class="ptile"><div class="pi"><i class="ti ti-brand-wordpress"></i></div><div class="tiny" style="font-weight:600">WordPress</div></div>
+            <div class="ptile act"><div class="pi"><i class="ti ti-brand-shopify"></i></div><div class="tiny" style="font-weight:600">Shopify</div></div>
+            <div class="ptile"><div class="pi"><i class="ti ti-square"></i></div><div class="tiny" style="font-weight:600">Wix</div></div>
+            <div class="ptile"><div class="pi"><i class="ti ti-brand-squarespace"></i></div><div class="tiny" style="font-weight:600">Squarespace</div></div>
+            <div class="ptile"><div class="pi"><i class="ti ti-brand-webflow"></i></div><div class="tiny" style="font-weight:600">Webflow</div></div>
+          </div>
+        </div>
+        <div class="card pad between" style="max-width:880px"><div style="display:flex;align-items:center;gap:11px"><i class="ti ti-rosette-discount-check" style="font-size:22px;color:var(--green)"></i><div><b>3 · Verify installation</b><div class="muted tiny">We'll confirm the widget is live and start the first crawl.</div></div></div><button class="btn pri"><i class="ti ti-circle-check"></i> Verify</button></div>
+      </section>
+
+      <!-- CUSTOMIZE -->
+      <section class="screen" data-screen="customize">
+        <div class="between" style="margin-bottom:18px"><div><div class="h1" style="font-size:22px">Customize widget</div><div class="muted" style="font-size:13.5px">What your visitors see and can turn on.</div></div><div style="display:flex;gap:10px"><button class="btn">Reset</button><button class="btn pri"><i class="ti ti-rocket"></i> Publish</button></div></div>
+        <div style="display:grid;grid-template-columns:1fr 330px;gap:24px;align-items:start">
+          <div>
+            <div class="seg" style="margin-bottom:14px"><button class="on">Features</button><button>Appearance</button><button>Mobile</button></div>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div class="feat"><div class="ic"><i class="ti ti-zoom-in"></i></div><div style="flex:1"><div class="nm">Bigger text</div><div class="de">Scale text up to 3× for readability</div></div><div class="toggle on"></div></div>
+              <div class="feat"><div class="ic"><i class="ti ti-contrast"></i></div><div style="flex:1"><div class="nm">Contrast modes</div><div class="de">High / inverted contrast</div></div><div class="toggle on"></div></div>
+              <div class="feat"><div class="ic"><i class="ti ti-letter-case"></i></div><div style="flex:1"><div class="nm">Readable &amp; dyslexic fonts</div><div class="de">Legible / dyslexia-friendly type</div></div><div class="toggle on"></div></div>
+              <div class="feat"><div class="ic"><i class="ti ti-volume"></i></div><div style="flex:1"><div class="nm">Read page aloud</div><div class="de">Text-to-speech</div></div><div class="toggle on"></div></div>
+              <div class="feat"><div class="ic"><i class="ti ti-line-height"></i></div><div style="flex:1"><div class="nm">Line &amp; letter spacing</div><div class="de">Adjust text spacing</div></div><div class="toggle"></div></div>
+              <div class="feat"><div class="ic"><i class="ti ti-player-pause"></i></div><div style="flex:1"><div class="nm">Stop animations</div><div class="de">Pause motion &amp; autoplay</div></div><div class="toggle on"></div></div>
+              <div class="feat"><div class="ic"><i class="ti ti-sitemap"></i></div><div style="flex:1"><div class="nm">Page structure</div><div class="de">Navigate by headings &amp; landmarks</div></div><div class="toggle on"></div></div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div class="tiny muted" style="font-weight:600;text-transform:uppercase;letter-spacing:.05em">Live preview</div>
+            <div class="wpv">
+              <div class="hd"><span><i class="ti ti-accessible" style="font-size:15px;vertical-align:-2px"></i> Accessibility</span><i class="ti ti-x" style="font-size:15px"></i></div>
+              <div class="t2"><span class="on">Personalize</span><span>Report an issue</span></div>
+              <div class="g2">Reading</div>
+              <div class="tiles"><div class="tile act"><i class="ti ti-zoom-in"></i>Bigger text</div><div class="tile"><i class="ti ti-letter-case"></i>Readable font</div><div class="tile"><i class="ti ti-line-height"></i>Spacing</div><div class="tile act"><i class="ti ti-sitemap"></i>Structure</div></div>
+              <div class="g2">Color &amp; motion</div>
+              <div class="tiles"><div class="tile act"><i class="ti ti-contrast"></i>Contrast</div><div class="tile"><i class="ti ti-color-swatch"></i>Color filter</div><div class="tile act"><i class="ti ti-player-pause"></i>Stop motion</div><div class="tile"><i class="ti ti-volume"></i>Read aloud</div></div>
+            </div>
+            <div class="card pad"><b class="tiny" style="font-size:13px">Brand color</b><div style="display:flex;align-items:center;gap:9px;margin-top:9px"><span style="width:30px;height:30px;border-radius:8px;background:var(--blue);border:1px solid var(--line)"></span><span class="mono tiny">#1E63FF</span></div><div class="note good" style="margin-top:12px;padding:9px 11px;font-size:12px"><i class="ti ti-check" style="font-size:16px"></i><div>Contrast 4.1 : 1 — passes WCAG AA for UI components (≥3:1)</div></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- REPORTS -->
+      <section class="screen" data-screen="reports">
+        <div class="between" style="margin-bottom:16px"><div><div class="h1" style="font-size:22px">Reports</div><div class="muted" style="font-size:13.5px">Monthly audits and the remediation log for this agent.</div></div><button class="btn"><i class="ti ti-download"></i> Download all (PDF)</button></div>
+        <div class="seg" style="margin-bottom:16px"><button class="on">Monthly audits</button><button>Remediation log</button></div>
+        <div class="tcard">
+          <div class="thead" style="grid-template-columns:1fr 100px 130px 110px 120px"><div>Month</div><div>Score</div><div>Issues found</div><div>Resolved</div><div>Report</div></div>
+          <div class="trow" style="grid-template-columns:1fr 100px 130px 110px 120px"><div style="font-weight:600">June 2026</div><div><b>82</b></div><div>61</div><div style="color:var(--green);font-weight:600">23</div><div><span style="color:var(--blue-d);font-weight:600"><i class="ti ti-file-type-pdf"></i> Download</span></div></div>
+          <div class="trow" style="grid-template-columns:1fr 100px 130px 110px 120px"><div style="font-weight:600">May 2026</div><div>76</div><div>78</div><div style="color:var(--green);font-weight:600">17</div><div><span style="color:var(--blue-d);font-weight:600"><i class="ti ti-file-type-pdf"></i> Download</span></div></div>
+          <div class="trow" style="grid-template-columns:1fr 100px 130px 110px 120px"><div style="font-weight:600">April 2026</div><div>68</div><div>95</div><div style="color:var(--green);font-weight:600">31</div><div><span style="color:var(--blue-d);font-weight:600"><i class="ti ti-file-type-pdf"></i> Download</span></div></div>
+        </div>
+        <div class="note info" style="margin-top:16px;max-width:900px"><i class="ti ti-info-circle"></i><div>Remediations are made by your team or by Makoya specialists — the widget never auto-edits your code. Every change is logged with the WCAG criterion it resolves, building your proof-of-effort trail.</div></div>
+      </section>
+
+      <!-- STATEMENT -->
+      <section class="screen" data-screen="statement">
+        <div class="h1" style="font-size:22px;margin-bottom:4px">Accessibility statement</div>
+        <div class="muted" style="font-size:13.5px;margin-bottom:18px">State your commitment and conformance target. We recommend displaying it in your footer.</div>
+        <div style="display:grid;grid-template-columns:1fr 340px;gap:22px;align-items:start;max-width:980px">
+          <div class="card pad">
+            <label class="fl" style="margin-top:0">Brand name</label><input class="inp" value="Jewlx">
+            <label class="fl">Jurisdictions to reference</label>
+            <div class="chips" style="margin-top:8px"><div class="chip on"><i class="ti ti-check" style="font-size:14px"></i> US · ADA</div><div class="chip on"><i class="ti ti-check" style="font-size:14px"></i> Canada · AODA + ACA</div><div class="chip">EU · EAA</div></div>
+            <label class="fl">Conformance target</label><select class="inp"><option>WCAG 2.1 Level AA (recommended)</option><option>WCAG 2.2 Level AA</option></select>
+            <label class="fl">Accessibility contact</label><input class="inp" value="access@jewlx.ai">
+            <div style="display:flex;gap:10px;margin-top:18px"><button class="btn pri"><i class="ti ti-copy"></i> Copy HTML</button><button class="btn"><i class="ti ti-eye"></i> Preview</button></div>
+            <div class="note info" style="margin-top:16px"><i class="ti ti-info-circle"></i><div>States your commitment and target — it is not a legal certification. Pairs with your proof-of-effort record.</div></div>
+          </div>
+          <div class="card pad" style="background:var(--bg)">
+            <div class="tiny muted" style="font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Live preview</div>
+            <div style="background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px;font-size:12.5px;line-height:1.65;color:var(--t2)"><b style="color:var(--ink);font-size:14px">Accessibility statement</b><br><br>Jewlx is committed to digital accessibility for people with disabilities. We aim to conform to <b>WCAG 2.1 Level AA</b>, in line with the <b>ADA</b> (US) and <b>AODA / ACA</b> (Canada).<br><br>Feedback: <span style="color:var(--blue-d)">access@jewlx.ai</span><br><br><span class="tiny muted">Last reviewed June 2026 · Monitored by a Makoya agent.</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PROOF OF EFFORT -->
+      <section class="screen" data-screen="proof">
+        <div class="between" style="margin-bottom:6px"><div><div class="h1" style="font-size:22px"><i class="ti ti-shield-check" style="color:var(--green)"></i> Proof of effort</div><div class="muted" style="font-size:13.5px">A timestamped evidence pack of your ongoing accessibility work.</div></div><button class="btn pri"><i class="ti ti-download"></i> Download proof pack</button></div>
+        <div class="note warn" style="margin:14px 0 18px;max-width:960px"><i class="ti ti-gavel"></i><div>If your accessibility is ever challenged (e.g. a demand letter), this pack documents a good-faith, ongoing effort — your strongest practical response. It is evidence of effort, not a guarantee against claims.</div></div>
+        <div class="grid2">
+          <div class="card pad" style="display:flex;gap:12px;align-items:flex-start"><div class="fav" style="width:38px;height:38px;background:var(--blue-bg);color:var(--blue-d)"><i class="ti ti-robot"></i></div><div style="flex:1"><div style="font-weight:600;font-size:14px">Audit history</div><div class="tiny muted" style="margin-top:2px">12 monthly Mike audits on file</div></div><span class="pill p-green">Up to date</span></div>
+          <div class="card pad" style="display:flex;gap:12px;align-items:flex-start"><div class="fav" style="width:38px;height:38px;background:var(--blue-bg);color:var(--blue-d)"><i class="ti ti-list-check"></i></div><div style="flex:1"><div style="font-weight:600;font-size:14px">Remediation log</div><div class="tiny muted" style="margin-top:2px">71 fixes logged with WCAG mapping</div></div><span class="pill p-green">Up to date</span></div>
+          <div class="card pad" style="display:flex;gap:12px;align-items:flex-start"><div class="fav" style="width:38px;height:38px;background:var(--blue-bg);color:var(--blue-d)"><i class="ti ti-certificate"></i></div><div style="flex:1"><div style="font-weight:600;font-size:14px">Accessibility statement</div><div class="tiny muted" style="margin-top:2px">Published &amp; linked in footer</div></div><span class="pill p-green">Live</span></div>
+          <div class="card pad" style="display:flex;gap:12px;align-items:flex-start"><div class="fav" style="width:38px;height:38px;background:var(--blue-bg);color:var(--blue-d)"><i class="ti ti-code"></i></div><div style="flex:1"><div style="font-weight:600;font-size:14px">Widget install proof</div><div class="tiny muted" style="margin-top:2px">Installed 142 days · 99.9% uptime</div></div><span class="pill p-green">Verified</span></div>
+          <div class="card pad" style="display:flex;gap:12px;align-items:flex-start"><div class="fav" style="width:38px;height:38px;background:var(--blue-bg);color:var(--blue-d)"><i class="ti ti-file-text"></i></div><div style="flex:1"><div style="font-weight:600;font-size:14px">VPAT / ACR</div><div class="tiny muted" style="margin-top:2px">Generated Apr 2026</div></div><span class="pill p-green">Ready</span></div>
+          <div class="card pad" style="display:flex;gap:12px;align-items:flex-start"><div class="fav" style="width:38px;height:38px;background:var(--blue-bg);color:var(--blue-d)"><i class="ti ti-school"></i></div><div style="flex:1"><div style="font-weight:600;font-size:14px">Manual expert audit</div><div class="tiny muted" style="margin-top:2px">By Makoya specialist · Mar 2026</div></div><span class="pill p-green">On file</span></div>
+        </div>
+      </section>
+
+      <!-- ANALYTICS -->
+      <section class="screen" data-screen="analytics">
+        <div class="between" style="margin-bottom:18px"><div><div class="h1" style="font-size:22px">Analytics</div><div class="muted" style="font-size:13.5px">How visitors use the accessibility widget on this agent.</div></div><button class="btn"><i class="ti ti-calendar"></i> May 22 – Jun 22, 2026</button></div>
+        <div class="grid3" style="margin-bottom:18px">
+          <div class="mcard grn"><div class="l"><i class="ti ti-click"></i> Widget opens</div><div class="big">3,418</div><div class="d up">▲ 12% vs last period</div></div>
+          <div class="mcard"><div class="l"><i class="ti ti-adjustments"></i> Feature activations</div><div class="big">1,902</div><div class="d muted">across 11 tools</div></div>
+          <div class="mcard"><div class="l"><i class="ti ti-star"></i> Most used</div><div class="big" style="font-size:20px;padding-top:10px">Bigger text</div><div class="d muted">512 activations</div></div>
+        </div>
+        <div class="card pad" style="margin-bottom:18px"><b style="font-size:14px">Widget opens over time</b><div class="barchart"><div class="col"><div class="bar2" style="height:40%"></div></div><div class="col"><div class="bar2" style="height:55%"></div></div><div class="col"><div class="bar2" style="height:48%"></div></div><div class="col"><div class="bar2" style="height:70%"></div></div><div class="col"><div class="bar2" style="height:62%"></div></div><div class="col"><div class="bar2" style="height:85%"></div></div><div class="col"><div class="bar2" style="height:78%"></div></div><div class="col"><div class="bar2" style="height:95%"></div></div><div class="col"><div class="bar2" style="height:72%;background:var(--green)"></div></div><div class="col"><div class="bar2" style="height:88%;background:var(--green)"></div></div><div class="col"><div class="bar2" style="height:100%;background:var(--green)"></div></div><div class="col"><div class="bar2" style="height:90%;background:var(--green)"></div></div></div></div>
+        <div class="card pad"><b style="font-size:14px">Usage by feature</b><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px">
+          <div class="fcard"><div class="ic"><i class="ti ti-zoom-in"></i></div><div><div class="n">512</div><div class="tiny muted">Bigger text</div></div></div>
+          <div class="fcard"><div class="ic"><i class="ti ti-contrast"></i></div><div><div class="n">388</div><div class="tiny muted">Contrast</div></div></div>
+          <div class="fcard"><div class="ic"><i class="ti ti-letter-case"></i></div><div><div class="n">274</div><div class="tiny muted">Readable fonts</div></div></div>
+          <div class="fcard"><div class="ic"><i class="ti ti-volume"></i></div><div><div class="n">201</div><div class="tiny muted">Read aloud</div></div></div>
+          <div class="fcard"><div class="ic"><i class="ti ti-sitemap"></i></div><div><div class="n">158</div><div class="tiny muted">Page structure</div></div></div>
+          <div class="fcard"><div class="ic"><i class="ti ti-player-pause"></i></div><div><div class="n">121</div><div class="tiny muted">Stop motion</div></div></div>
+        </div></div>
+      </section>
+
+      <!-- BILLING -->
+      <section class="screen" data-screen="billing">
+        <div class="h1" style="font-size:22px;margin-bottom:4px">Plan &amp; billing</div>
+        <div class="muted" style="font-size:13.5px;margin-bottom:16px">This agent is on the Growth plan. Manage your subscription and invoices.</div>
+        <div class="note info" style="margin-bottom:18px;max-width:980px"><i class="ti ti-calendar-event"></i><div>Renews <b>Jun 30, 2026</b> · Growth (up to 30k monthly visits) · $1,490 / yr</div></div>
+        <div class="between" style="margin-bottom:12px;max-width:980px"><b style="font-size:15px">Plans</b><div class="seg"><button class="on">Yearly · save 30%</button><button>Monthly</button></div></div>
+        <div class="grid4" style="max-width:980px;align-items:stretch">
+          <div class="card pad" style="display:flex;flex-direction:column"><div style="font-weight:600;color:var(--ink)">Starter</div><div style="font-size:23px;font-weight:700;color:var(--ink);margin:6px 0 2px">$390<span style="font-size:12px;color:var(--t3);font-weight:500"> /yr</span></div><div class="tiny muted" style="margin-bottom:14px">up to 5k visits</div><button class="btn pri" style="margin-top:auto;justify-content:center">Choose</button></div>
+          <div class="card pad" style="display:flex;flex-direction:column;border:2px solid var(--blue)"><span class="pill p-blue tiny" style="align-self:flex-start;margin-bottom:8px">Current plan</span><div style="font-weight:600;color:var(--ink)">Growth</div><div style="font-size:23px;font-weight:700;color:var(--ink);margin:6px 0 2px">$1,490<span style="font-size:12px;color:var(--t3);font-weight:500"> /yr</span></div><div class="tiny muted" style="margin-bottom:14px">up to 30k visits</div><button class="btn" style="margin-top:auto;justify-content:center">Current</button></div>
+          <div class="card pad" style="display:flex;flex-direction:column"><div style="font-weight:600;color:var(--ink)">Scale</div><div style="font-size:23px;font-weight:700;color:var(--ink);margin:6px 0 2px">$3,900<span style="font-size:12px;color:var(--t3);font-weight:500"> /yr</span></div><div class="tiny muted" style="margin-bottom:14px">up to 100k visits</div><button class="btn pri" style="margin-top:auto;justify-content:center">Choose</button></div>
+          <div class="card pad" style="display:flex;flex-direction:column"><div style="font-weight:600;color:var(--ink)">Enterprise</div><div style="font-size:23px;font-weight:700;color:var(--ink);margin:6px 0 2px">Custom</div><div class="tiny muted" style="margin-bottom:14px">100k+ visits</div><button class="btn" style="margin-top:auto;justify-content:center">Contact</button></div>
+        </div>
+        <div class="note good" style="margin-top:18px;max-width:980px"><i class="ti ti-discount"></i><div>Plans cover the widget, monitoring and Mike's audits. <b>Human remediation</b> and <b>expert audits</b> are billed as separate services — <span style="color:var(--blue-d);font-weight:600">request a quote</span>.</div></div>
+      </section>
+
+      <!-- AGENT SETTINGS -->
+      <section class="screen" data-screen="settings">
+        <div class="h1" style="font-size:22px;margin-bottom:4px">Agent settings</div>
+        <div class="muted" style="font-size:13.5px;margin-bottom:16px">Owner details and advanced widget configuration for this agent.</div>
+        <div class="seg" style="margin-bottom:18px"><button class="on">Owner info</button><button>Advanced</button><button>Notifications</button></div>
+        <div class="grid2" style="align-items:start;max-width:980px">
+          <div class="card pad"><b style="font-size:14px">Agent owner</b><div class="muted tiny" style="margin-top:2px">Used in the accessibility statement and for alerts.</div><label class="fl">Owner name</label><input class="inp" value="Vikram Kandoriya"><label class="fl">Email</label><input class="inp" value="creativesgpt@wavesmvmnt.com"><label class="fl">Phone</label><input class="inp" value="+1 (415) 555-0142"><button class="btn pri" style="margin-top:16px"><i class="ti ti-check"></i> Save</button></div>
+          <div class="card pad"><b style="font-size:14px">Advanced widget config</b><div class="muted tiny" style="margin-top:2px">Optional. Some items require a developer.</div><label class="fl">Custom trigger element (desktop)</label><input class="inp" value="#a11y-btn"><label class="fl">Widget language</label><input class="inp" value="English (US)"><div style="margin-top:14px;display:flex;flex-direction:column;gap:10px"><div class="between" style="border:1px solid var(--line);border-radius:10px;padding:11px 13px"><span style="font-size:13px">Re-apply on dynamic content (DOM observer)</span><div class="toggle on"></div></div><div class="between" style="border:1px solid var(--line);border-radius:10px;padding:11px 13px"><span style="font-size:13px">Inherit your site fonts</span><div class="toggle on"></div></div></div><div class="note info" style="margin-top:14px;font-size:12px"><i class="ti ti-info-circle" style="font-size:16px"></i><div>No automated code-fixing here, by design — Makoya monitors and audits; fixes are on the record.</div></div></div>
+        </div>
+      </section>
+
+      <!-- ACCOUNT -->
+      <section class="screen" data-screen="account">
+        <div class="h1" style="font-size:22px;margin-bottom:4px">Account settings</div>
+        <div class="muted" style="font-size:13.5px;margin-bottom:18px">Organization, team and security for your Makoya account.</div>
+        <div class="seg" style="margin-bottom:18px"><button class="on">Profile</button><button>Team</button><button>Security</button><button>API</button></div>
+        <div class="grid2" style="align-items:start;max-width:980px">
+          <div class="card pad"><b style="font-size:14px">Organization</b><label class="fl">Organization name</label><input class="inp" value="Waves MVMNT"><label class="fl">Account email</label><input class="inp" value="creativesgpt@wavesmvmnt.com"><label class="fl">Country</label><input class="inp" value="United States"><button class="btn pri" style="margin-top:16px"><i class="ti ti-check"></i> Save changes</button></div>
+          <div class="card pad"><div class="between" style="margin-bottom:8px"><b style="font-size:14px">Team members</b><button class="btn"><i class="ti ti-plus"></i> Invite</button></div>
+            <div class="between" style="padding:11px 0;border-bottom:1px solid var(--line2)"><div style="display:flex;align-items:center;gap:10px"><div class="av" style="width:32px;height:32px;background:var(--blue-bg);color:var(--blue-d);font-size:11px">WV</div><div><div style="font-weight:600;font-size:13.5px">Waves MVMNT</div><div class="tiny muted">All agents</div></div></div><span class="pill p-gray">Owner</span></div>
+            <div class="between" style="padding:11px 0;border-bottom:1px solid var(--line2)"><div style="display:flex;align-items:center;gap:10px"><div class="av" style="width:32px;height:32px;background:var(--green-bg);color:var(--green);font-size:11px">VK</div><div><div style="font-weight:600;font-size:13.5px">Vikram K.</div><div class="tiny muted">All agents</div></div></div><span class="pill p-gray">Admin</span></div>
+            <div class="between" style="padding:11px 0"><div style="display:flex;align-items:center;gap:10px"><div class="av" style="width:32px;height:32px;background:#F4ECFF;color:#7A5AF8;font-size:11px">DV</div><div><div style="font-weight:600;font-size:13.5px">Dev (freelance)</div><div class="tiny muted">2 agents</div></div></div><span class="pill p-gray">Developer</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PARTNERS -->
+      <section class="screen" data-screen="partners">
+        <div class="h1" style="font-size:22px;margin-bottom:4px">Partner program</div>
+        <div class="muted" style="font-size:13.5px;margin-bottom:18px">Manage accessibility for clients at scale — built for agencies and freelancers.</div>
+        <div class="grid3" style="margin-bottom:18px">
+          <div class="mcard"><div class="l"><i class="ti ti-users"></i> Client accounts</div><div class="big">14</div></div>
+          <div class="mcard grn"><div class="l"><i class="ti ti-robot"></i> Agents managed</div><div class="big">39</div></div>
+          <div class="mcard"><div class="l"><i class="ti ti-businessplan"></i> Monthly revenue</div><div class="big">$6.2k</div></div>
+        </div>
+        <div class="grid3">
+          <div class="card pad"><div class="fav" style="width:38px;height:38px;background:var(--blue-bg);color:var(--blue-d);margin-bottom:10px"><i class="ti ti-layout-grid"></i></div><div style="font-weight:600;font-size:14px">One dashboard</div><div class="tiny muted" style="margin-top:3px">Manage every client agent from a single login</div></div>
+          <div class="card pad"><div class="fav" style="width:38px;height:38px;background:var(--green-bg);color:var(--green);margin-bottom:10px"><i class="ti ti-tag"></i></div><div style="font-weight:600;font-size:14px">Partner pricing</div><div class="tiny muted" style="margin-top:3px">Wholesale rates + bundled billing</div></div>
+          <div class="card pad"><div class="fav" style="width:38px;height:38px;background:var(--blue-bg);color:var(--blue-d);margin-bottom:10px"><i class="ti ti-brush"></i></div><div style="font-weight:600;font-size:14px">White-label widget</div><div class="tiny muted" style="margin-top:3px">Your branding on the widget and reports</div></div>
+          <div class="card pad"><div class="fav" style="width:38px;height:38px;background:var(--green-bg);color:var(--green);margin-bottom:10px"><i class="ti ti-file-dollar"></i></div><div style="font-weight:600;font-size:14px">Co-branded reports</div><div class="tiny muted" style="margin-top:3px">Audit + proof-of-effort packs in your name</div></div>
+          <div class="card pad"><div class="fav" style="width:38px;height:38px;background:var(--blue-bg);color:var(--blue-d);margin-bottom:10px"><i class="ti ti-cash"></i></div><div style="font-weight:600;font-size:14px">Recurring commission</div><div class="tiny muted" style="margin-top:3px">Earn on every client plan, every month</div></div>
+          <div class="card pad"><div class="fav" style="width:38px;height:38px;background:var(--green-bg);color:var(--green);margin-bottom:10px"><i class="ti ti-headset"></i></div><div style="font-weight:600;font-size:14px">Priority support</div><div class="tiny muted" style="margin-top:3px">A dedicated partner success manager</div></div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+<script>
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.dataset.screen===id));
+ document.querySelectorAll('.nav a').forEach(a=>a.classList.toggle('on',a.dataset.go===id));window.scrollTo(0,0);}
+document.addEventListener('click',e=>{const g=e.target.closest('[data-go]');if(g){e.preventDefault();show(g.dataset.go);}
+ const c=e.target.closest('.chip');if(c){c.parentElement.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');}
+ const s=e.target.closest('.seg button');if(s){s.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on'));s.classList.add('on');}
+ const t=e.target.closest('.tabs a');if(t){t.parentElement.querySelectorAll('a').forEach(x=>x.classList.remove('on'));t.classList.add('on');}});
+if(location.hash)show(location.hash.slice(1));
+</script>
+</body>
+</html>

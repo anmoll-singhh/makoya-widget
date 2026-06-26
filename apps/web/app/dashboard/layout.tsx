@@ -1,61 +1,62 @@
-﻿/**
+/**
  * app/dashboard/layout.tsx  (RSC)
  *
- * Shared shell for all /dashboard/* routes.  Renders:
- *  - Sticky header: logo on the left, avatar/account-link + sign-out on the right
- *  - <DashboardTabs>: "Customize" / "Report" tab nav under the header
- *  - <main>: page content
+ * v7 Shell layout for all /dashboard/* routes.
  *
- * Account is reachable via the avatar pill (not as a tab — it is a secondary
- * destination, not a primary workflow step).
+ * Responsibilities:
+ *  1. Require a valid Supabase session — unauthenticated requests are
+ *     redirected to /login?next=/dashboard before any data is fetched.
+ *  2. Load the user's sites via listSites (RLS-scoped by owner).
+ *  3. Derive user display info (name, email, initials) from the session.
+ *  4. Render the client <Shell> with sites + user, wrapping {children}.
+ *
+ * The shell's active siteId / active route highlighting is derived
+ * client-side from usePathname() inside Shell.tsx.
  */
 
-import { Suspense, type ReactNode } from "react";
-import Link from "next/link";
-import { Logo } from "@/components/Logo";
-import { SignOutButton } from "@/components/SignOutButton";
+import { redirect } from "next/navigation";
+import type { ReactNode } from "react";
 import { getServerSupabase } from "@/lib/supabase/server";
-import { DashboardTabs } from "./DashboardTabs";
+import { listSites } from "@/lib/sites";
+import { Shell } from "./Shell";
+import "./dashboard.css";
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const supabase = await getServerSupabase();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const email   = user?.email ?? "";
-  const initial = (email[0] ?? "?").toUpperCase();
+
+  if (!user) {
+    redirect("/login?next=/dashboard");
+  }
+
+  const sites = await listSites(supabase, user.id);
+
+  // Derive a human-readable name from email or user metadata
+  const rawName: string =
+    (user.user_metadata?.full_name as string | undefined) ||
+    (user.user_metadata?.name as string | undefined) ||
+    user.email?.split("@")[0] ||
+    "User";
+
+  const name = rawName
+    .split(/[\s._-]/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+
+  const email = user.email ?? "";
+
+  // Two-letter initials from the name parts
+  const parts = name.trim().split(/\s+/);
+  const initials =
+    parts.length >= 2
+      ? `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+      : name.slice(0, 2).toUpperCase();
 
   return (
-    <div className="min-h-dvh bg-[var(--paper)]">
-      {/* ── Sticky header ─────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-40 border-b border-[var(--border)] bg-[var(--surface)]/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3.5">
-          <Link href="/dashboard" className="transition-colors hover:opacity-80">
-            <Logo />
-          </Link>
-          <div className="flex items-center gap-1.5">
-            <Link
-              href="/dashboard/account"
-              className="transition-colors flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] py-1 pl-1 pr-3 shadow-sm hover:border-[var(--border-strong)] hover:shadow"
-            >
-              <span className="grid h-7 w-7 place-items-center rounded-full bg-signal-600 text-xs font-bold text-white">
-                {initial}
-              </span>
-              <span className="hidden max-w-[160px] truncate text-sm font-medium text-[var(--ink-600)] sm:block">
-                {email}
-              </span>
-            </Link>
-            <SignOutButton />
-          </div>
-        </div>
-
-        {/* Tab nav — useSearchParams requires Suspense boundary */}
-        <Suspense fallback={null}>
-          <DashboardTabs />
-        </Suspense>
-      </header>
-
-      <main className="mx-auto max-w-6xl px-5 py-8 sm:py-10">{children}</main>
-    </div>
+    <Shell sites={sites} user={{ name, email, initials }}>
+      {children}
+    </Shell>
   );
 }

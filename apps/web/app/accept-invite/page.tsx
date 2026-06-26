@@ -16,6 +16,7 @@
  * `undefined`, and a network error degrades to the same generic failure copy.
  */
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 type Phase = "checking" | "needs-login" | "no-token" | "accepting" | "success" | "error";
@@ -147,8 +148,8 @@ export default function AcceptInvitePage() {
             <p style={{ marginTop: 8, fontSize: 14, color: "#5b6478", lineHeight: 1.6 }}>
               Your access is ready.
             </p>
-            <a
-              href="/v3"
+            <Link
+              href="/dashboard"
               style={{
                 display: "inline-block",
                 marginTop: 18,
@@ -162,7 +163,7 @@ export default function AcceptInvitePage() {
               }}
             >
               Go to your dashboard
-            </a>
+            </Link>
           </>
         )}
 
@@ -172,8 +173,8 @@ export default function AcceptInvitePage() {
               We couldn&apos;t accept this invite. It may have already been used or expired, or it was
               sent to a different email. Ask whoever invited you to send a fresh invite.
             </p>
-            <a
-              href="/v3"
+            <Link
+              href="/dashboard"
               style={{
                 display: "inline-block",
                 marginTop: 18,
@@ -187,7 +188,7 @@ export default function AcceptInvitePage() {
               }}
             >
               Go to dashboard
-            </a>
+            </Link>
           </>
         )}
       </div>

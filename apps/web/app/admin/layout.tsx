@@ -1,45 +1,68 @@
+/**
+ * app/admin/layout.tsx — Admin CRM shell
+ *
+ * v7 restyle: uses the shared dashboard CSS tokens + component classes
+ * (imported via admin.css → dashboard.css) so the admin and client
+ * dashboard share the same visual identity. Markup is visual-only —
+ * all routes, auth gating, and sign-out behaviour are unchanged.
+ *
+ * Shell shape: sticky glass topbar (brand + nav + sign-out) + full-bleed
+ * content well. No sidebar grid — admin is topbar-only.
+ */
+
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
-import { SignOutButton } from "@/components/SignOutButton";
+import "./admin.css";
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-dvh bg-[var(--paper)] text-[var(--ink-900)]">
-      <header className="sticky top-0 z-40 border-b border-[var(--border)] bg-[var(--paper)]/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3.5">
-          <div className="flex items-center gap-3">
-            <Link href="/admin" className="transition-colors hover:opacity-80">
-              <Logo dark />
-            </Link>
-            <span className="rounded-full bg-signal-600/15 px-2.5 py-0.5 text-xs font-semibold text-signal-700 ring-1 ring-signal-500/30">
-              Operator
-            </span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Link
-              href="/admin/requests"
-              className="transition-colors rounded-lg px-3 py-1.5 text-sm font-medium text-[var(--ink-600)] hover:bg-[var(--surface-2)] hover:text-[var(--ink-900)]"
-            >
-              Requests
-            </Link>
-            <Link
-              href="/admin/leads"
-              className="transition-colors rounded-lg px-3 py-1.5 text-sm font-medium text-[var(--ink-600)] hover:bg-[var(--surface-2)] hover:text-[var(--ink-900)]"
-            >
-              Leads
-            </Link>
-            <Link
-              href="/dashboard"
-              className="transition-colors rounded-lg px-3 py-1.5 text-sm font-medium text-[var(--ink-600)] hover:bg-[var(--surface-2)] hover:text-[var(--ink-900)]"
-            >
-              My dashboard
-            </Link>
-            <SignOutButton dark />
-          </div>
+    <div className="admin-layout">
+      {/* Skip navigation for keyboard / screen-reader users */}
+      <a href="#admin-main" className="skip">
+        Skip to content
+      </a>
+
+      {/* ── Sticky glass topbar ─────────────────────────────────────────── */}
+      <header className="admin-topbar" role="banner">
+        {/* Brand: logo + "Admin" badge */}
+        <Link href="/admin" className="admin-brand" aria-label="Makoya Admin home">
+          <Logo />
+          <span className="admin-badge">Admin</span>
+        </Link>
+
+        {/* Primary nav */}
+        <nav className="admin-nav" aria-label="Admin navigation">
+          <Link href="/admin/requests">
+            <i className="ti ti-message-dots" aria-hidden="true" />
+            Requests
+          </Link>
+          <Link href="/admin/leads">
+            <i className="ti ti-users" aria-hidden="true" />
+            Leads
+          </Link>
+        </nav>
+
+        {/* Trailing controls */}
+        <div className="admin-topbar-end">
+          <Link href="/dashboard" className="btn">
+            <i className="ti ti-layout-dashboard" aria-hidden="true" />
+            My dashboard
+          </Link>
+          {/* Sign-out: real POST to /auth/signout — functionality unchanged */}
+          <form action="/auth/signout" method="post">
+            <button type="submit" className="btn">
+              <i className="ti ti-logout" aria-hidden="true" />
+              Sign out
+            </button>
+          </form>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-5 py-8">{children}</main>
+
+      {/* ── Main content ───────────────────────────────────────────────── */}
+      <main id="admin-main" className="admin-content">
+        {children}
+      </main>
     </div>
   );
 }
