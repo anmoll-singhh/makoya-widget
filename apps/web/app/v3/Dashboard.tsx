@@ -22,7 +22,14 @@
  *   Customize  → /config            Install    → snippet + /install-status
  *   Agents     → /overview (single-site roll-up)
  *
- * Account / Partners remain static brochure screens (no backend endpoint yet).
+ * Account and Partners are wired to the org/team/partner tenancy APIs (which are
+ * authed + same-origin, so the session cookie scopes every read via RLS):
+ *   Account  → /api/org · /api/team (+POST invite) · /api/org/api-keys (CRUD)
+ *   Partners → /api/partner · /api/partner/white-label (GET/PATCH) ·
+ *              /api/partner/enroll (POST)
+ * Both follow the same loading / error / empty discipline as the screens above,
+ * and the one-time secrets these endpoints return (invite tokens, raw API keys)
+ * are shown exactly once with a copy button and never persisted client-side.
  */
 import { useEffect, useState } from "react";
 
@@ -140,6 +147,91 @@ interface InstallStatusData {
   pingCount: number;
 }
 
+/* ── Account / org-tenancy shapes (mirror lib/org.ts; secrets never present) ── */
+type OrgRole = "owner" | "admin" | "developer";
+interface Organization {
+  id: string;
+  name: string;
+  createdBy: string;
+  createdAt: string;
+}
+interface TeamMember {
+  id: string;
+  orgId: string;
+  userId: string | null;
+  email: string;
+  role: OrgRole;
+  createdAt: string;
+}
+interface TeamInvite {
+  id: string;
+  orgId: string;
+  email: string;
+  role: OrgRole;
+  invitedBy: string | null;
+  acceptedAt: string | null;
+  createdAt: string;
+}
+interface ApiKeyRecord {
+  id: string;
+  orgId: string;
+  name: string;
+  prefix: string;
+  createdBy: string | null;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+}
+interface OrgResponse {
+  org: Organization;
+  role: OrgRole;
+}
+interface TeamResponse {
+  team: TeamMember[];
+  invites?: TeamInvite[];
+}
+interface ApiKeysResponse {
+  keys: ApiKeyRecord[];
+}
+
+/* ── Partner program shapes (mirror lib/partner.ts) ─────────────────────────── */
+interface PartnerAccount {
+  id: string;
+  orgId: string;
+  status: "active" | "suspended";
+  commissionRate: number;
+  whiteLabelEnabled: boolean;
+  createdAt: string;
+}
+interface PartnerClient {
+  id: string;
+  partnerId: string;
+  clientOrgId: string;
+  createdAt: string;
+}
+interface PartnerSummary {
+  clientCount: number;
+  agentsManaged: number;
+  monthlyRevenueCents: number;
+}
+interface PartnerResponse {
+  partner: PartnerAccount | null;
+  clients?: PartnerClient[];
+  summary?: PartnerSummary;
+}
+interface WhiteLabelConfig {
+  partnerId: string;
+  brandName: string;
+  logoUrl: string;
+  primaryColor: string;
+  supportEmail: string;
+  hideMakoyaBranding: boolean;
+  updatedAt: string;
+}
+interface WhiteLabelResponse {
+  config: WhiteLabelConfig | null;
+}
+
 /* ──────────────────────────────────────────────────────────────────────────
  * Tiny same-origin fetch hook with a per-URL module cache.
  * ──────────────────────────────────────────────────────────────────────── */
@@ -147,15 +239,21 @@ const cache = new Map<string, unknown>();
 
 type AsyncState<T> = { loading: boolean; error: boolean; data: T | null };
 
-function useApi<T>(url: string): AsyncState<T> {
+/**
+ * Same-origin GET hook with a per-URL cache. `reloadKey` is additive: when it is
+ * 0 (the default for every existing caller) the cached value is reused; bumping
+ * it past 0 busts the cache and forces a fresh fetch, which the Account/Partners
+ * screens use to re-read a list after a mutation (invite, key, enroll, …).
+ */
+function useApi<T>(url: string, reloadKey = 0): AsyncState<T> {
   const [state, setState] = useState<AsyncState<T>>(() =>
-    cache.has(url)
+    reloadKey === 0 && cache.has(url)
       ? { loading: false, error: false, data: cache.get(url) as T }
       : { loading: true, error: false, data: null }
   );
 
   useEffect(() => {
-    if (cache.has(url)) {
+    if (reloadKey === 0 && cache.has(url)) {
       setState({ loading: false, error: false, data: cache.get(url) as T });
       return;
     }
@@ -174,10 +272,30 @@ function useApi<T>(url: string): AsyncState<T> {
     return () => {
       live = false;
     };
-  }, [url]);
+  }, [url, reloadKey]);
 
   return state;
 }
+
+/** Owner/admin can manage the team + API keys (mirrors lib/roles.ts canManageTeam). */
+function canManageTeam(role: OrgRole | null | undefined): boolean {
+  return role === "owner" || role === "admin";
+}
+
+/** Two-letter initials for an avatar, derived from an email/name. */
+function initials(s: string): string {
+  const at = s.split("@")[0] ?? "";
+  const parts = at.split(/[.\-_+\s]+/).filter(Boolean);
+  const a = parts[0]?.[0] ?? s[0] ?? "?";
+  const b = parts[1]?.[0] ?? "";
+  return (a + b).toUpperCase();
+}
+
+const ROLE_PILL: Record<OrgRole, string> = {
+  owner: "p-blue",
+  admin: "p-green",
+  developer: "p-gray",
+};
 
 /* ── small presentational helpers ─────────────────────────────────────────── */
 function Loading({ label = "Loading…" }: { label?: string }) {
@@ -192,6 +310,33 @@ function Failed({ label = "Couldn't load this — try again shortly." }: { label
     <div className="note warn" role="alert">
       <i className="ti ti-alert-triangle" aria-hidden />
       <div>{label}</div>
+    </div>
+  );
+}
+/**
+ * Shows a one-time secret (an invite link/token or a raw API key) in a code box
+ * with a copy button. The value lives only in this component's props for as long
+ * as the panel is open — it is never written to the per-URL cache or refetched,
+ * because the server returns these exactly once by design.
+ */
+function CopyField({ value, copyLabel = "Copy" }: { value: string; copyLabel?: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div>
+      <div className="codebox" style={{ wordBreak: "break-all" }}>{value}</div>
+      <button
+        className="btn pri"
+        type="button"
+        style={{ marginTop: 10 }}
+        onClick={() => {
+          navigator.clipboard?.writeText(value).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1800);
+          });
+        }}
+      >
+        <i className="ti ti-copy" aria-hidden /> {copied ? "Copied!" : copyLabel}
+      </button>
     </div>
   );
 }
@@ -1037,59 +1182,538 @@ function SettingsScreen({ base }: { base: string }) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
- * ACCOUNT (static brochure + real email/domain)
+ * ACCOUNT — Profile / Team / Security / API, wired to the org-tenancy APIs.
+ *   /api/org           → org name (Profile) + the caller's role (gates Team/API)
+ *   /api/team          → roster (+ invites if returned); POST creates an invite
+ *   /api/org/api-keys  → list / create (secret-once) / revoke
+ * One-time secrets (invite link, raw key) are shown via <CopyField> and never
+ * cached or refetched. Mutations bust the per-URL cache and bump a reload key.
  * ════════════════════════════════════════════════════════════════════════ */
+type AccountTab = "profile" | "team" | "security" | "api";
+
 function AccountScreen({ domain, email }: { domain: string; email: string }) {
+  const [tab, setTab] = useState<AccountTab>("profile");
+  // /api/org gives both the org (Profile) and the caller's role (Team/API gating).
+  const org = useApi<OrgResponse>("/api/org");
+  const role = org.data?.role ?? null;
+
+  const tabs: { id: AccountTab; label: string }[] = [
+    { id: "profile", label: "Profile" },
+    { id: "team", label: "Team" },
+    { id: "security", label: "Security" },
+    { id: "api", label: "API" },
+  ];
+
   return (
     <section className="screen on">
       <div className="h1" style={{ fontSize: 22, marginBottom: 4 }}>Account settings</div>
-      <div className="muted" style={{ fontSize: 13.5, marginBottom: 18 }}>Organization, team and security for your Makoya account.</div>
-      <div className="grid2" style={{ alignItems: "start", maxWidth: 980 }}>
-        <div className="card pad">
-          <b style={{ fontSize: 14 }}>Organization</b>
-          <label className="fl" htmlFor="v3-acc-email">Account email</label>
-          <input id="v3-acc-email" className="inp" defaultValue={email} />
-          <label className="fl" htmlFor="v3-acc-domain">Primary site</label>
-          <input id="v3-acc-domain" className="inp" defaultValue={domain} readOnly />
-          <button className="btn pri" type="button" style={{ marginTop: 16 }}><i className="ti ti-check" aria-hidden /> Save changes</button>
-        </div>
-        <div className="card pad">
-          <div className="between" style={{ marginBottom: 8 }}><b style={{ fontSize: 14 }}>Team members</b><button className="btn" type="button"><i className="ti ti-plus" aria-hidden /> Invite</button></div>
-          <div className="between" style={{ padding: "11px 0", borderBottom: "1px solid var(--line2)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}><div className="av" style={{ width: 32, height: 32, background: "var(--blue-bg)", color: "var(--blue-d)", fontSize: 11 }}>{(email[0] ?? "?").toUpperCase()}</div><div><div style={{ fontWeight: 600, fontSize: 13.5 }}>{email}</div><div className="tiny muted">All agents</div></div></div>
-            <span className="pill p-gray">Owner</span>
-          </div>
-        </div>
+      <div className="muted" style={{ fontSize: 13.5, marginBottom: 18 }}>Organization, team, security and API access for your Makoya account.</div>
+      <div className="seg" style={{ marginBottom: 18 }}>
+        {tabs.map((t) => (
+          <button key={t.id} type="button" className={tab === t.id ? "on" : ""} aria-pressed={tab === t.id} onClick={() => setTab(t.id)}>
+            {t.label}
+          </button>
+        ))}
       </div>
+      {tab === "profile" && <AccountProfile org={org} email={email} domain={domain} />}
+      {tab === "team" && <AccountTeam role={role} />}
+      {tab === "security" && <AccountSecurity />}
+      {tab === "api" && <AccountApiKeys role={role} />}
     </section>
   );
 }
 
+function AccountProfile({ org, email, domain }: { org: AsyncState<OrgResponse>; email: string; domain: string }) {
+  return (
+    <div className="grid2" style={{ alignItems: "start", maxWidth: 980 }}>
+      <div className="card pad">
+        <b style={{ fontSize: 14 }}>Organization</b>
+        <div className="muted tiny" style={{ marginTop: 2 }}>Shown on your accessibility statement and reports.</div>
+        {org.loading && <Loading />}
+        {org.error && !org.loading && <Failed label="Couldn't load your organization — try again shortly." />}
+        {org.data && (
+          <>
+            <label className="fl" htmlFor="v3-acc-org">Organization name</label>
+            <input id="v3-acc-org" className="inp" value={org.data.org.name} readOnly />
+            <label className="fl" htmlFor="v3-acc-email">Account email</label>
+            <input id="v3-acc-email" className="inp" value={email} readOnly />
+            <label className="fl" htmlFor="v3-acc-domain">Primary site</label>
+            <input id="v3-acc-domain" className="inp" value={domain} readOnly />
+            <div className="note info" style={{ marginTop: 16 }}><i className="ti ti-info-circle" aria-hidden /><div>To change your organization name or account email, contact support and we&apos;ll update it for you.</div></div>
+          </>
+        )}
+      </div>
+      <div className="card pad">
+        <b style={{ fontSize: 14 }}>Your role</b>
+        <div className="muted tiny" style={{ marginTop: 2 }}>What you can do in this account.</div>
+        {org.loading && <Loading />}
+        {org.data && (
+          <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 10 }}>
+            <span className={`pill ${ROLE_PILL[org.data.role]}`} style={{ textTransform: "capitalize" }}>{org.data.role}</span>
+            <span className="tiny muted">{canManageTeam(org.data.role) ? "You can invite teammates and manage API keys." : "Ask an owner or admin to manage the team or API keys."}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AccountTeam({ role }: { role: OrgRole | null }) {
+  const [reload, setReload] = useState(0);
+  const { loading, error, data } = useApi<TeamResponse>("/api/team", reload);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"admin" | "developer">("developer");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [link, setLink] = useState<string | null>(null);
+  const manage = canManageTeam(role);
+  const pendingInvites = (data?.invites ?? []).filter((i) => !i.acceptedAt);
+
+  async function invite(e: React.FormEvent) {
+    e.preventDefault();
+    setErr(null);
+    setLink(null);
+    if (!inviteEmail.trim()) {
+      setErr("Enter an email address.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await fetch("/api/team", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole }),
+      });
+      if (res.status === 403) {
+        setErr("Only owners and admins can invite teammates.");
+        return;
+      }
+      if (!res.ok) {
+        setErr("Couldn't create that invite — check the email and try again.");
+        return;
+      }
+      const body = (await res.json()) as { token?: string };
+      if (body.token) {
+        setLink(`${window.location.origin}/accept-invite?token=${encodeURIComponent(body.token)}`);
+      }
+      setInviteEmail("");
+      cache.delete("/api/team");
+      setReload((n) => n + 1);
+    } catch {
+      setErr("Network error — try again shortly.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: 22, alignItems: "start", maxWidth: 980 }}>
+      <div className="card pad">
+        <b style={{ fontSize: 14 }}>Team members</b>
+        <div className="muted tiny" style={{ marginTop: 2 }}>People with access to this account.</div>
+        {loading && <Loading />}
+        {error && !loading && <Failed label="Couldn't load your team — try again shortly." />}
+        {data && (
+          <div style={{ marginTop: 8 }}>
+            {data.team.length === 0 && <div className="muted tiny" style={{ padding: "12px 0" }}>No team members yet.</div>}
+            {data.team.map((m) => (
+              <div className="between" key={m.id} style={{ padding: "11px 0", borderBottom: "1px solid var(--line2)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div className="av" style={{ width: 32, height: 32, background: "var(--blue-bg)", color: "var(--blue-d)", fontSize: 11 }}>{initials(m.email)}</div>
+                  <div><div style={{ fontWeight: 600, fontSize: 13.5 }}>{m.email}</div><div className="tiny muted">{m.userId ? "Active" : "Invited"}</div></div>
+                </div>
+                <span className={`pill ${ROLE_PILL[m.role]}`} style={{ textTransform: "capitalize" }}>{m.role}</span>
+              </div>
+            ))}
+            {pendingInvites.length > 0 && (
+              <>
+                <div className="tiny muted" style={{ fontWeight: 600, textTransform: "uppercase", letterSpacing: ".05em", margin: "14px 0 4px" }}>Pending invites</div>
+                {pendingInvites.map((i) => (
+                  <div className="between" key={i.id} style={{ padding: "11px 0", borderBottom: "1px solid var(--line2)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div className="av" style={{ width: 32, height: 32, background: "var(--amber-bg)", color: "var(--amber)", fontSize: 11 }}>{initials(i.email)}</div>
+                      <div><div style={{ fontWeight: 600, fontSize: 13.5 }}>{i.email}</div><div className="tiny muted">Invited {shortDate(i.createdAt)}</div></div>
+                    </div>
+                    <span className="pill p-amber" style={{ textTransform: "capitalize" }}>{i.role} · pending</span>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="card pad">
+        <b style={{ fontSize: 14 }}>Invite a teammate</b>
+        {!manage ? (
+          <div className="note info" style={{ marginTop: 12 }}><i className="ti ti-info-circle" aria-hidden /><div>Only owners and admins can invite teammates. Ask an owner or admin on your team.</div></div>
+        ) : (
+          <form onSubmit={invite} style={{ marginTop: 4 }}>
+            <label className="fl" htmlFor="v3-inv-email">Email</label>
+            <input id="v3-inv-email" className="inp" type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="teammate@company.com" />
+            <label className="fl" htmlFor="v3-inv-role">Role</label>
+            <select id="v3-inv-role" className="inp" value={inviteRole} onChange={(e) => setInviteRole(e.target.value as "admin" | "developer")}>
+              <option value="developer">Developer</option>
+              <option value="admin">Admin</option>
+            </select>
+            <button className="btn pri" type="submit" disabled={busy} style={{ marginTop: 16 }}><i className="ti ti-send" aria-hidden /> {busy ? "Sending…" : "Send invite"}</button>
+            {err && <div className="note warn" style={{ marginTop: 12 }}><i className="ti ti-alert-triangle" aria-hidden /><div>{err}</div></div>}
+            {link && (
+              <div className="note good" style={{ marginTop: 12, display: "block" }}>
+                <div style={{ fontWeight: 600, marginBottom: 6 }}><i className="ti ti-check" aria-hidden /> Invite created — copy this link now</div>
+                <div className="tiny" style={{ marginBottom: 8 }}>It&apos;s shown only once. Send it to your teammate; they join after signing in.</div>
+                <CopyField value={link} copyLabel="Copy invite link" />
+              </div>
+            )}
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AccountSecurity() {
+  return (
+    <div className="card pad" style={{ maxWidth: 560 }}>
+      <b style={{ fontSize: 14 }}>Password &amp; sign-in</b>
+      <div className="muted" style={{ fontSize: 13, marginTop: 6, lineHeight: 1.6 }}>
+        Makoya uses Supabase for authentication. To change your password, head to the sign-in page and request a one-tap magic link, then set a new password from your account — or simply sign in again.
+      </div>
+      <a className="btn" href="/login" style={{ marginTop: 16, display: "inline-flex" }}><i className="ti ti-lock" aria-hidden /> Go to sign-in</a>
+      <div className="note info" style={{ marginTop: 16 }}><i className="ti ti-info-circle" aria-hidden /><div>For any account-security questions, contact support.</div></div>
+    </div>
+  );
+}
+
+function AccountApiKeys({ role }: { role: OrgRole | null }) {
+  const [reload, setReload] = useState(0);
+  const { loading, error, data } = useApi<ApiKeysResponse>("/api/org/api-keys", reload);
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [secret, setSecret] = useState<string | null>(null);
+  const manage = canManageTeam(role);
+
+  const refresh = () => {
+    cache.delete("/api/org/api-keys");
+    setReload((n) => n + 1);
+  };
+
+  async function create(e: React.FormEvent) {
+    e.preventDefault();
+    setErr(null);
+    setSecret(null);
+    if (!name.trim()) {
+      setErr("Give the key a name.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await fetch("/api/org/api-keys", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim() }),
+      });
+      if (res.status === 403) {
+        setErr("Only owners and admins can create API keys.");
+        return;
+      }
+      if (!res.ok) {
+        setErr("Couldn't create that key — try again.");
+        return;
+      }
+      const body = (await res.json()) as { secret?: string };
+      if (body.secret) setSecret(body.secret);
+      setName("");
+      refresh();
+    } catch {
+      setErr("Network error — try again shortly.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function revoke(id: string) {
+    setErr(null);
+    try {
+      const res = await fetch("/api/org/api-keys", {
+        method: "DELETE",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      if (res.status === 403) {
+        setErr("Only owners and admins can revoke API keys.");
+        return;
+      }
+      if (!res.ok) {
+        setErr("Couldn't revoke that key — try again.");
+        return;
+      }
+      refresh();
+    } catch {
+      setErr("Network error — try again shortly.");
+    }
+  }
+
+  return (
+    <div style={{ maxWidth: 980 }}>
+      {manage && (
+        <div className="card pad" style={{ marginBottom: 16 }}>
+          <b style={{ fontSize: 14 }}>Create an API key</b>
+          <div className="muted tiny" style={{ marginTop: 2 }}>For programmatic access. The secret is shown once — store it safely.</div>
+          <form onSubmit={create} style={{ display: "flex", gap: 10, alignItems: "flex-end", marginTop: 12, flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <label className="fl" htmlFor="v3-key-name" style={{ marginTop: 0 }}>Key name</label>
+              <input id="v3-key-name" className="inp" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. CI pipeline" maxLength={80} />
+            </div>
+            <button className="btn pri" type="submit" disabled={busy}><i className="ti ti-plus" aria-hidden /> {busy ? "Creating…" : "Create key"}</button>
+          </form>
+          {err && <div className="note warn" style={{ marginTop: 12 }}><i className="ti ti-alert-triangle" aria-hidden /><div>{err}</div></div>}
+          {secret && (
+            <div className="note good" style={{ marginTop: 12, display: "block" }}>
+              <div style={{ fontWeight: 600, marginBottom: 6 }}><i className="ti ti-check" aria-hidden /> Key created — copy it now</div>
+              <div className="tiny" style={{ marginBottom: 8 }}>This is the only time the full secret is shown. We store only a hashed prefix.</div>
+              <CopyField value={secret} copyLabel="Copy secret" />
+            </div>
+          )}
+        </div>
+      )}
+      <div className="card pad">
+        <b style={{ fontSize: 14 }}>API keys</b>
+        {loading && <Loading />}
+        {error && !loading && <Failed label="Couldn't load API keys — try again shortly." />}
+        {data && data.keys.length === 0 && <div className="muted tiny" style={{ marginTop: 12 }}>No API keys yet.</div>}
+        {data && data.keys.length > 0 && (
+          <div className="tcard" style={{ marginTop: 12 }}>
+            <div className="thead" style={{ gridTemplateColumns: "1fr 150px 140px 120px" }}><div>Name</div><div>Prefix</div><div>Last used</div><div>Status</div></div>
+            {data.keys.map((k) => (
+              <div className="trow" style={{ gridTemplateColumns: "1fr 150px 140px 120px" }} key={k.id}>
+                <div style={{ fontWeight: 600 }}>{k.name}</div>
+                <div className="mono tiny">{k.prefix}…</div>
+                <div className="tiny muted">{k.lastUsedAt ? shortDate(k.lastUsedAt) : "Never"}</div>
+                <div>
+                  {k.revokedAt ? (
+                    <span className="pill p-gray">Revoked</span>
+                  ) : manage ? (
+                    <button className="btn" type="button" onClick={() => revoke(k.id)} style={{ padding: "5px 10px" }} aria-label={`Revoke ${k.name}`}><i className="ti ti-trash" aria-hidden /> Revoke</button>
+                  ) : (
+                    <span className="pill p-green">Active</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ══════════════════════════════════════════════════════════════════════════
- * PARTNERS (static brochure)
+ * PARTNERS — pitch + enroll, or the enrolled partner dashboard.
+ *   /api/partner              → { partner, clients?, summary? } (partner null ⇒ pitch)
+ *   /api/partner/enroll       → POST (no body) to enroll (built in parallel)
+ *   /api/partner/white-label  → GET / PATCH the cosmetic branding
+ * Revenue is intentionally shown as $0 until billing/Stripe is live — never
+ * fabricated from the summary.
  * ════════════════════════════════════════════════════════════════════════ */
 function PartnersScreen() {
-  const cards = [
-    { icon: "ti-layout-grid", color: "blue", title: "One dashboard", sub: "Manage every client agent from a single login" },
-    { icon: "ti-tag", color: "green", title: "Partner pricing", sub: "Wholesale rates + bundled billing" },
-    { icon: "ti-brush", color: "blue", title: "White-label widget", sub: "Your branding on the widget and reports" },
-    { icon: "ti-file-dollar", color: "green", title: "Co-branded reports", sub: "Audit + proof-of-effort packs in your name" },
-    { icon: "ti-cash", color: "blue", title: "Recurring commission", sub: "Earn on every client plan, every month" },
-    { icon: "ti-headset", color: "green", title: "Priority support", sub: "A dedicated partner success manager" },
-  ];
+  const [reload, setReload] = useState(0);
+  const { loading, error, data } = useApi<PartnerResponse>("/api/partner", reload);
+  const refresh = () => {
+    cache.delete("/api/partner");
+    setReload((n) => n + 1);
+  };
+
   return (
     <section className="screen on">
       <div className="h1" style={{ fontSize: 22, marginBottom: 4 }}>Partner program</div>
       <div className="muted" style={{ fontSize: 13.5, marginBottom: 18 }}>Manage accessibility for clients at scale — built for agencies and freelancers.</div>
-      <div className="grid3">
-        {cards.map((c) => (
-          <div className="card pad" key={c.title}>
-            <div className="fav" style={{ width: 38, height: 38, background: c.color === "blue" ? "var(--blue-bg)" : "var(--green-bg)", color: c.color === "blue" ? "var(--blue-d)" : "var(--green)", marginBottom: 10 }}><i className={`ti ${c.icon}`} aria-hidden /></div>
-            <div style={{ fontWeight: 600, fontSize: 14 }}>{c.title}</div>
-            <div className="tiny muted" style={{ marginTop: 3 }}>{c.sub}</div>
-          </div>
-        ))}
-      </div>
+      {loading && <Loading />}
+      {error && !loading && <Failed label="Couldn't load the partner program — try again shortly." />}
+      {data && !data.partner && <PartnerPitch onEnrolled={refresh} />}
+      {data && data.partner && <PartnerDashboard clients={data.clients ?? []} summary={data.summary ?? null} />}
     </section>
+  );
+}
+
+const PARTNER_BENEFITS: { icon: string; color: "blue" | "green"; title: string; sub: string }[] = [
+  { icon: "ti-layout-grid", color: "blue", title: "One dashboard", sub: "Manage every client agent from a single login" },
+  { icon: "ti-tag", color: "green", title: "Partner pricing", sub: "Wholesale rates + bundled billing" },
+  { icon: "ti-brush", color: "blue", title: "White-label widget", sub: "Your branding on the widget and reports" },
+  { icon: "ti-file-dollar", color: "green", title: "Co-branded reports", sub: "Audit + proof-of-effort packs in your name" },
+  { icon: "ti-cash", color: "blue", title: "Recurring commission", sub: "Earn on every client plan, every month" },
+  { icon: "ti-headset", color: "green", title: "Priority support", sub: "A dedicated partner success manager" },
+];
+
+function PartnerBenefits() {
+  return (
+    <div className="grid3">
+      {PARTNER_BENEFITS.map((c) => (
+        <div className="card pad" key={c.title}>
+          <div className="fav" style={{ width: 38, height: 38, background: c.color === "blue" ? "var(--blue-bg)" : "var(--green-bg)", color: c.color === "blue" ? "var(--blue-d)" : "var(--green)", marginBottom: 10 }}><i className={`ti ${c.icon}`} aria-hidden /></div>
+          <div style={{ fontWeight: 600, fontSize: 14 }}>{c.title}</div>
+          <div className="tiny muted" style={{ marginTop: 3 }}>{c.sub}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PartnerPitch({ onEnrolled }: { onEnrolled: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function enroll() {
+    setErr(null);
+    setBusy(true);
+    try {
+      const res = await fetch("/api/partner/enroll", { method: "POST", credentials: "same-origin" });
+      if (res.status === 403) {
+        setErr("Ask an owner or admin to enable the partner program for your account.");
+        return;
+      }
+      if (!res.ok) {
+        setErr("Couldn't enroll right now — try again shortly.");
+        return;
+      }
+      onEnrolled();
+    } catch {
+      setErr("Network error — try again shortly.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <div className="card pad between" style={{ marginBottom: 18, maxWidth: 980 }}>
+        <div>
+          <b style={{ fontSize: 14 }}>Become a partner</b>
+          <div className="muted tiny" style={{ marginTop: 2 }}>Enroll your organization to manage client accounts, white-label the widget and earn recurring commission.</div>
+        </div>
+        <button className="btn pri" type="button" onClick={enroll} disabled={busy}><i className="ti ti-affiliate" aria-hidden /> {busy ? "Enrolling…" : "Become a partner"}</button>
+      </div>
+      {err && <div className="note warn" style={{ marginBottom: 18, maxWidth: 980 }}><i className="ti ti-alert-triangle" aria-hidden /><div>{err}</div></div>}
+      <PartnerBenefits />
+    </>
+  );
+}
+
+function PartnerDashboard({ clients, summary }: { clients: PartnerClient[]; summary: PartnerSummary | null }) {
+  return (
+    <>
+      <div className="grid3" style={{ marginBottom: 18 }}>
+        <div className="mcard"><div className="l"><i className="ti ti-users" aria-hidden /> Client accounts</div><div className="big">{num(summary?.clientCount ?? clients.length)}</div></div>
+        <div className="mcard grn"><div className="l"><i className="ti ti-robot" aria-hidden /> Agents managed</div><div className="big">{num(summary?.agentsManaged ?? 0)}</div></div>
+        <div className="mcard"><div className="l"><i className="ti ti-businessplan" aria-hidden /> Monthly revenue</div><div className="big" style={{ fontSize: 21, paddingTop: 10 }}>$0</div><div className="d muted">available once billing/Stripe is live</div></div>
+      </div>
+
+      <PartnerWhiteLabel />
+
+      <div className="card pad" style={{ marginTop: 18 }}>
+        <b style={{ fontSize: 14 }}>Client accounts</b>
+        <div className="muted tiny" style={{ marginTop: 2 }}>Organizations you manage under your partner account.</div>
+        {clients.length === 0 ? (
+          <div className="note info" style={{ marginTop: 12 }}><i className="ti ti-info-circle" aria-hidden /><div>No client accounts linked yet. Once you onboard clients they&apos;ll appear here.</div></div>
+        ) : (
+          <div className="tcard" style={{ marginTop: 12 }}>
+            <div className="thead" style={{ gridTemplateColumns: "1fr 160px" }}><div>Client organization</div><div>Linked</div></div>
+            {clients.map((c) => (
+              <div className="trow" style={{ gridTemplateColumns: "1fr 160px" }} key={c.id}>
+                <div className="mono tiny">{c.clientOrgId}</div>
+                <div className="tiny muted">{shortDate(c.createdAt)}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+function PartnerWhiteLabel() {
+  const [reload, setReload] = useState(0);
+  const { loading, error, data } = useApi<WhiteLabelResponse>("/api/partner/white-label", reload);
+  const [brandName, setBrandName] = useState("");
+  const [logoUrl, setLogoUrl] = useState("");
+  const [primaryColor, setPrimaryColor] = useState("");
+  const [supportEmail, setSupportEmail] = useState("");
+  const [hide, setHide] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  useEffect(() => {
+    const c = data?.config;
+    if (c) {
+      setBrandName(c.brandName);
+      setLogoUrl(c.logoUrl);
+      setPrimaryColor(c.primaryColor);
+      setSupportEmail(c.supportEmail);
+      setHide(c.hideMakoyaBranding);
+    }
+  }, [data]);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setMsg(null);
+    setBusy(true);
+    try {
+      const res = await fetch("/api/partner/white-label", {
+        method: "PATCH",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brandName, logoUrl, primaryColor, supportEmail, hideMakoyaBranding: hide }),
+      });
+      if (res.status === 403) {
+        setMsg({ ok: false, text: "Only owners and admins can edit branding." });
+        return;
+      }
+      if (res.status === 400) {
+        setMsg({ ok: false, text: "Check the logo URL (must be https), color (hex or rgb) and support email." });
+        return;
+      }
+      if (!res.ok) {
+        setMsg({ ok: false, text: "Couldn't save branding — try again." });
+        return;
+      }
+      cache.delete("/api/partner/white-label");
+      setReload((n) => n + 1);
+      setMsg({ ok: true, text: "Branding saved." });
+    } catch {
+      setMsg({ ok: false, text: "Network error — try again shortly." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="card pad">
+      <b style={{ fontSize: 14 }}>White-label branding</b>
+      <div className="muted tiny" style={{ marginTop: 2 }}>Cosmetic branding for the widget and reports — presentation only; it makes no accessibility-compliance claim.</div>
+      {loading && <Loading />}
+      {error && !loading && <Failed label="Couldn't load your branding — try again shortly." />}
+      {!loading && !error && (
+        <form onSubmit={save} style={{ marginTop: 8, maxWidth: 560 }}>
+          <label className="fl" htmlFor="v3-wl-brand">Brand name</label>
+          <input id="v3-wl-brand" className="inp" value={brandName} onChange={(e) => setBrandName(e.target.value)} maxLength={120} placeholder="Your agency" />
+          <label className="fl" htmlFor="v3-wl-logo">Logo URL</label>
+          <input id="v3-wl-logo" className="inp" type="url" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://…" />
+          <label className="fl" htmlFor="v3-wl-color">Primary color</label>
+          <input id="v3-wl-color" className="inp" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} placeholder="#1E63FF" />
+          <label className="fl" htmlFor="v3-wl-email">Support email</label>
+          <input id="v3-wl-email" className="inp" type="email" value={supportEmail} onChange={(e) => setSupportEmail(e.target.value)} placeholder="support@youragency.com" />
+          <div className="between" style={{ border: "1px solid var(--line)", borderRadius: 10, padding: "11px 13px", marginTop: 14 }}>
+            <span style={{ fontSize: 13 }}>Hide &ldquo;Powered by Makoya&rdquo; branding</span>
+            <button type="button" className={`toggle ${hide ? "on" : ""}`} role="switch" aria-checked={hide} aria-label="Hide Makoya branding" onClick={() => setHide((v) => !v)} />
+          </div>
+          <button className="btn pri" type="submit" disabled={busy} style={{ marginTop: 16 }}><i className="ti ti-check" aria-hidden /> {busy ? "Saving…" : "Save branding"}</button>
+          {msg && <div className={`note ${msg.ok ? "good" : "warn"}`} style={{ marginTop: 12 }}><i className={`ti ${msg.ok ? "ti-check" : "ti-alert-triangle"}`} aria-hidden /><div>{msg.text}</div></div>}
+        </form>
+      )}
+    </div>
   );
 }
