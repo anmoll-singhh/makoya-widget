@@ -21,9 +21,10 @@ export default async function DashboardPage() {
   } = await supabase.auth.getUser();
 
   // Layout already handles no-session → redirect to login. If somehow we reach
-  // here without a user, redirect to agents (portfolio shows empty state).
+  // here without a user, redirect to login with a next param so the user lands
+  // back here after signing in.
   if (!user) {
-    redirect("/dashboard/agents");
+    redirect("/login?next=/dashboard");
   }
 
   const sites = await listSites(supabase, user.id);

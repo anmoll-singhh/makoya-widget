@@ -172,6 +172,13 @@ describe("POST /api/sites", () => {
     expect(createSite).toHaveBeenCalledWith(expect.anything(), OWNER, "example.com");
   });
 
+  it("returns 429 when rate limit is exceeded", async () => {
+    checkRateLimit.mockResolvedValue(true);
+    const res = await POST(makePostReq({ domain: "example.com" }));
+    expect(res.status).toBe(429);
+    expect(createSite).not.toHaveBeenCalled();
+  });
+
   it("returns 500 when createSite throws, via captureError", async () => {
     createSite.mockRejectedValue(new Error("insert failed"));
     const res = await POST(makePostReq({ domain: "example.com" }));

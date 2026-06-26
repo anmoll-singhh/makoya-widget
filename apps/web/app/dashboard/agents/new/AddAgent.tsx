@@ -131,7 +131,7 @@ function StepBar({ current }: { current: Step }) {
         const now = n === current;
         return (
           <div key={label} style={{ display: "contents" }}>
-            <div className={`step${done ? " done" : now ? " now" : ""}`}>
+            <div className={`step${done ? " done" : now ? " now" : ""}`} aria-current={now ? "step" : undefined}>
               <span className="num">
                 {done ? <i className="ti ti-check" aria-hidden="true" /> : n}
               </span>
@@ -179,7 +179,11 @@ export function AddAgent() {
         return;
       }
 
-      const newSiteId = data.siteId!;
+      if (!data.siteId) {
+        setError("Unexpected error. Please try again.");
+        return;
+      }
+      const newSiteId = data.siteId;
       setSiteId(newSiteId);
 
       // Fire PostHog: agent_added
@@ -202,7 +206,7 @@ export function AddAgent() {
 
   async function runScan(rawDomain: string, createdSiteId: string) {
     // Build the homepage URL from the bare domain.
-    const url = rawDomain.startsWith("http") ? rawDomain : `https://${rawDomain}`;
+    const url = rawDomain.startsWith("http://") || rawDomain.startsWith("https://") ? rawDomain : `https://${rawDomain}`;
 
     try {
       const res = await fetch("/api/public-scan", {

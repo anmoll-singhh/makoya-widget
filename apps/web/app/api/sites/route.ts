@@ -16,8 +16,10 @@
  *     /api/public-scan. Uses the authenticated user's ID as the rate-limit key.
  *
  * Token is minted SERVER-SIDE only (mintSiteToken reads WIDGET_SIGNING_SECRET
- * which must never reach the client bundle). The 201 response hands it to the
- * caller so the wizard can pass it to the /install page as a URL param.
+ * which must never reach the client bundle). The 201 response includes the
+ * token as a convenience for direct API consumers only; the wizard does NOT
+ * pass it to the /install page as a URL param — the install page re-mints the
+ * token server-side (mintSiteToken is deterministic) from the siteId alone.
  *
  * Entitlement: site creation is allowed for any authenticated user. Plan gating
  * (e.g. site limits) is enforced separately via billing; it is NOT done here.
