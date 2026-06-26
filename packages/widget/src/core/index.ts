@@ -14,11 +14,18 @@ import { resolveConfig, WidgetConfig } from "@makoya/shared";
 import { mountUI } from "../ui/ui";
 import { loadPrefs, applyPrefs } from "./state";
 import { fetchGatedConfig } from "../fetch-config";
+import { configureTelemetry, recordHeartbeat } from "./telemetry";
 
 let mounted = false;
 
 function hookSpaNavigation(): void {
-  const reapply = () => applyPrefs(loadPrefs());
+  // Re-apply prefs after a route change AND send a (throttled) heartbeat so a
+  // long-lived SPA session keeps reporting activity. recordHeartbeat() is
+  // fire-and-forget + throttled to once / 5 min, so route spam is harmless.
+  const reapply = () => {
+    applyPrefs(loadPrefs());
+    recordHeartbeat();
+  };
   const wrap = (type: "pushState" | "replaceState") => {
     const orig = history[type];
     history[type] = function (this: History, ...args: unknown[]) {
@@ -33,7 +40,9 @@ function hookSpaNavigation(): void {
   window.addEventListener("popstate", () => setTimeout(reapply, 50));
 }
 
-export function init(partial: Partial<WidgetConfig> & { siteId: string }): void {
+export function init(
+  partial: Partial<WidgetConfig> & { siteId: string; token?: string },
+): void {
   // Guard against double-initialisation (script included twice).
   if (mounted || document.getElementById("makoya-widget-root")) return;
   mounted = true;
@@ -43,6 +52,13 @@ export function init(partial: Partial<WidgetConfig> & { siteId: string }): void 
   const start = () => {
     mountUI(config);
     hookSpaNavigation();
+    // Telemetry is the LEAST important thing here, so it runs LAST and is fully
+    // fire-and-forget / never-throws (non-negotiable rule #1). Configure it with
+    // the site identity, then send the first heartbeat. `token` is the per-site
+    // token the loader forwards; it is NOT part of WidgetConfig so we read it off
+    // the raw partial.
+    configureTelemetry({ siteId: config.siteId, token: partial.token });
+    recordHeartbeat();
   };
 
   if (document.readyState === "loading") {
@@ -107,7 +123,8 @@ window.MakoyaWidget = { init };
     // explicit off-switch. An outage yields active:true → we still mount.
     const { active, config } = await fetchGatedConfig(siteId, token);
     if (active === false) return;
-    init({ ...config, siteId, ...colorPart });
+    // Forward the per-site token so telemetry can attach it to its beacons.
+    init({ ...config, siteId, ...colorPart, token });
   } catch {
     /* never throw from auto-init */
   }

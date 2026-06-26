@@ -35,6 +35,33 @@ import { type Lang, LANG_LABELS, t } from "./i18n";
 import { buildFeature } from "./features";
 import { PROFILES, applyProfileByKey } from "./profiles";
 import { makeRuler, makeMask, makeReadAloud, makeMute } from "./live";
+import { trackEvent } from "../core/telemetry";
+
+/**
+ * Map the current prefs to the SET of feature keys that are "active" (turned on).
+ * Used to emit `feature_activated` telemetry ONLY on an off→on transition — we
+ * diff this set across apply() calls so toggling a feature OFF, or re-rendering,
+ * never emits. Keys match the canonical FeatureKey names used in config.
+ */
+function activeFeatureKeys(p: Prefs): Set<string> {
+  const s = new Set<string>();
+  if (p.text !== 0) s.add("textSize");
+  if (p.spacing) s.add("lineSpacing");
+  if (p.contrast !== "off") s.add("contrast");
+  if (p.stopMotion) s.add("stopMotion");
+  if (p.ruler) s.add("readingRuler");
+  if (p.links) s.add("highlightLinks");
+  if (p.cursor !== "off") s.add("bigCursor");
+  if (p.font) s.add("readableFont");
+  if (p.images) s.add("hideImages");
+  if (p.saturation !== "off") s.add("saturation");
+  if (p.mask !== "off") s.add("readingMask");
+  if (p.titles) s.add("highlightTitles");
+  if (p.align) s.add("textAlign");
+  if (p.mute) s.add("muteSounds");
+  if (p.readAloud) s.add("readAloud");
+  return s;
+}
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -181,6 +208,12 @@ function _mount(config: WidgetConfig): void {
     isRight  ? `right: 16px;`   : `left: 16px;`,
   ].filter(Boolean).join(" ");
 
+  // Baseline for the feature_activated diff. `null` until the FIRST apply() so
+  // that the initial mount (which applies stored prefs / a default profile) is
+  // treated as the baseline and emits nothing — only genuine user-driven off→on
+  // transitions after mount fire telemetry.
+  let lastActive: Set<string> | null = null;
+
   // ─── apply() — single source of truth ───────────────────────────────────
   // Called after every pref change. Pushes state to: HTML attributes (CSS
   // effects), live controllers (ruler/mask/read-aloud/mute), localStorage.
@@ -193,6 +226,20 @@ function _mount(config: WidgetConfig): void {
       readAloud.setLang(lang);
       prefs.mute      ? mute.enable()       : mute.disable();
       savePrefs(prefs);
+      // Telemetry (fire-and-forget, never affects the UI): emit feature_activated
+      // for each feature that just transitioned off→on. The first apply only
+      // seeds the baseline.
+      try {
+        const now = activeFeatureKeys(prefs);
+        if (lastActive) {
+          for (const key of now) {
+            if (!lastActive.has(key)) trackEvent("feature_activated", key);
+          }
+        }
+        lastActive = now;
+      } catch {
+        /* telemetry must never affect apply() */
+      }
     } catch {
       /* never throw from apply */
     }
@@ -397,6 +444,8 @@ function _mount(config: WidgetConfig): void {
     panel.classList.toggle("open", v);
     btn.setAttribute("aria-expanded", String(v));
     if (v) {
+      // Panel opened — record it (fire-and-forget, never throws).
+      trackEvent("open");
       // Focus close button on open (first focusable in panel)
       requestAnimationFrame(() => closeBtn.focus());
     } else {
