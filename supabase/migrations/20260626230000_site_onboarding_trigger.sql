@@ -45,10 +45,16 @@ declare
   target_org   uuid;
   owner_email  text;
 begin
-  -- 1. Reuse the owner's existing org if they're already a team member.
+  -- 1. Reuse an org this user OWNS (role 'owner') — NOT merely one they belong to.
+  -- Matching on membership alone would, once team invites ship, attach a brand-new
+  -- owner's first site to a DIFFERENT tenant's org they were invited into (e.g. as a
+  -- 'developer'), leaking it cross-tenant via the org-read policy (review H1). The
+  -- role filter + deterministic order close that.
   select tm.org_id into target_org
     from public.team_members tm
    where tm.user_id = new.owner_id
+     and tm.role = 'owner'
+   order by tm.created_at
    limit 1;
 
   -- 2. Otherwise mint a fresh org + an 'owner' membership for this owner.
