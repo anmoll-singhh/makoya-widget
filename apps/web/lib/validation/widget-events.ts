@@ -20,7 +20,7 @@ const MAX_FEATURE_KEY_LEN = 64;
 
 export const widgetEventsBodySchema = z.object({
   siteId: z.string().uuid(),
-  token: z.string().max(256).optional(),
+  token: z.string().max(512).optional(), // aligned with /api/heartbeat's token cap
   events: z
     .array(
       z.object({

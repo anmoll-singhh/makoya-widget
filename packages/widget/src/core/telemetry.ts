@@ -168,9 +168,12 @@ export function recordHeartbeat(): void {
     const now = Date.now();
     if (now - lastHeartbeatAt < HEARTBEAT_THROTTLE_MS) return;
     lastHeartbeatAt = now;
+    // Data minimization: send only origin + pathname, never the query string or
+    // hash — host pages can carry PII/tokens there (e.g. ?email=, #reset_token=).
     let url = "";
     try {
-      url = location.href;
+      const u = new URL(location.href);
+      url = u.origin + u.pathname;
     } catch {
       url = "";
     }

@@ -123,7 +123,8 @@ async function main(): Promise<void> {
       const body = JSON.parse(call.opts.body);
       assert.equal(body.siteId, "site-1");
       assert.equal(body.token, "tok-9");
-      assert.equal(body.url, "https://site.example/page?x=1");
+      // Data-minimized: query string is stripped (origin + pathname only).
+      assert.equal(body.url, "https://site.example/page");
 
       // Immediate second call is within the 5-min window → suppressed.
       recordHeartbeat();
