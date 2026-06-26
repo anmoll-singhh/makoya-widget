@@ -3,7 +3,7 @@
 > **This is the single glance-able source of truth.** Read this first; it answers "where are we, what's in flight, what's blocked, what's next."
 > Detailed narrative history lives in [`SESSION.md`](./SESSION.md) (append-only log). This file is the *dashboard view* on top of it.
 >
-> **Last updated:** 2026-06-26 · **Updated by:** Claude (block 22 — admin one-click Add-Customer form built + DEPLOYED; onboarding now a UI action)
+> **Last updated:** 2026-06-26 · **Updated by:** Claude (block 23 — v3.1 backend-readiness program: master plan + Wave 1 (heartbeat + widget analytics) merged to `main`, QA + security green; migrations WRITTEN but prod-apply is founder-gated)
 >
 > **Backup status:** ✅ All branches pushed to `origin` (github.com/anmoll-singhh/makoya-widget). No work is local-only.
 >
@@ -36,6 +36,10 @@
 | `C:\Users\ANMOL\Desktop\makoya-scanner-v3` | `feat/scanner-evidence-v3` | Scanner evidence v3 (other session) | ✅ deploy blocker fixed (`0cf0a1a` vendored HTMLCS as string module) + second-engine LIVE |
 | `C:\Users\ANMOL\Desktop\makoya` | `feat/dashboards-ui-wip` | Dashboard/admin/CRM UI elevation | 🔶 WIP, unmerged — decide: finish→merge or fold into strategic frontend rebuild |
 | `.claude/worktrees/agent-*` | `harden/*` | Phase H parallel agents (A/B/C) | ✅ MERGED to main — worktrees + branches can be pruned |
+| _(merged + pruned)_ | `feat/v31-heartbeat` | **v3.1 Wave 1A** — widget heartbeat / install-verify | ✅ MERGED to `main` (QA + security GO). Migration `20260626120000_widget_heartbeats.sql` NOT yet applied to prod |
+| _(merged + pruned)_ | `feat/v31-analytics` | **v3.1 Wave 1B** — widget usage analytics | ✅ MERGED to `main` (QA + security GO). Migration `20260626130000_widget_events.sql` NOT yet applied to prod |
+
+> **v3.1 backend program (block 23):** Coordinator + subagent build of the backend behind `docs/makoya_v3.1.html`. Deep gap analysis → `docs/BACKEND-READINESS-V3.1.md`; master plan + wave decomposition → `docs/superpowers/plans/2026-06-26-v3.1-backend.md`. Pipeline per lane = plan → TDD build (isolated worktree subagent) → independent QA (`npm run ci`) → independent security review → coordinator merge. **Wave 1 DONE** (heartbeat #5 + analytics #10): 11 new files, +20 tests, CI green on `main`. **⛔ Founder action before these go live:** apply the 2 new migrations to the prod Supabase project, then deploy. Next: Wave 2 (issues/remediation/activity/monthly-history), then Wave 3 (org/team/roles tenancy — runs alone).
 
 > **Block 10 note (data + licensing — ✅ SHIPPED):** Founder **deleted all `sites`** (clean slate; `leads` untouched) — new sites onboarded fresh. **Phase 1 widget licensing gate** is **LIVE** (config endpoint enforces per-site `license_status` + `allowed_domains`; `no-store`; fail-open infra / fail-closed not-found; monitor→enforce via `WIDGET_ENFORCE`). Migration `widget_licensing` applied to prod; merged to main (`e54b684`); deployed (`dpl_9Qpw1etTxRXtapJ7VbbsKkQ3y1mc`, makoya-gamma); verified live (unknown siteId → 200, `no-store`, `active:true` monitor-mode). **Ships OFF** — `WIDGET_ENFORCE` unset, so nothing is blocked yet; flip it only after **Phase 1.5** (signed-token wall + close direct-`core.js` bypass — Origin-lock alone is a deterrent, spoofable). Plan + threat-model: `docs/plans/PHASE-1-LICENSING.md`.
 
