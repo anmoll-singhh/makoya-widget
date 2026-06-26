@@ -12,6 +12,8 @@ import {
   listApiKeys,
   createApiKey,
   revokeApiKey,
+  emailsEqualCI,
+  acceptInvite,
 } from "./org";
 import { hashApiKey } from "./api-keys";
 
@@ -35,7 +37,12 @@ function builder(result: { data: unknown; error: unknown }): FakeBuilder {
       captured.updated = v;
       return b;
     },
+    upsert: (v: unknown) => {
+      captured.inserted = v;
+      return b;
+    },
     eq: () => b,
+    is: () => b,
     order: () => b,
     limit: () => b,
     single: async () => result,
@@ -278,5 +285,84 @@ describe("revokeApiKey", () => {
 
     const bad = fakeClient({ api_keys: builder({ data: null, error: { message: "x" } }) });
     await expect(revokeApiKey(bad, "k1")).rejects.toBeTruthy();
+  });
+});
+
+// ── Pure helper ───────────────────────────────────────────────────────────────
+
+describe("emailsEqualCI", () => {
+  it("matches case-insensitively and trims surrounding whitespace", () => {
+    expect(emailsEqualCI("A@B.com", "a@b.com")).toBe(true);
+    expect(emailsEqualCI("  Foo@Bar.io ", "foo@bar.io")).toBe(true);
+  });
+  it("rejects different addresses and empty inputs", () => {
+    expect(emailsEqualCI("a@b.com", "x@y.com")).toBe(false);
+    expect(emailsEqualCI("", "a@b.com")).toBe(false);
+    expect(emailsEqualCI("a@b.com", "")).toBe(false);
+  });
+});
+
+// ── acceptInvite (fake service client) ────────────────────────────────────────
+
+const INVITE_ROW = {
+  id: "i1",
+  org_id: "o1",
+  email: "Invitee@Example.com",
+  role: "developer",
+  token_hash: "ignored",
+  invited_by: "u9",
+  accepted_at: null,
+  created_at: "t",
+};
+
+describe("acceptInvite", () => {
+  it("binds the member and marks the invite accepted on the happy path", async () => {
+    const invites = builder({ data: INVITE_ROW, error: null });
+    const members = builder({ data: { id: "m1" }, error: null });
+    const client = fakeClient({ team_invites: invites, team_members: members });
+
+    const res = await acceptInvite(client, "raw-token", {
+      id: "user-1",
+      email: "invitee@example.com", // case-insensitive match
+    });
+
+    expect(res).toEqual({ ok: true, orgId: "o1" });
+    // Member upsert carried the resolved user + invite's org/email/role.
+    const upserted = members.captured.inserted as Record<string, unknown>;
+    expect(upserted.org_id).toBe("o1");
+    expect(upserted.user_id).toBe("user-1");
+    expect(upserted.role).toBe("developer");
+    // Invite was stamped accepted.
+    expect((invites.captured.updated as Record<string, unknown>).accepted_at).toBeTruthy();
+  });
+
+  it("returns {ok:false, invalid} when no matching/un-accepted invite exists", async () => {
+    // The query filters on token_hash + accepted_at is null; a missing row (bad
+    // token OR already-accepted, filtered out by the DB) surfaces as data:null.
+    const client = fakeClient({ team_invites: builder({ data: null, error: null }) });
+    const res = await acceptInvite(client, "bad-token", { id: "u", email: "a@b.com" });
+    expect(res).toEqual({ ok: false, reason: "invalid" });
+  });
+
+  it("treats an already-accepted invite (filtered out) as invalid", async () => {
+    // accepted_at-is-null filter means an accepted invite returns no row.
+    const client = fakeClient({ team_invites: builder({ data: null, error: null }) });
+    const res = await acceptInvite(client, "used-token", { id: "u", email: "invitee@example.com" });
+    expect(res).toEqual({ ok: false, reason: "invalid" });
+  });
+
+  it("rejects with email_mismatch when the invite was issued for a different address", async () => {
+    // team_members intentionally omitted: it must NOT be touched on mismatch
+    // (fakeClient throws on an unexpected table if the code tried to write).
+    const client = fakeClient({ team_invites: builder({ data: INVITE_ROW, error: null }) });
+    const res = await acceptInvite(client, "raw-token", { id: "u", email: "someone-else@evil.com" });
+    expect(res).toEqual({ ok: false, reason: "email_mismatch" });
+  });
+
+  it("throws on an infra error (never swallows a Supabase failure)", async () => {
+    const client = fakeClient({ team_invites: builder({ data: null, error: { message: "boom" } }) });
+    await expect(
+      acceptInvite(client, "raw-token", { id: "u", email: "a@b.com" })
+    ).rejects.toBeTruthy();
   });
 });

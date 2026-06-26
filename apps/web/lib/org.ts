@@ -235,3 +235,83 @@ export async function revokeApiKey(service: SupabaseClient, keyId: string): Prom
     .eq("id", keyId);
   if (error) throw error;
 }
+
+// ── Invite acceptance ─────────────────────────────────────────────────────────
+
+/**
+ * Case-insensitive email equality (PURE). Trims surrounding whitespace and
+ * lowercases both sides. Empty/blank inputs never match — an invite issued for a
+ * specific address must not be satisfiable by a blank/absent caller email.
+ */
+export function emailsEqualCI(a: string, b: string): boolean {
+  const x = (a ?? "").trim().toLowerCase();
+  const y = (b ?? "").trim().toLowerCase();
+  if (!x || !y) return false;
+  return x === y;
+}
+
+/**
+ * Accept a team invite by its raw token, binding the invited address to the
+ * authenticated user and consuming the invite.
+ *
+ * Security: the token alone is NOT sufficient. The invite was issued for a
+ * specific email, so we require the caller's verified email to match it
+ * (case-insensitively) — otherwise possessing a leaked/forwarded token would let
+ * an arbitrary account join the org. We also only ever act on an UN-accepted
+ * invite (single-use): the lookup filters `accepted_at is null`, so a replayed
+ * token finds no row.
+ *
+ * Returns a result UNION rather than throwing for the expected "no"s
+ * (invalid token, email mismatch) so the route can map them to one generic 400
+ * without leaking which check failed. Only a genuine Supabase/infra error throws.
+ *
+ * SERVICE-ROLE: team_invites / team_members have no member WRITE policy, so this
+ * is called with getAdminSupabase() AFTER the route has authenticated the user.
+ */
+export async function acceptInvite(
+  service: SupabaseClient,
+  rawToken: string,
+  user: { id: string; email: string }
+): Promise<{ ok: boolean; reason?: string; orgId?: string }> {
+  const tokenHash = hashApiKey(rawToken);
+
+  // Look up the single un-accepted invite with this token hash. A bad token OR a
+  // previously-accepted invite both surface as "no row" (single-use guarantee).
+  const { data: row, error: findErr } = await service
+    .from("team_invites")
+    .select("*")
+    .eq("token_hash", tokenHash)
+    .is("accepted_at", null)
+    .maybeSingle();
+  if (findErr) throw findErr;
+  if (!row) return { ok: false, reason: "invalid" };
+
+  const invite = inviteRowToRecord(row);
+
+  // The invite is bound to a specific address; the caller must own that address.
+  if (!emailsEqualCI(invite.email, user.email)) {
+    return { ok: false, reason: "email_mismatch" };
+  }
+
+  // Upsert the membership on (org_id, email): a placeholder invite-email row (if
+  // one exists) is rebound to the real auth user; otherwise a fresh row is added.
+  const { error: memberErr } = await service.from("team_members").upsert(
+    {
+      org_id: invite.orgId,
+      user_id: user.id,
+      email: invite.email,
+      role: invite.role,
+    } as never,
+    { onConflict: "org_id,email" }
+  );
+  if (memberErr) throw memberErr;
+
+  // Consume the invite so the token can never be replayed.
+  const { error: markErr } = await service
+    .from("team_invites")
+    .update({ accepted_at: new Date().toISOString() })
+    .eq("id", invite.id);
+  if (markErr) throw markErr;
+
+  return { ok: true, orgId: invite.orgId };
+}
