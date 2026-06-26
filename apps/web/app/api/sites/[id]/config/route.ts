@@ -13,6 +13,8 @@ import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getSite, getConfig, updateConfig, type SiteConfig } from "@/lib/sites";
 import { captureError } from "@/lib/observability";
+import { configPatchSchema } from "@/lib/validation/config-patch";
+import { parseBody } from "@/lib/validation/api";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -43,10 +45,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const site = await getSite(supabase, id);
-  if (!site || site.ownerId !== user.id) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  if (!site || site.ownerId !== user.id) return NextResponse.json({ error: "not found" }, { status: 404 });
 
-  let patch: Partial<SiteConfig>;
-  try { patch = await req.json(); } catch { return NextResponse.json({ error: "bad json" }, { status: 400 }); }
+  let rawBody: unknown;
+  try { rawBody = await req.json(); } catch { return NextResponse.json({ error: "bad json" }, { status: 400 }); }
+
+  const parsed = parseBody(configPatchSchema, rawBody);
+  if (!parsed.ok) return NextResponse.json({ error: "invalid config fields" }, { status: 400 });
+
+  const patch = parsed.data as Partial<SiteConfig>;
 
   // Server-side plan gating: free plan cannot use branding controls.
   if (site.plan === "free") {
@@ -58,7 +65,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   try {
     await updateConfig(supabase, id, patch);
     return NextResponse.json({ ok: true });
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? "update failed" }, { status: 500 });
+  } catch (e) {
+    captureError(e, { route: "sites/[id]/config#PATCH" });
+    return NextResponse.json({ error: "update failed" }, { status: 500 });
   }
 }

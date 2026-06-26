@@ -63,19 +63,45 @@ function shortDate(iso: string | null): string {
     : d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
 }
 
-/* ── Build a client-side preview HTML (for before the first POST) ────────────── */
+/**
+ * Escape HTML-significant chars from owner-supplied text to prevent XSS injection
+ * when the output is rendered via dangerouslySetInnerHTML.
+ * Mirrors lib/statement.ts#escapeHtml — that function is private (not exported)
+ * because it lives alongside server-only Supabase calls; we inline the same five
+ * replacements here rather than importing from a mixed server/client module.
+ */
+function esc(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
+ * Build a client-side preview HTML string (used before the first POST / when no
+ * saved record exists yet).
+ *
+ * SECURITY: `brand`, `target`, and `contact` are owner-supplied form inputs.
+ * They MUST be escaped via `esc()` before interpolation — this output is rendered
+ * via dangerouslySetInnerHTML. Server-generated `record.html` is already escaped
+ * by lib/statement.ts#generateStatementHtml and does NOT pass through this function.
+ */
 function buildPreviewHtml(brand: string, target: string, contact: string, jurisdictions: Jurisdiction[]): string {
   const jLabels = jurisdictions.map((j) => JURISDICTION_LABELS[j]).join(", ");
-  const lastReviewed = shortDate(new Date().toISOString());
+  const eBrand = esc(brand);
+  const eTarget = esc(target);
+  const eContact = esc(contact);
   return [
     `<b>Accessibility statement</b>`,
     ``,
-    `${brand || "Your brand"} is committed to digital accessibility for people with disabilities.`,
-    `We aim to conform to <b>${target || "WCAG 2.1 Level AA"}</b>${jLabels ? `, in line with ${jLabels}` : ""}.`,
+    `${eBrand || "Your brand"} is committed to digital accessibility for people with disabilities.`,
+    `We aim to conform to <b>${eTarget || "WCAG 2.1 Level AA"}</b>${jLabels ? `, in line with ${jLabels}` : ""}.`,
     ``,
-    `Feedback: <a href="mailto:${contact}">${contact || "your@email.com"}</a>`,
+    `Feedback: <a href="mailto:${eContact}">${eContact || "your@email.com"}</a>`,
     ``,
-    `<em>Last reviewed ${lastReviewed} · Monitored by a Makoya agent.</em>`,
+    `<em>Last reviewed — · Monitored by a Makoya agent.</em>`,
   ].join("\n");
 }
 
@@ -345,8 +371,9 @@ export function StatementClient({ siteId, domain, accountEmail }: Props) {
                 whiteSpace: "pre-wrap",
               }}
               aria-label="Statement preview"
-              // dangerouslySetInnerHTML is safe here: the server-generated html is
-              // XSS-escaped by lib/statement.ts and the preview builds from controlled state.
+              // dangerouslySetInnerHTML: server-generated record.html is escaped by
+              // lib/statement.ts#generateStatementHtml; client-side preview HTML is
+              // escaped by the local esc() helper in buildPreviewHtml above.
               dangerouslySetInnerHTML={{ __html: previewHtml }}
             />
           )}
@@ -385,7 +412,7 @@ export function StatementClient({ siteId, domain, accountEmail }: Props) {
             </span>
             <br /><br />
             <span className="tiny muted">
-              Last reviewed {shortDate(record?.updatedAt ?? new Date().toISOString())} · Monitored by a Makoya agent.
+              Last reviewed {shortDate(record?.updatedAt ?? null)} · Monitored by a Makoya agent.
             </span>
           </div>
         </section>

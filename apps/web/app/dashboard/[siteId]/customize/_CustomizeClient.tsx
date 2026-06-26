@@ -14,9 +14,8 @@
  *
  * Real-data discipline:
  *   - Every toggle state comes from the API; none are hard-coded "on".
- *   - Brand-color contrast ratio is computed from the REAL primaryColor using the
- *     WCAG relative-luminance formula (same math as lib/contrast.ts, inlined here
- *     because client components can't call server-only modules).
+ *   - Brand-color contrast ratio is computed from the REAL primaryColor using
+ *     lib/contrast.ts directly (pure math, no server-only dependencies).
  *   - The ratio shown in the AA badge is real, not the mockup's "4.1:1".
  *   - Publish sends the full current state to PATCH; Reset reverts to last-saved.
  *   - Loading / error / empty states are all honest (role=status / role=alert).
@@ -28,8 +27,9 @@
  */
 
 import { useState, useEffect } from "react";
-import type { FeatureKey, WidgetPosition, LauncherIconKey, WidgetLauncherSize, WidgetLanguage } from "@makoya/shared";
+import type { FeatureKey, WidgetPosition, LauncherIconKey, WidgetLauncherSize, WidgetLanguage, WidgetProfileKey } from "@makoya/shared";
 import type { SiteConfig } from "@/lib/sites-mappers";
+import { contrastRatio } from "@/lib/contrast";
 
 /* ── Feature metadata (matches packages/shared FeatureKey list) ──────────────── */
 const FEATURE_META: Record<FeatureKey, { label: string; icon: string; desc: string }> = {
@@ -50,41 +50,6 @@ const FEATURE_META: Record<FeatureKey, { label: string; icon: string; desc: stri
   readAloud:      { label: "Read page aloud",           icon: "ti-volume",          desc: "Text-to-speech" },
 };
 const FEATURE_KEYS = Object.keys(FEATURE_META) as FeatureKey[];
-
-/* ── WCAG contrast math (inlined from lib/contrast.ts — pure, no server deps) ── */
-function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
-  const h = hex.trim().replace(/^#/, "").toLowerCase();
-  let full: string;
-  if (/^[0-9a-f]{3}$/.test(h)) {
-    full = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
-  } else if (/^[0-9a-f]{6}$/.test(h)) {
-    full = h;
-  } else {
-    return null;
-  }
-  return {
-    r: parseInt(full.slice(0, 2), 16),
-    g: parseInt(full.slice(2, 4), 16),
-    b: parseInt(full.slice(4, 6), 16),
-  };
-}
-function linearize(c: number): number {
-  const v = c / 255;
-  return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
-}
-function luminance(rgb: { r: number; g: number; b: number }): number {
-  return 0.2126 * linearize(rgb.r) + 0.7152 * linearize(rgb.g) + 0.0722 * linearize(rgb.b);
-}
-function contrastRatio(hexA: string, hexB: string): number | null {
-  const a = hexToRgb(hexA);
-  const b = hexToRgb(hexB);
-  if (!a || !b) return null;
-  const lA = luminance(a);
-  const lB = luminance(b);
-  const lighter = Math.max(lA, lB);
-  const darker = Math.min(lA, lB);
-  return (lighter + 0.05) / (darker + 0.05);
-}
 
 /* ── Small helpers ───────────────────────────────────────────────────────────── */
 type Tab = "features" | "appearance" | "mobile";
@@ -198,7 +163,10 @@ export function CustomizeClient({ siteId }: Props) {
   }
 
   /* ── Contrast computation for brand color ───────────────────────────────────── */
-  const ratio = contrastRatio(config.primaryColor, "#ffffff");
+  // lib/contrast.ts throws on invalid hex — guard so a partially-typed value
+  // never crashes the render. The null path is already handled by ratioDisplay.
+  let ratio: number | null = null;
+  try { ratio = contrastRatio(config.primaryColor, "#ffffff"); } catch { /* invalid hex — guard below */ }
   const ratioDisplay = ratio != null ? `${ratio.toFixed(1)} : 1` : "—";
   const passesAaUi = ratio != null && ratio >= 3;
 
@@ -262,6 +230,8 @@ export function CustomizeClient({ siteId }: Props) {
                 key={t}
                 type="button"
                 role="tab"
+                id={`cu-tab-${t}`}
+                aria-controls={`cu-panel-${t}`}
                 className={tab === t ? "on" : ""}
                 aria-selected={tab === t}
                 onClick={() => setTab(t)}
@@ -273,7 +243,7 @@ export function CustomizeClient({ siteId }: Props) {
 
           {/* Features tab */}
           {tab === "features" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }} role="tabpanel" aria-label="Features">
+            <div id="cu-panel-features" style={{ display: "flex", flexDirection: "column", gap: 10 }} role="tabpanel" aria-labelledby="cu-tab-features">
               {FEATURE_KEYS.map((key) => {
                 const meta = FEATURE_META[key];
                 const on = config.featuresEnabled.includes(key);
@@ -302,7 +272,7 @@ export function CustomizeClient({ siteId }: Props) {
 
           {/* Appearance tab */}
           {tab === "appearance" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }} role="tabpanel" aria-label="Appearance">
+            <div id="cu-panel-appearance" style={{ display: "flex", flexDirection: "column", gap: 14 }} role="tabpanel" aria-labelledby="cu-tab-appearance">
               {/* Brand color */}
               <div className="card cpad">
                 <label className="fl" htmlFor="cu-color" style={{ marginTop: 0 }}>Brand color</label>
@@ -402,12 +372,67 @@ export function CustomizeClient({ siteId }: Props) {
                 />
                 <div className="tiny muted" style={{ marginTop: 6 }}>When set, a link appears in the widget panel.</div>
               </div>
+
+              {/* Panel title */}
+              <div className="card cpad">
+                <label className="fl" htmlFor="cu-panel-title" style={{ marginTop: 0 }}>Panel title <span className="muted">(optional, paid)</span></label>
+                <input
+                  id="cu-panel-title"
+                  className="inp"
+                  type="text"
+                  placeholder="Accessibility"
+                  maxLength={120}
+                  value={config.panelTitle}
+                  onChange={(e) => setConfig((c) => c ? { ...c, panelTitle: e.target.value } : c)}
+                />
+                <div className="tiny muted" style={{ marginTop: 6 }}>Overrides the default heading inside the widget panel.</div>
+              </div>
+
+              {/* Default profile */}
+              <div className="card cpad">
+                <label className="fl" htmlFor="cu-profile" style={{ marginTop: 0 }}>Default profile <span className="muted">(optional)</span></label>
+                <select
+                  id="cu-profile"
+                  className="inp"
+                  value={config.defaultProfile}
+                  onChange={(e) => setConfig((c) => c ? { ...c, defaultProfile: e.target.value as WidgetProfileKey } : c)}
+                >
+                  <option value="none">None (let visitor choose)</option>
+                  <option value="vision">Vision impairment</option>
+                  <option value="lowVision">Low vision</option>
+                  <option value="dyslexia">Dyslexia</option>
+                  <option value="adhd">ADHD</option>
+                  <option value="seizure">Seizure / epilepsy</option>
+                  <option value="senior">Senior</option>
+                  <option value="cognitive">Cognitive disability</option>
+                  <option value="colorBlind">Color blindness</option>
+                </select>
+                <div className="tiny muted" style={{ marginTop: 6 }}>Auto-applies a preset on the visitor&apos;s first open.</div>
+              </div>
+
+              {/* Hide branding */}
+              <div className="card cpad">
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 500, color: "var(--t1)" }}>Hide &ldquo;Powered by Makoya&rdquo;</div>
+                    <div className="tiny muted" style={{ marginTop: 3 }}>Remove the Makoya branding from the widget panel. Paid plans only.</div>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={config.hideBranding}
+                    aria-label={`Hide Makoya branding: ${config.hideBranding ? "enabled" : "disabled"}`}
+                    className={`toggle ${config.hideBranding ? "on" : ""}`}
+                    onClick={() => setConfig((c) => c ? { ...c, hideBranding: !c.hideBranding } : c)}
+                  />
+                </div>
+              </div>
             </div>
           )}
 
           {/* Mobile tab */}
           {tab === "mobile" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }} role="tabpanel" aria-label="Mobile">
+            <div id="cu-panel-mobile" style={{ display: "flex", flexDirection: "column", gap: 10 }} role="tabpanel" aria-labelledby="cu-tab-mobile">
               <div className="feat">
                 <div className="ic" aria-hidden="true">
                   <i className="ti ti-device-mobile" aria-hidden="true" />
