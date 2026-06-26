@@ -1,3 +1,4 @@
+import "server-only";
 /**
  * lib/agent-context.ts — shared auth + ownership helper for all [siteId] RSC pages.
  *

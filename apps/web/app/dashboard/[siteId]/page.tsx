@@ -23,13 +23,12 @@ export default async function OverviewPage({
   params: Promise<{ siteId: string }>;
 }) {
   const { siteId } = await params;
-  const { site, token } = await requireAgent(siteId);
+  const { site } = await requireAgent(siteId);
 
   return (
     <OverviewClient
       siteId={siteId}
       domain={site.domain}
-      token={token}
     />
   );
 }

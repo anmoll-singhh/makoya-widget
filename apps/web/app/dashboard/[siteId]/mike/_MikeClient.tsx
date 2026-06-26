@@ -68,7 +68,9 @@ function ringOffset(pct: number): number {
   return circ * (1 - Math.max(0, Math.min(1, pct)));
 }
 
-const WCAG_TOTAL = 50; // WCAG 2.1 AA has 50 success criteria (conservative estimate for % met)
+// NOTE: WCAG_TOTAL is NOT hardcoded — it is derived at render time from the distinct
+// wcagCriterion values present across all issues (failing + needs_review + passing),
+// i.e. the criteria the scanner actually checked. See `trackedCriteria` below.
 
 /* ── IssueRow component ──────────────────────────────────────────────────────── */
 interface IssueRowProps {
@@ -195,6 +197,13 @@ function IssueRow({ issue, group, team, onPatch }: IssueRowProps) {
           <div
             role="listbox"
             aria-label="Assign issue"
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setAssignOpen(false);
+              }
+            }}
+            // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
+            tabIndex={-1}
             style={{
               position: "absolute",
               top: "calc(100% + 4px)",
@@ -495,6 +504,18 @@ export function MikeClient({ siteId, domain }: Props) {
   const criteriaMet = new Set(
     issues.passing.filter((i) => i.wcagCriterion).map((i) => i.wcagCriterion)
   ).size;
+  // Count of DISTINCT wcagCriterion values present across ALL issues (the criteria the
+  // scanner actually checked). Used as the denominator so "X of N" is honest, not an
+  // overstated fixed number like /50 or /33.
+  const trackedCriteria = new Set(
+    [
+      ...issues.failing,
+      ...issues.needs_review,
+      ...issues.passing,
+    ]
+      .filter((i) => i.wcagCriterion)
+      .map((i) => i.wcagCriterion)
+  ).size;
 
   /* Filter + search */
   const groups: {
@@ -635,10 +656,18 @@ export function MikeClient({ siteId, domain }: Props) {
               fontFamily: "Satoshi",
             }}
           >
-            {criteriaMet}
-            <span style={{ fontSize: 13, color: "var(--t3)" }}>
-              /{WCAG_TOTAL} WCAG AA
-            </span>
+            {trackedCriteria === 0 ? (
+              <span style={{ fontSize: 13, color: "var(--t3)" }}>
+                No criteria checked yet
+              </span>
+            ) : (
+              <>
+                {criteriaMet}
+                <span style={{ fontSize: 13, color: "var(--t3)" }}>
+                  {" "}of {trackedCriteria} tracked criteria
+                </span>
+              </>
+            )}
           </div>
         </div>
 

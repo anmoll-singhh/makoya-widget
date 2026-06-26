@@ -143,16 +143,6 @@ function TrendChart({ trend }: { trend: { period: string; score: number | null }
               <stop offset="1" stopColor="#1E63FF" stopOpacity="0" />
             </linearGradient>
           </defs>
-          {/* Industry avg dotted line at 89% */}
-          <line
-            x1="0"
-            y1={h - (89 / max) * (h - 20) - 10}
-            x2={w}
-            y2={h - (89 / max) * (h - 20) - 10}
-            stroke="#C2CADA"
-            strokeWidth="2"
-            strokeDasharray="4 5"
-          />
           <path d={areaPath} fill="url(#ov-ar)" />
           <polyline
             fill="none"
@@ -193,7 +183,6 @@ function TrendChart({ trend }: { trend: { period: string; score: number | null }
 interface Props {
   siteId: string;
   domain: string;
-  token: string;
 }
 
 /* ── Main Component ──────────────────────────────────────────────────────────── */
@@ -483,10 +472,6 @@ export function OverviewClient({ siteId, domain }: Props) {
               <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <span style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--primary)" }} />
                 Score
-              </span>
-              <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ width: 14, borderTop: "2px dashed #C2CADA" }} />
-                Industry avg. 89
               </span>
             </div>
             <Link className="viewall" href={`/dashboard/${siteId}/reports`}>
