@@ -19,6 +19,7 @@
  */
 
 import { useState, useEffect } from "react";
+import { LoadingButton } from "../../_components";
 
 /* ── API shapes ───────────────────────────────────────────────────────────────── */
 interface SiteSettings {
@@ -49,15 +50,7 @@ interface Props {
 }
 
 /* ── Helpers ─────────────────────────────────────────────────────────────────── */
-function Toggle({
-  on,
-  onToggle,
-  label,
-}: {
-  on: boolean;
-  onToggle: () => void;
-  label: string;
-}) {
+function Toggle({ on, onToggle, label }: { on: boolean; onToggle: () => void; label: string }) {
   return (
     <button
       type="button"
@@ -67,7 +60,10 @@ function Toggle({
       aria-label={label}
       onClick={onToggle}
       onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggle(); }
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onToggle();
+        }
       }}
     />
   );
@@ -124,8 +120,15 @@ export function SettingsClient({ siteId }: Props) {
         setNewIssueAlert(d.notificationPrefs?.newIssueAlert ?? false);
         setSettingsLoading(false);
       })
-      .catch(() => { if (live) { setSettingsError(true); setSettingsLoading(false); } });
-    return () => { live = false; };
+      .catch(() => {
+        if (live) {
+          setSettingsError(true);
+          setSettingsLoading(false);
+        }
+      });
+    return () => {
+      live = false;
+    };
   }, [base]);
 
   // Load config
@@ -144,8 +147,15 @@ export function SettingsClient({ siteId }: Props) {
         setInheritFonts(d.inheritFonts ?? false);
         setConfigLoading(false);
       })
-      .catch(() => { if (live) { setConfigError(true); setConfigLoading(false); } });
-    return () => { live = false; };
+      .catch(() => {
+        if (live) {
+          setConfigError(true);
+          setConfigLoading(false);
+        }
+      });
+    return () => {
+      live = false;
+    };
   }, [base]);
 
   async function saveOwner(e: React.FormEvent) {
@@ -214,7 +224,10 @@ export function SettingsClient({ siteId }: Props) {
         }),
       });
       if (!res.ok) {
-        setNotifMsg({ ok: false, text: "Couldn't save notification preferences — please try again." });
+        setNotifMsg({
+          ok: false,
+          text: "Couldn't save notification preferences — please try again.",
+        });
         return;
       }
       setNotifMsg({ ok: true, text: "Notification preferences saved." });
@@ -276,7 +289,11 @@ export function SettingsClient({ siteId }: Props) {
               Used in the accessibility statement and for alerts.
             </p>
             {settingsLoading && (
-              <div role="status" aria-live="polite" style={{ padding: "20px 0", color: "var(--t3)" }}>
+              <div
+                role="status"
+                aria-live="polite"
+                style={{ padding: "20px 0", color: "var(--t3)" }}
+              >
                 Loading owner info…
               </div>
             )}
@@ -288,7 +305,9 @@ export function SettingsClient({ siteId }: Props) {
             )}
             {settings && !settingsLoading && (
               <form onSubmit={saveOwner}>
-                <label className="fl" htmlFor="s-owner-name">Owner name</label>
+                <label className="fl" htmlFor="s-owner-name">
+                  Owner name
+                </label>
                 <input
                   id="s-owner-name"
                   className="inp"
@@ -296,7 +315,9 @@ export function SettingsClient({ siteId }: Props) {
                   onChange={(e) => setOwnerName(e.target.value)}
                   placeholder="Not set"
                 />
-                <label className="fl" htmlFor="s-owner-email">Email</label>
+                <label className="fl" htmlFor="s-owner-email">
+                  Email
+                </label>
                 <input
                   id="s-owner-email"
                   className="inp"
@@ -305,7 +326,9 @@ export function SettingsClient({ siteId }: Props) {
                   onChange={(e) => setOwnerEmail(e.target.value)}
                   placeholder="Not set"
                 />
-                <label className="fl" htmlFor="s-owner-phone">Phone</label>
+                <label className="fl" htmlFor="s-owner-phone">
+                  Phone
+                </label>
                 <input
                   id="s-owner-phone"
                   className="inp"
@@ -313,22 +336,25 @@ export function SettingsClient({ siteId }: Props) {
                   onChange={(e) => setOwnerPhone(e.target.value)}
                   placeholder="Not set"
                 />
-                <button
+                <LoadingButton
                   className="btn pri"
                   type="submit"
-                  disabled={savingOwner}
+                  loading={savingOwner}
+                  icon={<i className="ti ti-check" aria-hidden="true" />}
                   style={{ marginTop: 16 }}
                 >
-                  <i className="ti ti-check" aria-hidden="true" />{" "}
-                  {savingOwner ? "Saving…" : "Save"}
-                </button>
+                  Save
+                </LoadingButton>
                 {ownerMsg && (
                   <div
                     className={`note ${ownerMsg.ok ? "good" : "warn"}`}
                     role={ownerMsg.ok ? "status" : "alert"}
                     style={{ marginTop: 12 }}
                   >
-                    <i className={`ti ${ownerMsg.ok ? "ti-check" : "ti-alert-triangle"}`} aria-hidden="true" />
+                    <i
+                      className={`ti ${ownerMsg.ok ? "ti-check" : "ti-alert-triangle"}`}
+                      aria-hidden="true"
+                    />
                     <div>{ownerMsg.text}</div>
                   </div>
                 )}
@@ -356,7 +382,11 @@ export function SettingsClient({ siteId }: Props) {
               Optional. Some items require a developer.
             </p>
             {configLoading && (
-              <div role="status" aria-live="polite" style={{ padding: "20px 0", color: "var(--t3)" }}>
+              <div
+                role="status"
+                aria-live="polite"
+                style={{ padding: "20px 0", color: "var(--t3)" }}
+              >
                 Loading config…
               </div>
             )}
@@ -368,7 +398,9 @@ export function SettingsClient({ siteId }: Props) {
             )}
             {config && !configLoading && (
               <form onSubmit={saveAdvanced}>
-                <label className="fl" htmlFor="s-trigger">Custom trigger element (desktop)</label>
+                <label className="fl" htmlFor="s-trigger">
+                  Custom trigger element (desktop)
+                </label>
                 <input
                   id="s-trigger"
                   className="inp"
@@ -376,7 +408,9 @@ export function SettingsClient({ siteId }: Props) {
                   onChange={(e) => setTriggerSelector(e.target.value)}
                   placeholder="Default launcher button"
                 />
-                <label className="fl" htmlFor="s-lang">Widget language</label>
+                <label className="fl" htmlFor="s-lang">
+                  Widget language
+                </label>
                 <select
                   id="s-lang"
                   className="inp"
@@ -391,7 +425,11 @@ export function SettingsClient({ siteId }: Props) {
                 <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 10 }}>
                   <div
                     className="between"
-                    style={{ border: "1px solid var(--border)", borderRadius: 10, padding: "11px 13px" }}
+                    style={{
+                      border: "1px solid var(--border)",
+                      borderRadius: 10,
+                      padding: "11px 13px",
+                    }}
                   >
                     <span style={{ fontSize: 13 }}>Re-apply on dynamic content (DOM observer)</span>
                     <Toggle
@@ -402,7 +440,11 @@ export function SettingsClient({ siteId }: Props) {
                   </div>
                   <div
                     className="between"
-                    style={{ border: "1px solid var(--border)", borderRadius: 10, padding: "11px 13px" }}
+                    style={{
+                      border: "1px solid var(--border)",
+                      borderRadius: 10,
+                      padding: "11px 13px",
+                    }}
                   >
                     <span style={{ fontSize: 13 }}>Inherit your site fonts</span>
                     <Toggle
@@ -415,26 +457,29 @@ export function SettingsClient({ siteId }: Props) {
                 <div className="note info" style={{ marginTop: 14, fontSize: 12 }}>
                   <i className="ti ti-info-circle" style={{ fontSize: 16 }} aria-hidden="true" />
                   <div>
-                    No automated code-fixing here, by design — Makoya monitors and audits;
-                    fixes are on the record.
+                    No automated code-fixing here, by design — Makoya monitors and audits; fixes are
+                    on the record.
                   </div>
                 </div>
-                <button
+                <LoadingButton
                   className="btn pri"
                   type="submit"
-                  disabled={savingConfig}
+                  loading={savingConfig}
+                  icon={<i className="ti ti-check" aria-hidden="true" />}
                   style={{ marginTop: 16 }}
                 >
-                  <i className="ti ti-check" aria-hidden="true" />{" "}
-                  {savingConfig ? "Saving…" : "Save"}
-                </button>
+                  Save
+                </LoadingButton>
                 {configMsg && (
                   <div
                     className={`note ${configMsg.ok ? "good" : "warn"}`}
                     role={configMsg.ok ? "status" : "alert"}
                     style={{ marginTop: 12 }}
                   >
-                    <i className={`ti ${configMsg.ok ? "ti-check" : "ti-alert-triangle"}`} aria-hidden="true" />
+                    <i
+                      className={`ti ${configMsg.ok ? "ti-check" : "ti-alert-triangle"}`}
+                      aria-hidden="true"
+                    />
                     <div>{configMsg.text}</div>
                   </div>
                 )}
@@ -474,7 +519,11 @@ export function SettingsClient({ siteId }: Props) {
                 <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 10 }}>
                   <div
                     className="between"
-                    style={{ border: "1px solid var(--border)", borderRadius: 10, padding: "11px 13px" }}
+                    style={{
+                      border: "1px solid var(--border)",
+                      borderRadius: 10,
+                      padding: "11px 13px",
+                    }}
                   >
                     <span style={{ fontSize: 13 }}>Score drop alert</span>
                     <Toggle
@@ -485,7 +534,11 @@ export function SettingsClient({ siteId }: Props) {
                   </div>
                   <div
                     className="between"
-                    style={{ border: "1px solid var(--border)", borderRadius: 10, padding: "11px 13px" }}
+                    style={{
+                      border: "1px solid var(--border)",
+                      borderRadius: 10,
+                      padding: "11px 13px",
+                    }}
                   >
                     <span style={{ fontSize: 13 }}>Weekly digest</span>
                     <Toggle
@@ -496,7 +549,11 @@ export function SettingsClient({ siteId }: Props) {
                   </div>
                   <div
                     className="between"
-                    style={{ border: "1px solid var(--border)", borderRadius: 10, padding: "11px 13px" }}
+                    style={{
+                      border: "1px solid var(--border)",
+                      borderRadius: 10,
+                      padding: "11px 13px",
+                    }}
                   >
                     <span style={{ fontSize: 13 }}>New issue alert</span>
                     <Toggle
@@ -506,22 +563,25 @@ export function SettingsClient({ siteId }: Props) {
                     />
                   </div>
                 </div>
-                <button
+                <LoadingButton
                   className="btn pri"
                   type="submit"
-                  disabled={savingNotif}
+                  loading={savingNotif}
+                  icon={<i className="ti ti-check" aria-hidden="true" />}
                   style={{ marginTop: 16 }}
                 >
-                  <i className="ti ti-check" aria-hidden="true" />{" "}
-                  {savingNotif ? "Saving…" : "Save preferences"}
-                </button>
+                  Save preferences
+                </LoadingButton>
                 {notifMsg && (
                   <div
                     className={`note ${notifMsg.ok ? "good" : "warn"}`}
                     role={notifMsg.ok ? "status" : "alert"}
                     style={{ marginTop: 12 }}
                   >
-                    <i className={`ti ${notifMsg.ok ? "ti-check" : "ti-alert-triangle"}`} aria-hidden="true" />
+                    <i
+                      className={`ti ${notifMsg.ok ? "ti-check" : "ti-alert-triangle"}`}
+                      aria-hidden="true"
+                    />
                     <div>{notifMsg.text}</div>
                   </div>
                 )}

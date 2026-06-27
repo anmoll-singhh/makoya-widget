@@ -23,7 +23,7 @@
  */
 import * as Sentry from "@sentry/nextjs";
 
-import { env } from "@/lib/env";
+import { env } from "@/lib/env.server";
 
 export async function register(): Promise<void> {
   // Node.js server runtime (route handlers, RSC, server actions, most of the app).

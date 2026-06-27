@@ -22,6 +22,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import { LoadingButton } from "../_components";
 
 /* ── API shapes (client-local; mirrors lib/org.ts + lib/api-keys.ts) ─────────── */
 type OrgRole = "owner" | "admin" | "developer";
@@ -154,9 +155,21 @@ export function AccountClient({ email }: Props) {
     let live = true;
     fetch("/api/org", { credentials: "same-origin" })
       .then((r) => (r.ok ? (r.json() as Promise<OrgResponse>) : Promise.reject(r.status)))
-      .then((d) => { if (live) { setOrgData(d); setOrgLoading(false); } })
-      .catch(() => { if (live) { setOrgError(true); setOrgLoading(false); } });
-    return () => { live = false; };
+      .then((d) => {
+        if (live) {
+          setOrgData(d);
+          setOrgLoading(false);
+        }
+      })
+      .catch(() => {
+        if (live) {
+          setOrgError(true);
+          setOrgLoading(false);
+        }
+      });
+    return () => {
+      live = false;
+    };
   }, []);
 
   const role = orgData?.role ?? null;
@@ -172,8 +185,7 @@ export function AccountClient({ email }: Props) {
     <>
       {/* Page header */}
       <div className="pagehead">
-        Account settings{" "}
-        <b>Account settings</b>
+        Account settings <b>Account settings</b>
         <div className="tiny muted" style={{ marginTop: 4 }}>
           Organization, team and security for your Makoya account.
         </div>
@@ -204,11 +216,7 @@ export function AccountClient({ email }: Props) {
 
       {/* Profile tab */}
       {tab === "profile" && (
-        <div
-          id="acct-panel-profile"
-          role="tabpanel"
-          aria-labelledby="acct-tab-profile"
-        >
+        <div id="acct-panel-profile" role="tabpanel" aria-labelledby="acct-tab-profile">
           <ProfileTab
             orgData={orgData}
             orgLoading={orgLoading}
@@ -221,33 +229,21 @@ export function AccountClient({ email }: Props) {
 
       {/* Team tab */}
       {tab === "team" && (
-        <div
-          id="acct-panel-team"
-          role="tabpanel"
-          aria-labelledby="acct-tab-team"
-        >
+        <div id="acct-panel-team" role="tabpanel" aria-labelledby="acct-tab-team">
           <TeamTab role={role} />
         </div>
       )}
 
       {/* Security tab */}
       {tab === "security" && (
-        <div
-          id="acct-panel-security"
-          role="tabpanel"
-          aria-labelledby="acct-tab-security"
-        >
+        <div id="acct-panel-security" role="tabpanel" aria-labelledby="acct-tab-security">
           <SecurityTab />
         </div>
       )}
 
       {/* API tab */}
       {tab === "api" && (
-        <div
-          id="acct-panel-api"
-          role="tabpanel"
-          aria-labelledby="acct-tab-api"
-        >
+        <div id="acct-panel-api" role="tabpanel" aria-labelledby="acct-tab-api">
           <ApiTab role={role} />
         </div>
       )}
@@ -307,7 +303,9 @@ function ProfileTab({
   return (
     <div className="grid2" style={{ maxWidth: 980 }}>
       <section className="card">
-        <div className="ch"><h3>Organization</h3></div>
+        <div className="ch">
+          <h3>Organization</h3>
+        </div>
         <div className="cpad">
           {orgLoading && (
             <div role="status" aria-live="polite" style={{ color: "var(--t3)", padding: "14px 0" }}>
@@ -322,14 +320,18 @@ function ProfileTab({
           )}
           {orgData && !orgLoading && (
             <form onSubmit={save}>
-              <label className="fl" htmlFor="acct-org-name">Organization name</label>
+              <label className="fl" htmlFor="acct-org-name">
+                Organization name
+              </label>
               <input
                 id="acct-org-name"
                 className="inp"
                 value={orgName}
                 onChange={(e) => setOrgName(e.target.value)}
               />
-              <label className="fl" htmlFor="acct-org-email" style={{ marginTop: 16 }}>Account email</label>
+              <label className="fl" htmlFor="acct-org-email" style={{ marginTop: 16 }}>
+                Account email
+              </label>
               <input
                 id="acct-org-email"
                 className="inp"
@@ -343,10 +345,14 @@ function ProfileTab({
               </p>
               {canManageTeam(role) && (
                 <div style={{ marginTop: 20 }}>
-                  <button className="btn pri" type="submit" disabled={saving}>
-                    <i className="ti ti-device-floppy" aria-hidden="true" />{" "}
-                    {saving ? "Saving…" : "Save"}
-                  </button>
+                  <LoadingButton
+                    className="btn pri"
+                    type="submit"
+                    loading={saving}
+                    icon={<i className="ti ti-device-floppy" aria-hidden="true" />}
+                  >
+                    Save
+                  </LoadingButton>
                 </div>
               )}
               {msg && (
@@ -355,7 +361,10 @@ function ProfileTab({
                   role={msg.ok ? "status" : "alert"}
                   style={{ marginTop: 12 }}
                 >
-                  <i className={`ti ${msg.ok ? "ti-check" : "ti-alert-triangle"}`} aria-hidden="true" />
+                  <i
+                    className={`ti ${msg.ok ? "ti-check" : "ti-alert-triangle"}`}
+                    aria-hidden="true"
+                  />
                   <div>{msg.text}</div>
                 </div>
               )}
@@ -366,7 +375,9 @@ function ProfileTab({
 
       {orgData && (
         <section className="card">
-          <div className="ch"><h3>Your role</h3></div>
+          <div className="ch">
+            <h3>Your role</h3>
+          </div>
           <div className="cpad">
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <span className={`pill ${ROLE_PILL_CLS[orgData.role]}`}>
@@ -408,9 +419,21 @@ function TeamTab({ role }: { role: OrgRole | null }) {
     setError(false);
     fetch("/api/team", { credentials: "same-origin" })
       .then((r) => (r.ok ? (r.json() as Promise<TeamResponse>) : Promise.reject(r.status)))
-      .then((d) => { if (live) { setData(d); setLoading(false); } })
-      .catch(() => { if (live) { setError(true); setLoading(false); } });
-    return () => { live = false; };
+      .then((d) => {
+        if (live) {
+          setData(d);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (live) {
+          setError(true);
+          setLoading(false);
+        }
+      });
+    return () => {
+      live = false;
+    };
   }, [reload]);
 
   const pendingInvites = (data?.invites ?? []).filter((i) => !i.acceptedAt);
@@ -419,7 +442,10 @@ function TeamTab({ role }: { role: OrgRole | null }) {
     e.preventDefault();
     setErr(null);
     setLink(null);
-    if (!inviteEmail.trim()) { setErr("Enter an email address."); return; }
+    if (!inviteEmail.trim()) {
+      setErr("Enter an email address.");
+      return;
+    }
     setBusy(true);
     try {
       const res = await fetch("/api/team", {
@@ -428,8 +454,14 @@ function TeamTab({ role }: { role: OrgRole | null }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole }),
       });
-      if (res.status === 403) { setErr("Only owners and admins can invite teammates."); return; }
-      if (!res.ok) { setErr("Couldn't create that invite — check the email and try again."); return; }
+      if (res.status === 403) {
+        setErr("Only owners and admins can invite teammates.");
+        return;
+      }
+      if (!res.ok) {
+        setErr("Couldn't create that invite — check the email and try again.");
+        return;
+      }
       const body = (await res.json()) as { token?: string };
       if (body.token) {
         setLink(`${window.location.origin}/accept-invite?token=${encodeURIComponent(body.token)}`);
@@ -444,7 +476,15 @@ function TeamTab({ role }: { role: OrgRole | null }) {
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: 22, alignItems: "start", maxWidth: 980 }}>
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "1fr 360px",
+        gap: 22,
+        alignItems: "start",
+        maxWidth: 980,
+      }}
+    >
       <section className="card">
         <div className="ch">
           <h3>Team members</h3>
@@ -452,7 +492,9 @@ function TeamTab({ role }: { role: OrgRole | null }) {
             <button
               className="btn ghost"
               type="button"
-              onClick={() => { /* scroll to invite form */ }}
+              onClick={() => {
+                /* scroll to invite form */
+              }}
             >
               <i className="ti ti-user-plus" aria-hidden="true" /> Invite
             </button>
@@ -472,7 +514,9 @@ function TeamTab({ role }: { role: OrgRole | null }) {
         {data && !loading && (
           <>
             {data.team.length === 0 && (
-              <div style={{ padding: "14px 20px" }} className="tiny muted">No team members yet.</div>
+              <div style={{ padding: "14px 20px" }} className="tiny muted">
+                No team members yet.
+              </div>
             )}
             {data.team.map((m) => (
               <div
@@ -500,9 +544,7 @@ function TeamTab({ role }: { role: OrgRole | null }) {
                   <div style={{ fontWeight: 700, color: "var(--deep)" }}>{m.email}</div>
                   <div className="tiny muted">{m.userId ? "Active" : "Invited"}</div>
                 </div>
-                <span className={`pill ${ROLE_PILL_CLS[m.role]}`}>
-                  {ROLE_LABEL[m.role]}
-                </span>
+                <span className={`pill ${ROLE_PILL_CLS[m.role]}`}>{ROLE_LABEL[m.role]}</span>
               </div>
             ))}
 
@@ -565,7 +607,9 @@ function TeamTab({ role }: { role: OrgRole | null }) {
           </div>
         ) : (
           <form onSubmit={invite} style={{ marginTop: 4 }}>
-            <label className="fl" htmlFor="team-inv-email">Email</label>
+            <label className="fl" htmlFor="team-inv-email">
+              Email
+            </label>
             <input
               id="team-inv-email"
               className="inp"
@@ -574,7 +618,9 @@ function TeamTab({ role }: { role: OrgRole | null }) {
               onChange={(e) => setInviteEmail(e.target.value)}
               placeholder="teammate@company.com"
             />
-            <label className="fl" htmlFor="team-inv-role">Role</label>
+            <label className="fl" htmlFor="team-inv-role">
+              Role
+            </label>
             <select
               id="team-inv-role"
               className="inp"
@@ -584,15 +630,15 @@ function TeamTab({ role }: { role: OrgRole | null }) {
               <option value="developer">Developer</option>
               <option value="admin">Admin</option>
             </select>
-            <button
+            <LoadingButton
               className="btn pri"
               type="submit"
-              disabled={busy}
+              loading={busy}
+              icon={<i className="ti ti-send" aria-hidden="true" />}
               style={{ marginTop: 16 }}
             >
-              <i className="ti ti-send" aria-hidden="true" />{" "}
-              {busy ? "Sending…" : "Send invite"}
-            </button>
+              Send invite
+            </LoadingButton>
             {err && (
               <div className="note warn" role="alert" style={{ marginTop: 12 }}>
                 <i className="ti ti-alert-triangle" aria-hidden="true" />
@@ -602,7 +648,8 @@ function TeamTab({ role }: { role: OrgRole | null }) {
             {link && (
               <div className="note good" role="status" style={{ marginTop: 12, display: "block" }}>
                 <div style={{ fontWeight: 600, marginBottom: 6 }}>
-                  <i className="ti ti-check" aria-hidden="true" /> Invite created — copy this link now
+                  <i className="ti ti-check" aria-hidden="true" /> Invite created — copy this link
+                  now
                 </div>
                 <div className="tiny" style={{ marginBottom: 8 }}>
                   It&apos;s shown only once. Send it to your teammate; they join after signing in.
@@ -623,8 +670,8 @@ function SecurityTab() {
     <div className="card cpad" style={{ maxWidth: 560 }}>
       <h3 style={{ fontSize: 14 }}>Password &amp; sign-in</h3>
       <p className="muted" style={{ fontSize: 13, marginTop: 6, lineHeight: 1.6 }}>
-        Makoya uses Supabase for authentication. To change your password, head to the
-        sign-in page and request a reset link, then set a new password from your account.
+        Makoya uses Supabase for authentication. To change your password, head to the sign-in page
+        and request a reset link, then set a new password from your account.
       </p>
       <a
         className="btn"
@@ -663,16 +710,31 @@ function ApiTab({ role }: { role: OrgRole | null }) {
     setError(false);
     fetch("/api/org/api-keys", { credentials: "same-origin" })
       .then((r) => (r.ok ? (r.json() as Promise<ApiKeysResponse>) : Promise.reject(r.status)))
-      .then((d) => { if (live) { setData(d); setLoading(false); } })
-      .catch(() => { if (live) { setError(true); setLoading(false); } });
-    return () => { live = false; };
+      .then((d) => {
+        if (live) {
+          setData(d);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (live) {
+          setError(true);
+          setLoading(false);
+        }
+      });
+    return () => {
+      live = false;
+    };
   }, [reload]);
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
     setSecret(null);
-    if (!keyName.trim()) { setErr("Give the key a name."); return; }
+    if (!keyName.trim()) {
+      setErr("Give the key a name.");
+      return;
+    }
     setBusy(true);
     try {
       const res = await fetch("/api/org/api-keys", {
@@ -681,8 +743,14 @@ function ApiTab({ role }: { role: OrgRole | null }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: keyName.trim() }),
       });
-      if (res.status === 403) { setErr("Only owners and admins can create API keys."); return; }
-      if (!res.ok) { setErr("Couldn't create that key — try again."); return; }
+      if (res.status === 403) {
+        setErr("Only owners and admins can create API keys.");
+        return;
+      }
+      if (!res.ok) {
+        setErr("Couldn't create that key — try again.");
+        return;
+      }
       const body = (await res.json()) as { secret?: string };
       if (body.secret) setSecret(body.secret);
       setKeyName("");
@@ -703,8 +771,14 @@ function ApiTab({ role }: { role: OrgRole | null }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
       });
-      if (res.status === 403) { setErr("Only owners and admins can revoke API keys."); return; }
-      if (!res.ok) { setErr("Couldn't revoke that key — try again."); return; }
+      if (res.status === 403) {
+        setErr("Only owners and admins can revoke API keys.");
+        return;
+      }
+      if (!res.ok) {
+        setErr("Couldn't revoke that key — try again.");
+        return;
+      }
       refresh();
     } catch {
       setErr("Network error — try again shortly.");
@@ -729,7 +803,9 @@ function ApiTab({ role }: { role: OrgRole | null }) {
           <form onSubmit={create} style={{ marginTop: 12 }}>
             <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
               <div style={{ flex: 1, minWidth: 200 }}>
-                <label className="fl" htmlFor="api-key-name" style={{ marginTop: 0 }}>Key name</label>
+                <label className="fl" htmlFor="api-key-name" style={{ marginTop: 0 }}>
+                  Key name
+                </label>
                 <input
                   id="api-key-name"
                   className="inp"
@@ -739,9 +815,14 @@ function ApiTab({ role }: { role: OrgRole | null }) {
                   maxLength={80}
                 />
               </div>
-              <button className="btn pri" type="submit" disabled={busy}>
-                <i className="ti ti-plus" aria-hidden="true" /> {busy ? "Creating…" : "Create key"}
-              </button>
+              <LoadingButton
+                className="btn pri"
+                type="submit"
+                loading={busy}
+                icon={<i className="ti ti-plus" aria-hidden="true" />}
+              >
+                Create key
+              </LoadingButton>
             </div>
           </form>
           {secret && (
@@ -772,7 +853,9 @@ function ApiTab({ role }: { role: OrgRole | null }) {
           </div>
         )}
         {data && data.keys.length === 0 && (
-          <div className="muted tiny" style={{ marginTop: 12 }}>No API keys yet.</div>
+          <div className="muted tiny" style={{ marginTop: 12 }}>
+            No API keys yet.
+          </div>
         )}
         {data && data.keys.length > 0 && (
           <div className="tcard" style={{ marginTop: 12 }}>

@@ -26,7 +26,7 @@
 import * as Sentry from "@sentry/nextjs";
 import { PostHog } from "posthog-node";
 
-import { env } from "@/lib/env";
+import { env } from "@/lib/env.server";
 
 const isProd = process.env.NODE_ENV === "production";
 
@@ -63,8 +63,7 @@ export function track(event: string, props?: Record<string, unknown>): void {
   try {
     const ph = serverPosthog();
     if (!ph) return;
-    const distinctId =
-      (typeof props?.distinctId === "string" && props.distinctId) || "server";
+    const distinctId = (typeof props?.distinctId === "string" && props.distinctId) || "server";
     ph.capture({ distinctId, event, properties: props ?? {} });
   } catch {
     // Analytics must never break a request path.

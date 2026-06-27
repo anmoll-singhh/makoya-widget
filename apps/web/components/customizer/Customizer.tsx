@@ -117,10 +117,8 @@ export function Customizer({ sites, activeSiteId, initialConfig, plan }: Customi
 
       {/* ── Main two-column layout ────────────────────────────────────── */}
       <div className="grid gap-8 lg:grid-cols-[1fr_440px] xl:grid-cols-[1fr_480px]">
-
         {/* Left column — control sections */}
         <div className="space-y-5 min-w-0">
-
           {/* Appearance */}
           <Card className="rounded-2xl border-[var(--border)] shadow-sm">
             <CardHeader className="pb-3">
@@ -147,10 +145,7 @@ export function Customizer({ sites, activeSiteId, initialConfig, plan }: Customi
               </p>
             </CardHeader>
             <CardContent>
-              <FeatureList
-                enabled={config.featuresEnabled}
-                onChange={handleFeaturesChange}
-              />
+              <FeatureList enabled={config.featuresEnabled} onChange={handleFeaturesChange} />
             </CardContent>
           </Card>
 
@@ -188,7 +183,10 @@ export function Customizer({ sites, activeSiteId, initialConfig, plan }: Customi
           <div className="flex items-center gap-2 py-1" aria-live="polite" aria-atomic="true">
             {status === "saving" && (
               <>
-                <span className="h-2 w-2 animate-pulse rounded-full bg-signal-500" aria-hidden="true" />
+                <span
+                  className="h-2 w-2 animate-pulse rounded-full bg-signal-500"
+                  aria-hidden="true"
+                />
                 <span className="text-sm text-[var(--ink-600)]">Saving…</span>
               </>
             )}
@@ -226,10 +224,13 @@ export function Customizer({ sites, activeSiteId, initialConfig, plan }: Customi
               <span className="font-sans text-sm font-semibold text-[var(--ink-600)]">
                 Live preview
               </span>
-              <span className={cn(
-                "h-1.5 w-1.5 rounded-full transition-colors",
-                status === "saving" ? "bg-amber-400 animate-pulse" : "bg-green-400",
-              )} aria-hidden="true" />
+              <span
+                className={cn(
+                  "h-1.5 w-1.5 rounded-full transition-colors",
+                  status === "saving" ? "bg-amber-400 animate-pulse" : "bg-green-400"
+                )}
+                aria-hidden="true"
+              />
             </div>
             <LivePreview config={previewConfig} />
           </div>

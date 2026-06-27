@@ -18,7 +18,7 @@ const envMock = vi.hoisted(() => ({
   EMAIL_FROM: "Makoya <reports@mailer.test>",
 }));
 
-vi.mock("@/lib/env", () => ({ env: envMock }));
+vi.mock("@/lib/env.server", () => ({ env: envMock }));
 
 import { getEmailProvider } from "./index";
 import { stubEmailProvider, getOutbox, clearOutbox } from "./stub-provider";

@@ -23,35 +23,35 @@ import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import type { ReportContent, ReportSeverity } from "./report-content";
 
 // ── Brand palette ────────────────────────────────────────────────────────────
-const NAVY   = "#0D1B4D";
-const BLUE   = "#1E63FF";
-const GREEN  = "#1FA86B";
-const WHITE  = "#FFFFFF";
-const INK    = "#0f172a";
-const MUTED  = "#475569";
-const FAINT  = "#94a3b8";
-const LINE   = "#e2e8f0";
-const SURF   = "#f8fafc";
+const NAVY = "#0D1B4D";
+const BLUE = "#1E63FF";
+const GREEN = "#1FA86B";
+const WHITE = "#FFFFFF";
+const INK = "#0f172a";
+const MUTED = "#475569";
+const FAINT = "#94a3b8";
+const LINE = "#e2e8f0";
+const SURF = "#f8fafc";
 
 const SEVERITY_COLOR: Record<ReportSeverity, string> = {
   critical: "#dc2626",
-  serious:  "#ea580c",
+  serious: "#ea580c",
   moderate: "#d97706",
-  minor:    "#0284c7",
+  minor: "#0284c7",
 };
 
 const SEVERITY_BG: Record<ReportSeverity, string> = {
   critical: "#fff0f0",
-  serious:  "#fff7ed",
+  serious: "#fff7ed",
   moderate: "#fffbeb",
-  minor:    "#eff6ff",
+  minor: "#eff6ff",
 };
 
 const SEVERITY_DESCRIPTION: Record<ReportSeverity, string> = {
   critical: "Blocks users entirely — fix first.",
-  serious:  "Significant barrier for many visitors.",
+  serious: "Significant barrier for many visitors.",
   moderate: "Creates friction; reduces usability.",
-  minor:    "Small inconvenience; fix when possible.",
+  minor: "Small inconvenience; fix when possible.",
 };
 
 function scoreColor(score: number): string {
@@ -402,9 +402,10 @@ export function ReportDocument({ content }: { content: ReportContent }) {
   return (
     <Document title={`Accessibility report — ${c.host}`} author="Makoya">
       <Page size="A4" style={s.page}>
-
         {/* Faint brand watermark — `fixed` repeats on every page */}
-        <Text style={s.watermark} fixed>Makoya</Text>
+        <Text style={s.watermark} fixed>
+          Makoya
+        </Text>
 
         {/* ── Cover header band ──────────────────────────────────────────── */}
         <View style={s.coverBand}>
@@ -426,7 +427,6 @@ export function ReportDocument({ content }: { content: ReportContent }) {
 
         {/* ── Body (all sections share this horizontal padding) ──────────── */}
         <View style={s.body}>
-
           {/* Site title & intro */}
           <Text style={s.reportTitle}>Accessibility scan — {c.host}</Text>
           <Text style={s.intro}>{c.intro}</Text>
@@ -440,16 +440,15 @@ export function ReportDocument({ content }: { content: ReportContent }) {
             <View style={s.scoreRight}>
               <Text style={[s.verdict, { color: sc }]}>{c.scoreVerdict}</Text>
               <Text style={s.verdictSub}>
-                {c.totals.total} {c.totals.total === 1 ? "issue" : "issues"} detected across Critical, Serious, Moderate, and Minor categories.
+                {c.totals.total} {c.totals.total === 1 ? "issue" : "issues"} detected across
+                Critical, Serious, Moderate, and Minor categories.
               </Text>
               {/* Proportional score bar built with flex so no % widths needed */}
               <View style={s.scoreBarBg}>
                 {c.score > 0 && (
                   <View style={[s.scoreBarFill, { flex: c.score, backgroundColor: sc }]} />
                 )}
-                {c.score < 100 && (
-                  <View style={{ flex: 100 - c.score }} />
-                )}
+                {c.score < 100 && <View style={{ flex: 100 - c.score }} />}
               </View>
             </View>
           </View>
@@ -468,14 +467,10 @@ export function ReportDocument({ content }: { content: ReportContent }) {
               <View key={row.key} style={[s.tRow, idx % 2 === 1 ? s.tRowAlt : {}]}>
                 <View style={{ flex: 1.4, flexDirection: "row", alignItems: "center" }}>
                   <View style={[s.sevDot, { backgroundColor: SEVERITY_COLOR[row.key] }]} />
-                  <Text style={[s.tCellBold, { color: SEVERITY_COLOR[row.key] }]}>
-                    {row.label}
-                  </Text>
+                  <Text style={[s.tCellBold, { color: SEVERITY_COLOR[row.key] }]}>{row.label}</Text>
                 </View>
                 <Text style={[s.tCellBold, { flex: 0.5 }]}>{row.count}</Text>
-                <Text style={[s.tCellMuted, { flex: 3 }]}>
-                  {SEVERITY_DESCRIPTION[row.key]}
-                </Text>
+                <Text style={[s.tCellMuted, { flex: 3 }]}>{SEVERITY_DESCRIPTION[row.key]}</Text>
               </View>
             ))}
             {/* Total row */}
@@ -495,16 +490,14 @@ export function ReportDocument({ content }: { content: ReportContent }) {
               <View style={s.sectionRule} />
 
               {c.issues.map((issue, idx) => (
-                <View
-                  key={`${issue.id}-${idx}`}
-                  style={s.issueCard}
-                  wrap={false}
-                >
+                <View key={`${issue.id}-${idx}`} style={s.issueCard} wrap={false}>
                   {/* Card header: title + severity chip on tinted background */}
-                  <View style={[
-                    s.issueCardHead,
-                    { backgroundColor: issue.impact ? SEVERITY_BG[issue.impact] : SURF },
-                  ]}>
+                  <View
+                    style={[
+                      s.issueCardHead,
+                      { backgroundColor: issue.impact ? SEVERITY_BG[issue.impact] : SURF },
+                    ]}
+                  >
                     <Text style={s.issueTitle}>{issue.title}</Text>
                     {issue.impact && (
                       <Text style={[s.chip, { backgroundColor: SEVERITY_COLOR[issue.impact] }]}>
@@ -534,7 +527,9 @@ export function ReportDocument({ content }: { content: ReportContent }) {
                       <View style={[s.issueRowValue, { paddingVertical: 6 }]}>
                         <View style={s.chipsRow}>
                           {issue.disabilityGroups.map((grp, gi) => (
-                            <Text key={gi} style={s.groupChip}>{grp}</Text>
+                            <Text key={gi} style={s.groupChip}>
+                              {grp}
+                            </Text>
                           ))}
                         </View>
                       </View>
@@ -573,9 +568,7 @@ export function ReportDocument({ content }: { content: ReportContent }) {
             </View>
           )}
 
-          {c.partialNote ? (
-            <Text style={s.note}>Note: {c.partialNote}</Text>
-          ) : null}
+          {c.partialNote ? <Text style={s.note}>Note: {c.partialNote}</Text> : null}
 
           {/* ── Next steps ───────────────────────────────────────────────── */}
           <Text style={s.sectionTitle}>What to do next</Text>
@@ -599,7 +592,8 @@ export function ReportDocument({ content }: { content: ReportContent }) {
             <>
               <Text style={s.punchTitle}>Remaining items to fix</Text>
               <Text style={s.punchSub}>
-                {c.remainingItems.length} {c.remainingItems.length === 1 ? "item" : "items"} outstanding — sorted by severity. Use this as your checklist.
+                {c.remainingItems.length} {c.remainingItems.length === 1 ? "item" : "items"}{" "}
+                outstanding — sorted by severity. Use this as your checklist.
               </Text>
               <View style={s.table}>
                 {/* Header */}
@@ -612,12 +606,23 @@ export function ReportDocument({ content }: { content: ReportContent }) {
                 {c.remainingItems.map((item, idx) => (
                   <View
                     key={item.num}
-                    style={[s.tRow, idx % 2 === 1 ? s.tRowAlt : {}, { alignItems: "flex-start", paddingVertical: 6 }]}
+                    style={[
+                      s.tRow,
+                      idx % 2 === 1 ? s.tRowAlt : {},
+                      { alignItems: "flex-start", paddingVertical: 6 },
+                    ]}
                   >
                     <Text style={[s.tCellMuted, { flex: 0.4, fontSize: 8 }]}>{item.num}</Text>
                     <Text style={[s.tCellBold, { flex: 1.1, fontSize: 8 }]}>{item.severity}</Text>
                     <Text style={[s.tCell, { flex: 5, fontSize: 8.5 }]}>{item.title}</Text>
-                    <Text style={{ flex: 0.8, fontSize: 8, color: "#ea580c", fontFamily: "Helvetica-Bold" }}>
+                    <Text
+                      style={{
+                        flex: 0.8,
+                        fontSize: 8,
+                        color: "#ea580c",
+                        fontFamily: "Helvetica-Bold",
+                      }}
+                    >
                       {item.status}
                     </Text>
                   </View>
@@ -625,8 +630,8 @@ export function ReportDocument({ content }: { content: ReportContent }) {
               </View>
             </>
           ) : null}
-
-        </View>{/* /body */}
+        </View>
+        {/* /body */}
 
         {/* ── Fixed footer with page numbers — repeats every page ───────── */}
         <View style={s.footer} fixed>
@@ -638,7 +643,6 @@ export function ReportDocument({ content }: { content: ReportContent }) {
             }
           />
         </View>
-
       </Page>
     </Document>
   );

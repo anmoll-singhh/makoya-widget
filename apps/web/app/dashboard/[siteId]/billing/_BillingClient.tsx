@@ -31,6 +31,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import { LoadingButton } from "../../_components";
 
 /* ── API shapes (client-local; mirrors lib/billing.ts + lib/billing/plans.ts) ──── */
 interface Plan {
@@ -240,18 +241,31 @@ export function BillingClient({ siteId }: Props) {
         }
       })
       .catch(() => {
-        if (live) { setError(true); setLoading(false); }
+        if (live) {
+          setError(true);
+          setLoading(false);
+        }
       });
-    return () => { live = false; };
+    return () => {
+      live = false;
+    };
   }, [base]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   if (loading) {
     return (
       <>
-        <div className="pagehead">Account <b>Plan &amp; billing</b></div>
-        <div role="status" aria-live="polite" style={{ padding: "40px 0", color: "var(--t3)", textAlign: "center" }}>
+        <div className="pagehead">
+          Account <b>Plan &amp; billing</b>
+        </div>
+        <div
+          role="status"
+          aria-live="polite"
+          style={{ padding: "40px 0", color: "var(--t3)", textAlign: "center" }}
+        >
           Loading billing…
         </div>
       </>
@@ -261,7 +275,9 @@ export function BillingClient({ siteId }: Props) {
   if (error || !data) {
     return (
       <>
-        <div className="pagehead">Account <b>Plan &amp; billing</b></div>
+        <div className="pagehead">
+          Account <b>Plan &amp; billing</b>
+        </div>
         <div className="note warn" role="alert" style={{ marginTop: 24 }}>
           <i className="ti ti-alert-triangle" aria-hidden="true" />
           <div>Couldn&apos;t load billing information — please try again shortly.</div>
@@ -304,7 +320,7 @@ export function BillingClient({ siteId }: Props) {
       const plan = data?.catalog.plans.find((p) => p.slug === slug);
       setOk(
         `You're on the ${plan?.name ?? slug} plan (trial). ` +
-        `No charge yet — you'll be notified before any billing starts once payments are connected.`
+          `No charge yet — you'll be notified before any billing starts once payments are connected.`
       );
       // Reload billing data so the current plan badge updates
       load();
@@ -321,8 +337,7 @@ export function BillingClient({ siteId }: Props) {
     <>
       {/* Page header */}
       <div className="pagehead">
-        Account{" "}
-        <b>Plan &amp; billing</b>
+        Account <b>Plan &amp; billing</b>
         <div className="tiny muted" style={{ marginTop: 4 }}>
           Manage your subscription, compare plans, and view invoices.
         </div>
@@ -332,20 +347,27 @@ export function BillingClient({ siteId }: Props) {
       <div className="note info" style={{ marginBottom: 18 }}>
         <i className="ti ti-calendar" aria-hidden="true" />
         <div>
-          <b>
-            {currentPlan?.name ?? currentSlug}
-          </b>
-          {currentPlan?.visitLimit != null && ` (up to ${currentPlan.visitLimit.toLocaleString()} monthly visits)`}
+          <b>{currentPlan?.name ?? currentSlug}</b>
+          {currentPlan?.visitLimit != null &&
+            ` (up to ${currentPlan.visitLimit.toLocaleString()} monthly visits)`}
           {data.subscription.renewsAt && (
-            <> · Renews <b>{shortDate(data.subscription.renewsAt)}</b></>
-          )}
-          {" "}· Status:{" "}
-          <b style={{ textTransform: "capitalize" }}>{currentStatus}</b>
+            <>
+              {" "}
+              · Renews <b>{shortDate(data.subscription.renewsAt)}</b>
+            </>
+          )}{" "}
+          · Status: <b style={{ textTransform: "capitalize" }}>{currentStatus}</b>
           {data.usage && !data.usage.unlimited && data.usage.limit != null && (
-            <> · {num(data.usage.used)} / {num(data.usage.limit)} opens this month</>
+            <>
+              {" "}
+              · {num(data.usage.used)} / {num(data.usage.limit)} opens this month
+            </>
           )}
           {data.usage?.exceeded && (
-            <> — <span style={{ color: "var(--warn)" }}>over plan limit</span></>
+            <>
+              {" "}
+              — <span style={{ color: "var(--warn)" }}>over plan limit</span>
+            </>
           )}
         </div>
       </div>
@@ -354,8 +376,8 @@ export function BillingClient({ siteId }: Props) {
       <div className="note warn" style={{ marginBottom: 18 }}>
         <i className="ti ti-credit-card-off" aria-hidden="true" />
         <div>
-          Payments aren&apos;t connected yet — choosing a plan activates it as a trial.
-          You&apos;ll be notified before any billing starts.
+          Payments aren&apos;t connected yet — choosing a plan activates it as a trial. You&apos;ll
+          be notified before any billing starts.
         </div>
       </div>
 
@@ -408,14 +430,15 @@ export function BillingClient({ siteId }: Props) {
                   key={p.slug}
                   style={{
                     margin: 0,
-                    border: p.highlighted
-                      ? "2px solid var(--primary)"
-                      : undefined,
+                    border: p.highlighted ? "2px solid var(--primary)" : undefined,
                     display: "flex",
                     flexDirection: "column",
                   }}
                 >
-                  <div className="cpad" style={{ display: "flex", flexDirection: "column", flex: 1 }}>
+                  <div
+                    className="cpad"
+                    style={{ display: "flex", flexDirection: "column", flex: 1 }}
+                  >
                     {/* Plan name + badge/status pill */}
                     <div className="between" style={{ marginBottom: 4 }}>
                       <div
@@ -434,9 +457,7 @@ export function BillingClient({ siteId }: Props) {
                           {currentStatus === "trialing" ? "Trial" : "Current plan"}
                         </span>
                       )}
-                      {!isCurrent && p.badge && (
-                        <span className="pill b-blue">{p.badge}</span>
-                      )}
+                      {!isCurrent && p.badge && <span className="pill b-blue">{p.badge}</span>}
                     </div>
 
                     {/* Price */}
@@ -475,9 +496,7 @@ export function BillingClient({ siteId }: Props) {
                      * Muted dash  = not in this tier (upgrade trigger).
                      * Never hard-code plan features in this component.
                      */}
-                    {p.features.length > 0 && (
-                      <PlanFeatureList features={p.features} />
-                    )}
+                    {p.features.length > 0 && <PlanFeatureList features={p.features} />}
 
                     {/* CTA — pushed to bottom of the card */}
                     <div style={{ marginTop: "auto" }}>
@@ -496,22 +515,29 @@ export function BillingClient({ siteId }: Props) {
                         <a
                           className="btn"
                           href="mailto:sales@makoya.app?subject=Enterprise%20plan"
-                          style={{ width: "100%", textDecoration: "none", display: "flex", justifyContent: "center", alignItems: "center", gap: 6 }}
+                          style={{
+                            width: "100%",
+                            textDecoration: "none",
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center",
+                            gap: 6,
+                          }}
                         >
                           <i className="ti ti-mail" aria-hidden="true" /> Contact sales
                         </a>
                       ) : (
-                        <button
+                        <LoadingButton
                           className="btn pri"
                           type="button"
                           style={{ width: "100%" }}
                           onClick={() => buy(p.slug)}
+                          loading={submitting}
                           disabled={busy !== null}
-                          aria-busy={submitting}
+                          icon={<i className="ti ti-arrow-right" aria-hidden="true" />}
                         >
-                          <i className="ti ti-arrow-right" aria-hidden="true" />{" "}
-                          {submitting ? "Activating…" : "Buy now"}
-                        </button>
+                          Buy now
+                        </LoadingButton>
                       )}
                     </div>
                   </div>

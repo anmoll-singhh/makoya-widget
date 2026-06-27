@@ -32,7 +32,7 @@ const mockEnv: { SENTRY_DSN: string; SENTRY_DSN_PUBLIC: string } = {
   SENTRY_DSN: "",
   SENTRY_DSN_PUBLIC: "",
 };
-vi.mock("@/lib/env", () => ({ env: mockEnv }));
+vi.mock("@/lib/env.server", () => ({ env: mockEnv }));
 
 /** Re-import observability with the current mockEnv applied. */
 async function loadCaptureError() {

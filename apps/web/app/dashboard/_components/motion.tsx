@@ -39,11 +39,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
-import {
-  motion,
-  useReducedMotion,
-  type Variants,
-} from "framer-motion";
+import { motion, useReducedMotion, type Variants } from "framer-motion";
 import { EASE_INK, DUR } from "@/lib/design/motion";
 
 /* ── Variants ──────────────────────────────────────────────────────────────
@@ -238,10 +234,7 @@ export function CountUp({
     };
   }, [value, durationMs, reduce]);
 
-  const rounded =
-    decimals > 0
-      ? Number(display.toFixed(decimals))
-      : Math.round(display);
+  const rounded = decimals > 0 ? Number(display.toFixed(decimals)) : Math.round(display);
   const text = format
     ? rounded.toLocaleString(undefined, {
         minimumFractionDigits: decimals,
@@ -314,14 +307,7 @@ export function GaugeRing({
             <stop offset="1" stopColor={to} />
           </linearGradient>
         </defs>
-        <circle
-          cx="18"
-          cy="18"
-          r="15.6"
-          fill="none"
-          stroke={trackColor}
-          strokeWidth="3"
-        />
+        <circle cx="18" cy="18" r="15.6" fill="none" stroke={trackColor} strokeWidth="3" />
         <motion.circle
           cx="18"
           cy="18"

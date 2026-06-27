@@ -10,11 +10,16 @@ export async function POST(req: Request) {
   if (!admin) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   let body: { email?: unknown; domain?: unknown; plan?: unknown };
-  try { body = await req.json(); } catch { return NextResponse.json({ error: "bad json" }, { status: 400 }); }
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "bad json" }, { status: 400 });
+  }
 
   const email = typeof body.email === "string" ? body.email.trim() : "";
   const domain = typeof body.domain === "string" ? body.domain.trim() : "";
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return NextResponse.json({ error: "invalid email" }, { status: 400 });
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))
+    return NextResponse.json({ error: "invalid email" }, { status: 400 });
   if (!domain) return NextResponse.json({ error: "domain required" }, { status: 400 });
   const plan = isValidPlan(body.plan) ? body.plan : undefined;
 

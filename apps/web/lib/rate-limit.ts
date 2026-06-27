@@ -36,7 +36,7 @@
  */
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
-import { env } from "@/lib/env";
+import { env } from "@/lib/env.server";
 
 /** Options mirror the per-route constants: `limit` requests per `windowMs`. */
 export interface RateLimitOptions {

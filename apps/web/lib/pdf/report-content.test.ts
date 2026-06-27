@@ -48,7 +48,8 @@ describe("buildReportContent", () => {
 
   it("NEVER makes compliance / legal-guarantee claims (honest-hybrid guardrail)", () => {
     const c = buildReportContent(base);
-    const banned = /\b(WCAG[- ]?compliant|ADA[- ]?compliant|fully compliant|guaranteed|lawsuit-?proof)\b/i;
+    const banned =
+      /\b(WCAG[- ]?compliant|ADA[- ]?compliant|fully compliant|guaranteed|lawsuit-?proof)\b/i;
     const allText = [
       c.host,
       c.intro,
@@ -100,15 +101,44 @@ describe("buildReportContent", () => {
       ...base,
       totals: { critical: 1, serious: 1, moderate: 1, minor: 1 },
       topIssues: [
-        { id: "a", impact: "minor" as const,    help: "Minor issue",    whatItMeans: "m", whoItAffects: "u" },
-        { id: "b", impact: "critical" as const, help: "Critical issue", whatItMeans: "m", whoItAffects: "u" },
-        { id: "c", impact: "moderate" as const, help: "Moderate issue", whatItMeans: "m", whoItAffects: "u" },
-        { id: "d", impact: "serious" as const,  help: "Serious issue",  whatItMeans: "m", whoItAffects: "u" },
+        {
+          id: "a",
+          impact: "minor" as const,
+          help: "Minor issue",
+          whatItMeans: "m",
+          whoItAffects: "u",
+        },
+        {
+          id: "b",
+          impact: "critical" as const,
+          help: "Critical issue",
+          whatItMeans: "m",
+          whoItAffects: "u",
+        },
+        {
+          id: "c",
+          impact: "moderate" as const,
+          help: "Moderate issue",
+          whatItMeans: "m",
+          whoItAffects: "u",
+        },
+        {
+          id: "d",
+          impact: "serious" as const,
+          help: "Serious issue",
+          whatItMeans: "m",
+          whoItAffects: "u",
+        },
       ],
     });
     expect(c.issues.map((i) => i.impact)).toEqual(["critical", "serious", "moderate", "minor"]);
     // punch-list order follows sorted issues
-    expect(c.remainingItems.map((r) => r.severity)).toEqual(["Critical", "Serious", "Moderate", "Minor"]);
+    expect(c.remainingItems.map((r) => r.severity)).toEqual([
+      "Critical",
+      "Serious",
+      "Moderate",
+      "Minor",
+    ]);
     expect(c.remainingItems.map((r) => r.num)).toEqual([1, 2, 3, 4]);
   });
 

@@ -80,14 +80,14 @@ export interface RemainingItem {
 
 /** Human labels for the structured disability groups (PDF badge text). */
 const DISABILITY_LABEL: Record<string, string> = {
-  "blind": "Blind",
+  blind: "Blind",
   "low-vision": "Low vision",
   "color-blind": "Colour blindness",
   "deaf-hard-of-hearing": "Deaf / hard of hearing",
-  "motor": "Motor / dexterity",
-  "cognitive": "Cognitive",
-  "vestibular": "Motion sensitivity",
-  "speech": "Speech",
+  motor: "Motor / dexterity",
+  cognitive: "Cognitive",
+  vestibular: "Motion sensitivity",
+  speech: "Speech",
 };
 
 /** Defensive: cap + label the disability groups from an untrusted payload. */
@@ -265,6 +265,7 @@ export function buildReportContent(input: ReportPdfInput): ReportContent {
     partialNote,
     disclaimer,
     nextSteps,
-    footer: "Makoya — honest accessibility. We find and help fix real issues; we never sell a compliance badge.",
+    footer:
+      "Makoya — honest accessibility. We find and help fix real issues; we never sell a compliance badge.",
   };
 }

@@ -1,6 +1,6 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { env } from "@/lib/env";
+import { env } from "@/lib/env.server";
 import { isAdmin } from "@/lib/auth/roles";
 
 /** Refreshes the session cookie and enforces route protection. */
@@ -18,7 +18,9 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const path = request.nextUrl.pathname;
   const needsAuth = path.startsWith("/dashboard") || path.startsWith("/admin");
 

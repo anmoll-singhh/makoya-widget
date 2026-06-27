@@ -18,7 +18,7 @@ import { NextResponse } from "next/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { createLead, type LeadTotals } from "@/lib/leads";
 import { getEmailProvider, buildReportEmail } from "@/lib/email";
-import { env } from "@/lib/env";
+import { env } from "@/lib/env.server";
 import { track, captureError } from "@/lib/observability";
 import { parseBody, scanIngestBodySchema } from "@/lib/validation/api";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -58,7 +58,9 @@ function normalizeScore(raw: unknown): number | null {
 
 export async function POST(req: Request): Promise<NextResponse> {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  if (await checkRateLimit(ip, { name: "scan-ingest", limit: RATE_MAX, windowMs: RATE_WINDOW_MS })) {
+  if (
+    await checkRateLimit(ip, { name: "scan-ingest", limit: RATE_MAX, windowMs: RATE_WINDOW_MS })
+  ) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429, headers: CORS });
   }
 
@@ -107,6 +109,9 @@ export async function POST(req: Request): Promise<NextResponse> {
     );
   } catch (e) {
     captureError(e, { route: "scan-ingest" });
-    return NextResponse.json({ error: "could not process request" }, { status: 500, headers: CORS });
+    return NextResponse.json(
+      { error: "could not process request" },
+      { status: 500, headers: CORS }
+    );
   }
 }

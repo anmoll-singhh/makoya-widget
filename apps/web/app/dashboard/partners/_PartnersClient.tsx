@@ -17,6 +17,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import { LoadingButton } from "../_components";
 
 /* ── API shapes (client-local; mirrors lib/partner.ts) ───────────────────────── */
 interface PartnerAccount {
@@ -68,10 +69,22 @@ function shortDate(iso: string | null): string {
 }
 
 const PARTNER_BENEFITS = [
-  { icon: "ti-layout-grid", title: "One dashboard", sub: "Manage every client agent from a single login" },
-  { icon: "ti-tag", title: "Partner pricing", sub: "Wholesale rates + bundled billing across clients" },
+  {
+    icon: "ti-layout-grid",
+    title: "One dashboard",
+    sub: "Manage every client agent from a single login",
+  },
+  {
+    icon: "ti-tag",
+    title: "Partner pricing",
+    sub: "Wholesale rates + bundled billing across clients",
+  },
   { icon: "ti-brush", title: "White-label widget", sub: "Your branding on the widget and reports" },
-  { icon: "ti-file-dollar", title: "Co-branded reports", sub: "Audit + proof-of-effort packs in your name" },
+  {
+    icon: "ti-file-dollar",
+    title: "Co-branded reports",
+    sub: "Audit + proof-of-effort packs in your name",
+  },
   { icon: "ti-cash", title: "Recurring commission", sub: "Earn on every client plan, every month" },
   { icon: "ti-headset", title: "Priority support", sub: "A dedicated partner success manager" },
 ];
@@ -107,9 +120,21 @@ export function PartnersClient() {
     setError(false);
     fetch("/api/partner", { credentials: "same-origin" })
       .then((r) => (r.ok ? (r.json() as Promise<PartnerResponse>) : Promise.reject(r.status)))
-      .then((d) => { if (live) { setData(d); setLoading(false); } })
-      .catch(() => { if (live) { setError(true); setLoading(false); } });
-    return () => { live = false; };
+      .then((d) => {
+        if (live) {
+          setData(d);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (live) {
+          setError(true);
+          setLoading(false);
+        }
+      });
+    return () => {
+      live = false;
+    };
   }, [reload]);
 
   return (
@@ -123,7 +148,11 @@ export function PartnersClient() {
       </p>
 
       {loading && (
-        <div role="status" aria-live="polite" style={{ padding: "40px 0", color: "var(--t3)", textAlign: "center" }}>
+        <div
+          role="status"
+          aria-live="polite"
+          style={{ padding: "40px 0", color: "var(--t3)", textAlign: "center" }}
+        >
           Loading partner program…
         </div>
       )}
@@ -133,9 +162,7 @@ export function PartnersClient() {
           <div>Couldn&apos;t load the partner program — please try again shortly.</div>
         </div>
       )}
-      {data && !data.partner && !loading && (
-        <PartnerPitch onEnrolled={refresh} />
-      )}
+      {data && !data.partner && !loading && <PartnerPitch onEnrolled={refresh} />}
       {data && data.partner && !loading && (
         <PartnerDashboard
           partner={data.partner}
@@ -156,7 +183,10 @@ function PartnerPitch({ onEnrolled }: { onEnrolled: () => void }) {
     setErr(null);
     setBusy(true);
     try {
-      const res = await fetch("/api/partner/enroll", { method: "POST", credentials: "same-origin" });
+      const res = await fetch("/api/partner/enroll", {
+        method: "POST",
+        credentials: "same-origin",
+      });
       if (res.status === 403) {
         setErr("Ask an owner or admin to enable the partner program for your account.");
         return;
@@ -192,7 +222,9 @@ function PartnerPitch({ onEnrolled }: { onEnrolled: () => void }) {
               <i className={`ti ${b.icon}`} aria-hidden="true" />
             </div>
             <div style={{ fontWeight: 700, color: "var(--deep)", fontSize: 14 }}>{b.title}</div>
-            <div className="tiny muted" style={{ marginTop: 3 }}>{b.sub}</div>
+            <div className="tiny muted" style={{ marginTop: 3 }}>
+              {b.sub}
+            </div>
           </section>
         ))}
       </div>
@@ -215,16 +247,16 @@ function PartnerPitch({ onEnrolled }: { onEnrolled: () => void }) {
             Apply to the partner program and onboard your first client agent today.
           </div>
         </div>
-        <button
+        <LoadingButton
           className="btn"
           type="button"
           style={{ background: "#fff", borderColor: "#fff", color: "var(--primary-hover)" }}
           onClick={enroll}
-          disabled={busy}
+          loading={busy}
+          icon={<i className="ti ti-arrow-right" aria-hidden="true" />}
         >
-          <i className="ti ti-arrow-right" aria-hidden="true" />{" "}
-          {busy ? "Enrolling…" : "Become a partner"}
-        </button>
+          Become a partner
+        </LoadingButton>
       </div>
 
       {err && (
@@ -296,7 +328,9 @@ function PartnerDashboard({
         {clients.length === 0 ? (
           <div className="note info" style={{ marginTop: 12 }}>
             <i className="ti ti-info-circle" aria-hidden="true" />
-            <div>No client accounts linked yet. Once you onboard clients they&apos;ll appear here.</div>
+            <div>
+              No client accounts linked yet. Once you onboard clients they&apos;ll appear here.
+            </div>
           </div>
         ) : (
           <div className="tcard" style={{ marginTop: 12 }}>
@@ -305,11 +339,7 @@ function PartnerDashboard({
               <div>Linked</div>
             </div>
             {clients.map((c) => (
-              <div
-                className="trow"
-                key={c.id}
-                style={{ gridTemplateColumns: "1fr 160px" }}
-              >
+              <div className="trow" key={c.id} style={{ gridTemplateColumns: "1fr 160px" }}>
                 <div className="mono tiny">{c.clientOrgId}</div>
                 <div className="tiny muted">{shortDate(c.createdAt)}</div>
               </div>
@@ -356,8 +386,15 @@ function PartnerWhiteLabel({ partner }: { partner: PartnerAccount }) {
         }
         setWlLoading(false);
       })
-      .catch(() => { if (live) { setWlError(true); setWlLoading(false); } });
-    return () => { live = false; };
+      .catch(() => {
+        if (live) {
+          setWlError(true);
+          setWlLoading(false);
+        }
+      });
+    return () => {
+      live = false;
+    };
   }, [partner.whiteLabelEnabled]);
 
   async function save(e: React.FormEvent) {
@@ -369,14 +406,23 @@ function PartnerWhiteLabel({ partner }: { partner: PartnerAccount }) {
         method: "PATCH",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ brandName, logoUrl, primaryColor, supportEmail, hideMakoyaBranding: hide }),
+        body: JSON.stringify({
+          brandName,
+          logoUrl,
+          primaryColor,
+          supportEmail,
+          hideMakoyaBranding: hide,
+        }),
       });
       if (res.status === 403) {
         setMsg({ ok: false, text: "Only owners and admins can edit branding." });
         return;
       }
       if (res.status === 400) {
-        setMsg({ ok: false, text: "Check the logo URL (must be https), color (hex or rgb) and support email." });
+        setMsg({
+          ok: false,
+          text: "Check the logo URL (must be https), color (hex or rgb) and support email.",
+        });
         return;
       }
       if (!res.ok) {
@@ -396,8 +442,8 @@ function PartnerWhiteLabel({ partner }: { partner: PartnerAccount }) {
       <div className="note info">
         <i className="ti ti-brush" aria-hidden="true" />
         <div>
-          White-label branding is available on partner plans.
-          Contact us to enable it for your account.
+          White-label branding is available on partner plans. Contact us to enable it for your
+          account.
         </div>
       </div>
     );
@@ -407,8 +453,8 @@ function PartnerWhiteLabel({ partner }: { partner: PartnerAccount }) {
     <div className="card cpad">
       <h3 style={{ fontSize: 14 }}>White-label branding</h3>
       <p className="tiny muted" style={{ marginTop: 2 }}>
-        Cosmetic branding for the widget and reports — presentation only;
-        it makes no accessibility-compliance claim.
+        Cosmetic branding for the widget and reports — presentation only; it makes no
+        accessibility-compliance claim.
       </p>
       {wlLoading && (
         <div role="status" aria-live="polite" style={{ padding: "14px 0", color: "var(--t3)" }}>
@@ -423,7 +469,9 @@ function PartnerWhiteLabel({ partner }: { partner: PartnerAccount }) {
       )}
       {!wlLoading && !wlError && (
         <form onSubmit={save} style={{ marginTop: 8, maxWidth: 560 }}>
-          <label className="fl" htmlFor="wl-brand">Brand name</label>
+          <label className="fl" htmlFor="wl-brand">
+            Brand name
+          </label>
           <input
             id="wl-brand"
             className="inp"
@@ -432,7 +480,9 @@ function PartnerWhiteLabel({ partner }: { partner: PartnerAccount }) {
             maxLength={120}
             placeholder="Your agency"
           />
-          <label className="fl" htmlFor="wl-logo">Logo URL</label>
+          <label className="fl" htmlFor="wl-logo">
+            Logo URL
+          </label>
           <input
             id="wl-logo"
             className="inp"
@@ -441,7 +491,9 @@ function PartnerWhiteLabel({ partner }: { partner: PartnerAccount }) {
             onChange={(e) => setLogoUrl(e.target.value)}
             placeholder="https://…"
           />
-          <label className="fl" htmlFor="wl-color">Primary color</label>
+          <label className="fl" htmlFor="wl-color">
+            Primary color
+          </label>
           <input
             id="wl-color"
             className="inp"
@@ -449,7 +501,9 @@ function PartnerWhiteLabel({ partner }: { partner: PartnerAccount }) {
             onChange={(e) => setPrimaryColor(e.target.value)}
             placeholder="#1E63FF"
           />
-          <label className="fl" htmlFor="wl-email">Support email</label>
+          <label className="fl" htmlFor="wl-email">
+            Support email
+          </label>
           <input
             id="wl-email"
             className="inp"
@@ -460,7 +514,12 @@ function PartnerWhiteLabel({ partner }: { partner: PartnerAccount }) {
           />
           <div
             className="between"
-            style={{ border: "1px solid var(--border)", borderRadius: 10, padding: "11px 13px", marginTop: 14 }}
+            style={{
+              border: "1px solid var(--border)",
+              borderRadius: 10,
+              padding: "11px 13px",
+              marginTop: 14,
+            }}
           >
             <span style={{ fontSize: 13 }}>Hide &ldquo;Powered by Makoya&rdquo; branding</span>
             <Toggle
@@ -469,14 +528,15 @@ function PartnerWhiteLabel({ partner }: { partner: PartnerAccount }) {
               label={`Hide Makoya branding ${hide ? "on" : "off"}`}
             />
           </div>
-          <button
+          <LoadingButton
             className="btn pri"
             type="submit"
-            disabled={busy}
+            loading={busy}
+            icon={<i className="ti ti-check" aria-hidden="true" />}
             style={{ marginTop: 16 }}
           >
-            <i className="ti ti-check" aria-hidden="true" /> {busy ? "Saving…" : "Save branding"}
-          </button>
+            Save branding
+          </LoadingButton>
           {msg && (
             <div
               className={`note ${msg.ok ? "good" : "warn"}`}

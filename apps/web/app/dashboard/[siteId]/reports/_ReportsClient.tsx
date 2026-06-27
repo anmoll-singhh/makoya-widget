@@ -32,10 +32,11 @@
  */
 
 import { useState, useEffect } from "react";
+import { LoadingButton } from "../../_components";
 
 /* ── API shapes (client-local; mirrors lib types) ────────────────────────────── */
 interface MonthlyReport {
-  period: string;   // "YYYY-MM"
+  period: string; // "YYYY-MM"
   score: number | null;
   issuesFound: number;
   issuesResolved: number;
@@ -91,7 +92,7 @@ async function fetchAndDownloadPdf(siteId: string, filename: string): Promise<vo
     // Surface a distinguishable message for the "no scan yet" case.
     let msg = "Couldn't generate the report PDF — please try again shortly.";
     try {
-      const body = await res.json() as { error?: string };
+      const body = (await res.json()) as { error?: string };
       if (body.error === "no_scan") {
         msg = "No scan data found — run a scan first to generate a report.";
       }
@@ -119,7 +120,11 @@ async function fetchAndDownloadPdf(siteId: string, filename: string): Promise<vo
 /* ── Loading / error primitives ──────────────────────────────────────────────── */
 function LoadingState({ label }: { label: string }) {
   return (
-    <div role="status" aria-live="polite" style={{ padding: "32px 0", textAlign: "center", color: "var(--t3)", fontSize: 13.5 }}>
+    <div
+      role="status"
+      aria-live="polite"
+      style={{ padding: "32px 0", textAlign: "center", color: "var(--t3)", fontSize: 13.5 }}
+    >
       {label}
     </div>
   );
@@ -174,9 +179,14 @@ export function ReportsClient({ siteId }: Props) {
         setReportsLoading(false);
       })
       .catch(() => {
-        if (live) { setReportsError(true); setReportsLoading(false); }
+        if (live) {
+          setReportsError(true);
+          setReportsLoading(false);
+        }
       });
-    return () => { live = false; };
+    return () => {
+      live = false;
+    };
   }, [siteId]);
 
   /* ── Fetch remediation log lazily on first tab open ──────────────────────── */
@@ -194,9 +204,14 @@ export function ReportsClient({ siteId }: Props) {
         setRemFetched(true);
       })
       .catch(() => {
-        if (live) { setRemError(true); setRemLoading(false); }
+        if (live) {
+          setRemError(true);
+          setRemLoading(false);
+        }
       });
-    return () => { live = false; };
+    return () => {
+      live = false;
+    };
   }, [tab, siteId, remFetched]);
 
   /* ── PDF download handler ─────────────────────────────────────────────────
@@ -211,9 +226,10 @@ export function ReportsClient({ siteId }: Props) {
     try {
       await fetchAndDownloadPdf(siteId, "makoya-report.pdf");
     } catch (err) {
-      const msg = err instanceof Error
-        ? err.message
-        : "Couldn't generate the report PDF — please try again shortly.";
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Couldn't generate the report PDF — please try again shortly.";
       setDownloadError(msg);
     } finally {
       setDownloadingPeriod(null);
@@ -232,32 +248,29 @@ export function ReportsClient({ siteId }: Props) {
 
       {/* Sub-header + download all */}
       <div className="between" style={{ margin: "6px 0 18px" }}>
-        <p className="muted" style={{ margin: 0 }}>Monthly audits and the remediation log.</p>
-        <button
+        <p className="muted" style={{ margin: 0 }}>
+          Monthly audits and the remediation log.
+        </p>
+        <LoadingButton
           className="btn pri"
           type="button"
-          onClick={() => { void handleDownload("all"); }}
+          onClick={() => {
+            void handleDownload("all");
+          }}
+          loading={downloadingPeriod === "all"}
           disabled={!hasReports || isBusy}
+          icon={<i className="ti ti-download" aria-hidden="true" />}
           aria-label={
             !hasReports
               ? "No reports available yet — no scan data"
               : isBusy
-              ? "Generating PDF…"
-              : "Download latest audit report as PDF"
+                ? "Generating PDF…"
+                : "Download latest audit report as PDF"
           }
           title={!hasReports ? "No scan data yet — run a scan first" : undefined}
         >
-          {downloadingPeriod === "all" ? (
-            <>
-              <i className="ti ti-loader-2" aria-hidden="true" style={{ animation: "spin 1s linear infinite" }} />{" "}
-              Generating…
-            </>
-          ) : (
-            <>
-              <i className="ti ti-download" aria-hidden="true" /> Download all (PDF)
-            </>
-          )}
-        </button>
+          Download all (PDF)
+        </LoadingButton>
       </div>
 
       {/* Inline download error — honest, cleared on next attempt */}
@@ -269,7 +282,12 @@ export function ReportsClient({ siteId }: Props) {
       )}
 
       {/* Tabs */}
-      <div className="seg" style={{ marginBottom: 16 }} role="tablist" aria-label="Reports sections">
+      <div
+        className="seg"
+        style={{ marginBottom: 16 }}
+        role="tablist"
+        aria-label="Reports sections"
+      >
         <button
           type="button"
           role="tab"
@@ -313,7 +331,9 @@ export function ReportsClient({ siteId }: Props) {
                 <section className="card">
                   <div className="ch">
                     <h3>Monthly audits</h3>
-                    <span className="cnt">{reports!.length} {reports!.length === 1 ? "report" : "reports"}</span>
+                    <span className="cnt">
+                      {reports!.length} {reports!.length === 1 ? "report" : "reports"}
+                    </span>
                   </div>
                   <div className="tcard" style={{ border: "none", borderRadius: 0 }}>
                     <div
@@ -336,7 +356,10 @@ export function ReportsClient({ siteId }: Props) {
                         <div
                           key={r.period}
                           className="trow"
-                          style={{ gridTemplateColumns: "1.4fr 90px 130px 120px 130px", alignItems: "center" }}
+                          style={{
+                            gridTemplateColumns: "1.4fr 90px 130px 120px 130px",
+                            alignItems: "center",
+                          }}
                         >
                           <div style={{ fontWeight: 700, color: "var(--deep)" }}>
                             {monthLabel(r.period)}
@@ -372,7 +395,9 @@ export function ReportsClient({ siteId }: Props) {
                                   font: "inherit",
                                 }}
                                 disabled={isBusy}
-                                onClick={() => { void handleDownload(r.period); }}
+                                onClick={() => {
+                                  void handleDownload(r.period);
+                                }}
                                 aria-label={
                                   isThisRowBusy
                                     ? "Generating PDF…"
@@ -382,7 +407,11 @@ export function ReportsClient({ siteId }: Props) {
                               >
                                 {isThisRowBusy ? (
                                   <>
-                                    <i className="ti ti-loader-2" aria-hidden="true" style={{ animation: "spin 1s linear infinite" }} />{" "}
+                                    <i
+                                      className="ti ti-loader-2"
+                                      aria-hidden="true"
+                                      style={{ animation: "spin 1s linear infinite" }}
+                                    />{" "}
                                     Generating…
                                   </>
                                 ) : (
@@ -433,13 +462,12 @@ export function ReportsClient({ siteId }: Props) {
                 <section className="card">
                   <div className="ch">
                     <h3>Remediation log</h3>
-                    <span className="cnt">{remediation.length} {remediation.length === 1 ? "fix" : "fixes"}</span>
+                    <span className="cnt">
+                      {remediation.length} {remediation.length === 1 ? "fix" : "fixes"}
+                    </span>
                   </div>
                   <div className="tcard" style={{ border: "none", borderRadius: 0 }}>
-                    <div
-                      className="thead"
-                      style={{ gridTemplateColumns: "1fr 130px 130px 120px" }}
-                    >
+                    <div className="thead" style={{ gridTemplateColumns: "1fr 130px 130px 120px" }}>
                       <div>Action</div>
                       <div>WCAG criterion</div>
                       <div>Fixed by</div>
@@ -449,7 +477,10 @@ export function ReportsClient({ siteId }: Props) {
                       <div
                         key={r.id}
                         className="trow"
-                        style={{ gridTemplateColumns: "1fr 130px 130px 120px", alignItems: "center" }}
+                        style={{
+                          gridTemplateColumns: "1fr 130px 130px 120px",
+                          alignItems: "center",
+                        }}
                       >
                         <div style={{ fontWeight: 600, color: "var(--deep)", fontSize: 13.5 }}>
                           {r.action}

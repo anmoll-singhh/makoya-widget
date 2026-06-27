@@ -23,8 +23,12 @@ export async function GET(req: Request) {
   let failed = 0;
   for (const s of sites ?? []) {
     const { data: latest } = await admin
-      .from("scans").select("created_at").eq("site_id", s.id)
-      .order("created_at", { ascending: false }).limit(1).maybeSingle();
+      .from("scans")
+      .select("created_at")
+      .eq("site_id", s.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
     const stale = !latest || Date.now() - new Date(latest.created_at).getTime() > STALE_MS;
     if (!stale) continue;
     try {

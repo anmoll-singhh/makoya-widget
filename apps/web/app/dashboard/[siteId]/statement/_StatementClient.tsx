@@ -25,6 +25,7 @@
  */
 
 import { useState, useEffect } from "react";
+import { LoadingButton } from "../../_components";
 
 /* ── API types (client-local; mirrors lib/statement.ts shapes) ───────────────── */
 type Jurisdiction = "ada" | "aoda" | "aca" | "eaa";
@@ -40,19 +41,16 @@ interface StatementRecord {
 
 /* ── Jurisdiction display names ─────────────────────────────────────────────── */
 const JURISDICTION_LABELS: Record<Jurisdiction, string> = {
-  ada:  "US · ADA",
+  ada: "US · ADA",
   aoda: "Canada · AODA",
-  aca:  "Canada · ACA",
-  eaa:  "EU · EAA",
+  aca: "Canada · ACA",
+  eaa: "EU · EAA",
 };
 
 const ALL_JURISDICTIONS: Jurisdiction[] = ["ada", "aoda", "aca", "eaa"];
 
 /* ── Conformance targets ─────────────────────────────────────────────────────── */
-const CONFORMANCE_TARGETS = [
-  "WCAG 2.1 Level AA (recommended)",
-  "WCAG 2.2 Level AA",
-];
+const CONFORMANCE_TARGETS = ["WCAG 2.1 Level AA (recommended)", "WCAG 2.2 Level AA"];
 
 /* ── Helper: format updated date ─────────────────────────────────────────────── */
 function shortDate(iso: string | null): string {
@@ -88,7 +86,12 @@ function esc(s: string): string {
  * via dangerouslySetInnerHTML. Server-generated `record.html` is already escaped
  * by lib/statement.ts#generateStatementHtml and does NOT pass through this function.
  */
-function buildPreviewHtml(brand: string, target: string, contact: string, jurisdictions: Jurisdiction[]): string {
+function buildPreviewHtml(
+  brand: string,
+  target: string,
+  contact: string,
+  jurisdictions: Jurisdiction[]
+): string {
   const jLabels = jurisdictions.map((j) => JURISDICTION_LABELS[j]).join(", ");
   const eBrand = esc(brand);
   const eTarget = esc(target);
@@ -120,7 +123,10 @@ export function StatementClient({ siteId, domain, accountEmail }: Props) {
   const [error, setError] = useState(false);
 
   /* form state */
-  const defaultBrand = domain.replace(/^www\./, "").split(".")[0].replace(/^\w/, (c) => c.toUpperCase());
+  const defaultBrand = domain
+    .replace(/^www\./, "")
+    .split(".")[0]
+    .replace(/^\w/, (c) => c.toUpperCase());
   const [brand, setBrand] = useState(defaultBrand);
   const [jurisdictions, setJurisdictions] = useState<Jurisdiction[]>(["ada", "aoda"]);
   const [target, setTarget] = useState("WCAG 2.1 Level AA (recommended)");
@@ -138,7 +144,9 @@ export function StatementClient({ siteId, domain, accountEmail }: Props) {
     setLoading(true);
     setError(false);
     fetch(`/api/sites/${siteId}/statement`, { credentials: "same-origin" })
-      .then((r) => (r.ok ? (r.json() as Promise<StatementRecord | null>) : Promise.reject(r.status)))
+      .then((r) =>
+        r.ok ? (r.json() as Promise<StatementRecord | null>) : Promise.reject(r.status)
+      )
       .then((d) => {
         if (!live) return;
         setRecord(d);
@@ -151,16 +159,19 @@ export function StatementClient({ siteId, domain, accountEmail }: Props) {
         setLoading(false);
       })
       .catch(() => {
-        if (live) { setError(true); setLoading(false); }
+        if (live) {
+          setError(true);
+          setLoading(false);
+        }
       });
-    return () => { live = false; };
+    return () => {
+      live = false;
+    };
   }, [siteId]);
 
   /* ── Toggle jurisdiction ─────────────────────────────────────────────────── */
   function toggleJurisdiction(j: Jurisdiction) {
-    setJurisdictions((prev) =>
-      prev.includes(j) ? prev.filter((x) => x !== j) : [...prev, j]
-    );
+    setJurisdictions((prev) => (prev.includes(j) ? prev.filter((x) => x !== j) : [...prev, j]));
   }
 
   /* ── Save (POST) ─────────────────────────────────────────────────────────── */
@@ -173,7 +184,12 @@ export function StatementClient({ siteId, domain, accountEmail }: Props) {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ brandName: brand, jurisdictions, conformanceTarget, contactEmail: contact }),
+        body: JSON.stringify({
+          brandName: brand,
+          jurisdictions,
+          conformanceTarget,
+          contactEmail: contact,
+        }),
       });
       if (!res.ok) {
         setSaveErr("Couldn't save your statement — please try again shortly.");
@@ -192,7 +208,9 @@ export function StatementClient({ siteId, domain, accountEmail }: Props) {
   async function copyHtml() {
     // If we have a saved record, copy its real XSS-escaped server-generated HTML.
     // Otherwise, copy a client-side preview.
-    const html = record?.html ?? buildPreviewHtml(brand, target.replace(" (recommended)", ""), contact, jurisdictions);
+    const html =
+      record?.html ??
+      buildPreviewHtml(brand, target.replace(" (recommended)", ""), contact, jurisdictions);
     try {
       await navigator.clipboard?.writeText(html);
       setCopied(true);
@@ -203,12 +221,18 @@ export function StatementClient({ siteId, domain, accountEmail }: Props) {
   }
 
   /* ── Live preview HTML ──────────────────────────────────────────────────────  */
-  const previewHtml = record?.html ?? buildPreviewHtml(brand, target.replace(" (recommended)", ""), contact, jurisdictions);
+  const previewHtml =
+    record?.html ??
+    buildPreviewHtml(brand, target.replace(" (recommended)", ""), contact, jurisdictions);
 
   /* ── Loading / error ─────────────────────────────────────────────────────── */
   if (loading) {
     return (
-      <div role="status" aria-live="polite" style={{ padding: "40px 0", textAlign: "center", color: "var(--t3)" }}>
+      <div
+        role="status"
+        aria-live="polite"
+        style={{ padding: "40px 0", textAlign: "center", color: "var(--t3)" }}
+      >
         Loading accessibility statement…
       </div>
     );
@@ -234,11 +258,17 @@ export function StatementClient({ siteId, domain, accountEmail }: Props) {
         State your commitment and conformance target. We recommend displaying it in your footer.
       </p>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 22, alignItems: "start", maxWidth: 980 }}>
-
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 340px",
+          gap: 22,
+          alignItems: "start",
+          maxWidth: 980,
+        }}
+      >
         {/* Left: form */}
         <section className="card cpad">
-
           {/* Brand name */}
           <label className="fl" htmlFor="stmt-brand" style={{ marginTop: 0 }}>
             Brand name
@@ -255,7 +285,11 @@ export function StatementClient({ siteId, domain, accountEmail }: Props) {
 
           {/* Jurisdictions */}
           <label className="fl">Jurisdictions to reference</label>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }} role="group" aria-label="Jurisdictions">
+          <div
+            style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}
+            role="group"
+            aria-label="Jurisdictions"
+          >
             {ALL_JURISDICTIONS.map((j) => {
               const selected = jurisdictions.includes(j);
               return (
@@ -275,7 +309,9 @@ export function StatementClient({ siteId, domain, accountEmail }: Props) {
           </div>
 
           {/* Conformance target */}
-          <label className="fl" htmlFor="stmt-target">Conformance target</label>
+          <label className="fl" htmlFor="stmt-target">
+            Conformance target
+          </label>
           <select
             id="stmt-target"
             className="inp"
@@ -283,12 +319,16 @@ export function StatementClient({ siteId, domain, accountEmail }: Props) {
             onChange={(e) => setTarget(e.target.value)}
           >
             {CONFORMANCE_TARGETS.map((t) => (
-              <option key={t} value={t}>{t}</option>
+              <option key={t} value={t}>
+                {t}
+              </option>
             ))}
           </select>
 
           {/* Contact email */}
-          <label className="fl" htmlFor="stmt-contact">Accessibility contact</label>
+          <label className="fl" htmlFor="stmt-contact">
+            Accessibility contact
+          </label>
           <input
             id="stmt-contact"
             className="inp"
@@ -309,21 +349,22 @@ export function StatementClient({ siteId, domain, accountEmail }: Props) {
 
           {/* Actions */}
           <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
-            <button
+            <LoadingButton
               className="btn pri"
               type="button"
               onClick={() => void save()}
-              disabled={saving}
-              aria-busy={saving}
+              loading={saving}
+              icon={<i className="ti ti-device-floppy" aria-hidden="true" />}
             >
-              <i className="ti ti-device-floppy" aria-hidden="true" />
-              {saving ? "Saving…" : "Save statement"}
-            </button>
+              Save statement
+            </LoadingButton>
             <button
               className="btn"
               type="button"
               onClick={() => void copyHtml()}
-              aria-label={record ? "Copy the generated HTML for your statement" : "Copy preview HTML"}
+              aria-label={
+                record ? "Copy the generated HTML for your statement" : "Copy preview HTML"
+              }
             >
               <i className="ti ti-copy" aria-hidden="true" />
               {copied ? "Copied!" : "Copy HTML"}
@@ -343,7 +384,13 @@ export function StatementClient({ siteId, domain, accountEmail }: Props) {
           {/* Last saved */}
           {record?.updatedAt && (
             <div className="tiny muted" style={{ marginTop: 10 }}>
-              Last saved {new Date(record.updatedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}.
+              Last saved{" "}
+              {new Date(record.updatedAt).toLocaleDateString(undefined, {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}
+              .
             </div>
           )}
 
@@ -351,7 +398,8 @@ export function StatementClient({ siteId, domain, accountEmail }: Props) {
           <div className="note info" style={{ marginTop: 16 }}>
             <i className="ti ti-info-circle" aria-hidden="true" />
             <div>
-              States your commitment and target — it is not a legal certification. Pairs with your proof-of-effort record.
+              States your commitment and target — it is not a legal certification. Pairs with your
+              proof-of-effort record.
             </div>
           </div>
 
@@ -380,8 +428,20 @@ export function StatementClient({ siteId, domain, accountEmail }: Props) {
         </section>
 
         {/* Right: live preview */}
-        <section className="card cpad" style={{ background: "var(--bg)" }} aria-label="Live preview">
-          <div className="tiny muted" style={{ fontWeight: 700, textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 10 }}>
+        <section
+          className="card cpad"
+          style={{ background: "var(--bg)" }}
+          aria-label="Live preview"
+        >
+          <div
+            className="tiny muted"
+            style={{
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: ".05em",
+              marginBottom: 10,
+            }}
+          >
             Live preview
           </div>
           <div
@@ -397,20 +457,23 @@ export function StatementClient({ siteId, domain, accountEmail }: Props) {
             aria-live="polite"
           >
             <b style={{ color: "var(--deep)", fontSize: 14 }}>Accessibility statement</b>
-            <br /><br />
-            <span>{brand || "Your brand"}</span>{" "}
-            is committed to digital accessibility for people with disabilities.
-            We aim to conform to{" "}
-            <b>{target.replace(" (recommended)", "")}</b>
+            <br />
+            <br />
+            <span>{brand || "Your brand"}</span> is committed to digital accessibility for people
+            with disabilities. We aim to conform to <b>{target.replace(" (recommended)", "")}</b>
             {jurisdictions.length > 0 && (
-              <>, in line with <b>{jurisdictions.map((j) => JURISDICTION_LABELS[j]).join(" and ")}</b></>
-            )}.
-            <br /><br />
+              <>
+                , in line with{" "}
+                <b>{jurisdictions.map((j) => JURISDICTION_LABELS[j]).join(" and ")}</b>
+              </>
+            )}
+            .
+            <br />
+            <br />
             Feedback:{" "}
-            <span style={{ color: "var(--primary-hover)" }}>
-              {contact || "your@email.com"}
-            </span>
-            <br /><br />
+            <span style={{ color: "var(--primary-hover)" }}>{contact || "your@email.com"}</span>
+            <br />
+            <br />
             <span className="tiny muted">
               Last reviewed {shortDate(record?.updatedAt ?? null)} · Monitored by a Makoya agent.
             </span>

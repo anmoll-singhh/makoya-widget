@@ -92,7 +92,11 @@ function relTime(iso: string): string {
   return `${mo}mo ago`;
 }
 /** Derive journey step state from install/monitoring status. */
-function journeyState(status: string): { connect: boolean; scan: boolean; improve: "now" | boolean } {
+function journeyState(status: string): {
+  connect: boolean;
+  scan: boolean;
+  improve: "now" | boolean;
+} {
   if (status === "not_installed") {
     return { connect: false, scan: false, improve: false };
   }
@@ -208,7 +212,10 @@ function OverviewSkeleton() {
         <div className="hero" style={{ minHeight: 220 }}>
           <div className="hero-bg" aria-hidden="true" />
           <div className="hero-grid" style={{ position: "relative" }}>
-            <div className="gcard" style={{ flexDirection: "column", alignItems: "flex-start", gap: 12 }}>
+            <div
+              className="gcard"
+              style={{ flexDirection: "column", alignItems: "flex-start", gap: 12 }}
+            >
               <div className="skel" style={{ width: 160, height: 16 }} />
               <div className="skel" style={{ width: 240, height: 28 }} />
               <div className="skel" style={{ width: "80%", height: 14 }} />
@@ -298,8 +305,8 @@ export function OverviewClient({ siteId, domain, initialData }: Props) {
     return () => {
       live = false;
     };
-  // initialData intentionally omitted — seeded via ref guard above.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // initialData intentionally omitted — seeded via ref guard above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [siteId]);
 
   if (loading) {
@@ -339,28 +346,59 @@ export function OverviewClient({ siteId, domain, initialData }: Props) {
         </div>
         <div className="hero-grid">
           {/* Left: domain + journey */}
-          <div className="gcard" style={{ flexDirection: "column", alignItems: "flex-start", gap: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 7, color: "var(--t2)", fontSize: 13, fontWeight: 700, marginBottom: 2 }}>
-              <i className="ti ti-world" aria-hidden="true" style={{ fontSize: 15, color: "var(--primary-hover)" }} />
+          <div
+            className="gcard"
+            style={{ flexDirection: "column", alignItems: "flex-start", gap: 10 }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 7,
+                color: "var(--t2)",
+                fontSize: 13,
+                fontWeight: 700,
+                marginBottom: 2,
+              }}
+            >
+              <i
+                className="ti ti-world"
+                aria-hidden="true"
+                style={{ fontSize: 15, color: "var(--primary-hover)" }}
+              />
               {domain}
             </div>
-            <h1 style={{ fontFamily: "'Satoshi'", fontSize: 25, fontWeight: 700, color: "var(--deep)", letterSpacing: "-.02em", lineHeight: 1.2 }}>
+            <h1
+              style={{
+                fontFamily: "'Satoshi'",
+                fontSize: 25,
+                fontWeight: 700,
+                color: "var(--deep)",
+                letterSpacing: "-.02em",
+                lineHeight: 1.2,
+              }}
+            >
               {score == null
                 ? "No score yet"
                 : score >= 90
-                ? "You're AA-ready"
-                : `${Math.max(0, 90 - score)} points from AA`}
+                  ? "You're AA-ready"
+                  : `${Math.max(0, 90 - score)} points from AA`}
             </h1>
             <div style={{ color: "var(--t2)", fontSize: 14, lineHeight: 1.5, marginBottom: 8 }}>
               Monitoring accessibility across {domain}.
-              {data.needsHuman > 0 && ` ${data.needsHuman} issue${data.needsHuman === 1 ? "" : "s"} need human review.`}
+              {data.needsHuman > 0 &&
+                ` ${data.needsHuman} issue${data.needsHuman === 1 ? "" : "s"} need human review.`}
             </div>
 
             {/* Compliance journey */}
             <div className="jlabel" style={{ marginBottom: 10 }}>
               Your compliance journey
             </div>
-            <div className="journey" role="list" style={{ display: "flex", alignItems: "center", gap: 0 }}>
+            <div
+              className="journey"
+              role="list"
+              style={{ display: "flex", alignItems: "center", gap: 0 }}
+            >
               {/* Connect */}
               <div
                 className={`jnode ${journey.connect ? "done" : "now"}`}
@@ -404,8 +442,14 @@ export function OverviewClient({ siteId, domain, initialData }: Props) {
               <div className="jline" aria-hidden="true" />
 
               {/* Sustain */}
-              <div className="jnode" role="listitem" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                <div className="jc" aria-hidden="true">4</div>
+              <div
+                className="jnode"
+                role="listitem"
+                style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}
+              >
+                <div className="jc" aria-hidden="true">
+                  4
+                </div>
                 <div className="jt">Sustain</div>
                 <div className="js">Upcoming</div>
               </div>
@@ -422,16 +466,45 @@ export function OverviewClient({ siteId, domain, initialData }: Props) {
                 trackColor="rgba(13,27,77,.12)"
                 ariaLabel={`Accessibility score: ${score ?? "not yet available"} out of 100`}
               >
-                <div className="gn" style={{ fontFamily: "'Satoshi'", fontSize: 40, fontWeight: 700, color: "var(--deep)", lineHeight: 1 }}>
+                <div
+                  className="gn"
+                  style={{
+                    fontFamily: "'Satoshi'",
+                    fontSize: 40,
+                    fontWeight: 700,
+                    color: "var(--deep)",
+                    lineHeight: 1,
+                  }}
+                >
                   {score == null ? "—" : <CountUp value={score} />}
                 </div>
-                <div className="gu" style={{ fontSize: 13, color: "var(--t2)", fontWeight: 600 }}>/ 100</div>
+                <div className="gu" style={{ fontSize: 13, color: "var(--t2)", fontWeight: 600 }}>
+                  / 100
+                </div>
               </GaugeRing>
-              <div className="glab" style={{ color: "var(--deep)", fontWeight: 700, fontSize: 14.5, marginTop: 12, textAlign: "center" }}>
+              <div
+                className="glab"
+                style={{
+                  color: "var(--deep)",
+                  fontWeight: 700,
+                  fontSize: 14.5,
+                  marginTop: 12,
+                  textAlign: "center",
+                }}
+              >
                 Accessibility score
               </div>
               {delta != null && (
-                <div className="gd" style={{ color: delta >= 0 ? "var(--green-ink)" : "var(--danger)", fontSize: 13, fontWeight: 700, marginTop: 3, textAlign: "center" }}>
+                <div
+                  className="gd"
+                  style={{
+                    color: delta >= 0 ? "var(--green-ink)" : "var(--danger)",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    marginTop: 3,
+                    textAlign: "center",
+                  }}
+                >
                   {delta >= 0 ? "↑" : "↓"} {Math.abs(delta)} pts vs last month
                 </div>
               )}
@@ -474,7 +547,9 @@ export function OverviewClient({ siteId, domain, initialData }: Props) {
           </div>
           <div className="kb">
             <div>
-              <div className="knum"><CountUp value={data.openIssues} /></div>
+              <div className="knum">
+                <CountUp value={data.openIssues} />
+              </div>
               {data.needsHuman > 0 && (
                 <div className="kdel down">{data.needsHuman} need human review</div>
               )}
@@ -492,7 +567,9 @@ export function OverviewClient({ siteId, domain, initialData }: Props) {
           </div>
           <div className="kb">
             <div>
-              <div className="knum"><CountUp value={data.issuesResolvedThisMonth} /></div>
+              <div className="knum">
+                <CountUp value={data.issuesResolvedThisMonth} />
+              </div>
               <div className="kdel up">issues fixed</div>
             </div>
           </div>
@@ -508,7 +585,9 @@ export function OverviewClient({ siteId, domain, initialData }: Props) {
           </div>
           <div className="kb">
             <div>
-              <div className="knum"><CountUp value={data.widgetOpens} /></div>
+              <div className="knum">
+                <CountUp value={data.widgetOpens} />
+              </div>
               <div className="kdel up">last 30 days</div>
             </div>
           </div>
@@ -525,9 +604,19 @@ export function OverviewClient({ siteId, domain, initialData }: Props) {
           </div>
           <TrendChart trend={data.trend} />
           <div className="between" style={{ marginTop: 12 }}>
-            <div style={{ display: "flex", gap: 18, fontSize: 12.5, color: "var(--t2)", fontWeight: 600 }}>
+            <div
+              style={{
+                display: "flex",
+                gap: 18,
+                fontSize: 12.5,
+                color: "var(--t2)",
+                fontWeight: 600,
+              }}
+            >
               <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--primary)" }} />
+                <span
+                  style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--primary)" }}
+                />
                 Score
               </span>
             </div>
@@ -544,8 +633,8 @@ export function OverviewClient({ siteId, domain, initialData }: Props) {
                 className="ti ti-sparkles"
                 aria-hidden="true"
                 style={{ color: "var(--primary-hover)", fontSize: 16, verticalAlign: -2 }}
-              />
-              {" "}Next best action
+              />{" "}
+              Next best action
             </h3>
             <Link className="viewall" href={`/dashboard/${siteId}/mike`}>
               View all
@@ -560,13 +649,35 @@ export function OverviewClient({ siteId, domain, initialData }: Props) {
             ) : (
               <>
                 {data.needsHuman > 0 && (
-                  <div className="nbi hi" style={{ border: "1px solid #f9c9c9", borderRadius: 12, padding: "13px 14px", background: "var(--danger-soft)" }}>
-                    <span className="pp hi" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 700, color: "var(--danger)", marginBottom: 6 }}>
+                  <div
+                    className="nbi hi"
+                    style={{
+                      border: "1px solid #f9c9c9",
+                      borderRadius: 12,
+                      padding: "13px 14px",
+                      background: "var(--danger-soft)",
+                    }}
+                  >
+                    <span
+                      className="pp hi"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 5,
+                        fontSize: 11.5,
+                        fontWeight: 700,
+                        color: "var(--danger)",
+                        marginBottom: 6,
+                      }}
+                    >
                       <i className="ti ti-alert-octagon" aria-hidden="true" />
                       High priority
                     </span>
                     <div className="nt">
-                      <b>Review {data.needsHuman} issue{data.needsHuman === 1 ? "" : "s"} needing human judgment</b>
+                      <b>
+                        Review {data.needsHuman} issue{data.needsHuman === 1 ? "" : "s"} needing
+                        human judgment
+                      </b>
                       <div style={{ fontSize: 12.5, color: "var(--t2)", marginTop: 3 }}>
                         Alt text, link purpose, and custom widget roles can&apos;t be auto-fixed.
                       </div>
@@ -574,20 +685,49 @@ export function OverviewClient({ siteId, domain, initialData }: Props) {
                     <Link
                       className="nbtn btn pri"
                       href={`/dashboard/${siteId}/mike`}
-                      style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 10, fontSize: 12.5, padding: "7px 12px" }}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        marginTop: 10,
+                        fontSize: 12.5,
+                        padding: "7px 12px",
+                      }}
                     >
                       Review with Mike
                     </Link>
                   </div>
                 )}
                 {data.openIssues > 0 && (
-                  <div className="nbi rec" style={{ border: "1px solid var(--primary-soft)", borderRadius: 12, padding: "13px 14px", background: "var(--primary-soft)" }}>
-                    <span className="pp rec" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 700, color: "var(--primary-hover)", marginBottom: 6 }}>
+                  <div
+                    className="nbi rec"
+                    style={{
+                      border: "1px solid var(--primary-soft)",
+                      borderRadius: 12,
+                      padding: "13px 14px",
+                      background: "var(--primary-soft)",
+                    }}
+                  >
+                    <span
+                      className="pp rec"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 5,
+                        fontSize: 11.5,
+                        fontWeight: 700,
+                        color: "var(--primary-hover)",
+                        marginBottom: 6,
+                      }}
+                    >
                       <i className="ti ti-bulb" aria-hidden="true" />
                       Open issues
                     </span>
                     <div className="nt">
-                      <b>Fix {data.openIssues} open accessibility issue{data.openIssues === 1 ? "" : "s"}</b>
+                      <b>
+                        Fix {data.openIssues} open accessibility issue
+                        {data.openIssues === 1 ? "" : "s"}
+                      </b>
                       <div style={{ fontSize: 12.5, color: "var(--t2)", marginTop: 3 }}>
                         Tracked against WCAG 2.1 AA criteria. Resolving these improves your score.
                       </div>
@@ -595,7 +735,14 @@ export function OverviewClient({ siteId, domain, initialData }: Props) {
                     <Link
                       className="nbtn btn"
                       href={`/dashboard/${siteId}/mike`}
-                      style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 10, fontSize: 12.5, padding: "7px 12px" }}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        marginTop: 10,
+                        fontSize: 12.5,
+                        padding: "7px 12px",
+                      }}
                     >
                       View issues
                     </Link>
@@ -610,7 +757,6 @@ export function OverviewClient({ siteId, domain, initialData }: Props) {
       {/* Row 3: activity feed + framework coverage.
           `.grid2` gives two equal columns that collapse to one on mobile. */}
       <Reveal className="grid2">
-
         {/* Activity feed */}
         <RevealItem as="section" className="card pad feed">
           <div className="dch">
@@ -628,29 +774,63 @@ export function OverviewClient({ siteId, domain, initialData }: Props) {
               const ic = isResolve
                 ? { bg: "var(--green-soft)", c: "var(--green-ink)", i: "ti-check" }
                 : isFound
-                ? { bg: "var(--warn-soft)", c: "var(--warn)", i: "ti-alert-triangle" }
-                : isInstall
-                ? { bg: "var(--primary-soft)", c: "var(--primary-hover)", i: "ti-info-circle" }
-                : { bg: "var(--bg)", c: "var(--t3)", i: "ti-activity" };
+                  ? { bg: "var(--warn-soft)", c: "var(--warn)", i: "ti-alert-triangle" }
+                  : isInstall
+                    ? { bg: "var(--primary-soft)", c: "var(--primary-hover)", i: "ti-info-circle" }
+                    : { bg: "var(--bg)", c: "var(--t3)", i: "ti-activity" };
               return (
-                <div className="it" key={a.id} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "11px 0", borderBottom: "1px solid var(--border)" }}>
+                <div
+                  className="it"
+                  key={a.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 12,
+                    padding: "11px 0",
+                    borderBottom: "1px solid var(--border)",
+                  }}
+                >
                   <div
                     className="ic"
-                    style={{ width: 32, height: 32, borderRadius: 9, background: ic.bg, color: ic.c, display: "grid", placeItems: "center", flexShrink: 0, fontSize: 15 }}
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 9,
+                      background: ic.bg,
+                      color: ic.c,
+                      display: "grid",
+                      placeItems: "center",
+                      flexShrink: 0,
+                      fontSize: 15,
+                    }}
                   >
                     <i className={`ti ${ic.i}`} aria-hidden="true" />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="ft" style={{ fontWeight: 700, fontSize: 13.5, color: "var(--deep)" }}>
+                    <div
+                      className="ft"
+                      style={{ fontWeight: 700, fontSize: 13.5, color: "var(--deep)" }}
+                    >
                       {a.summary}
                     </div>
                     {a.wcagRef && (
-                      <div className="fs" style={{ fontSize: 12, color: "var(--t2)", marginTop: 1 }}>
+                      <div
+                        className="fs"
+                        style={{ fontSize: 12, color: "var(--t2)", marginTop: 1 }}
+                      >
                         WCAG {a.wcagRef}
                       </div>
                     )}
                   </div>
-                  <span className="tm" style={{ fontSize: 12, color: "var(--t3)", whiteSpace: "nowrap", flexShrink: 0 }}>
+                  <span
+                    className="tm"
+                    style={{
+                      fontSize: 12,
+                      color: "var(--t3)",
+                      whiteSpace: "nowrap",
+                      flexShrink: 0,
+                    }}
+                  >
                     {relTime(a.createdAt)}
                   </span>
                 </div>
@@ -688,7 +868,16 @@ export function OverviewClient({ siteId, domain, initialData }: Props) {
                       }}
                     />
                   </div>
-                  <span className="val" style={{ width: 40, textAlign: "right", fontSize: 13, fontWeight: 700, color: "var(--deep)" }}>
+                  <span
+                    className="val"
+                    style={{
+                      width: 40,
+                      textAlign: "right",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: "var(--deep)",
+                    }}
+                  >
                     {c.pct}%
                   </span>
                 </div>
@@ -710,7 +899,11 @@ export function OverviewClient({ siteId, domain, initialData }: Props) {
                     gap: 7,
                   }}
                 >
-                  {score != null && score >= 75 ? "Good" : score != null && score >= 50 ? "Fair" : "Needs work"}
+                  {score != null && score >= 75
+                    ? "Good"
+                    : score != null && score >= 50
+                      ? "Fair"
+                      : "Needs work"}
                   <span
                     style={{
                       width: 8,
@@ -720,8 +913,8 @@ export function OverviewClient({ siteId, domain, initialData }: Props) {
                         score != null && score >= 75
                           ? "var(--green-ink)"
                           : score != null && score >= 50
-                          ? "var(--warn)"
-                          : "var(--danger)",
+                            ? "var(--warn)"
+                            : "var(--danger)",
                     }}
                   />
                 </span>
@@ -731,7 +924,8 @@ export function OverviewClient({ siteId, domain, initialData }: Props) {
           <div className="note info" style={{ marginTop: 14, fontSize: 12.5 }}>
             <i className="ti ti-info-circle" aria-hidden="true" />
             <div>
-              Coverage is the share of tracked checks currently passing — an estimate from automated checks, not a compliance guarantee.
+              Coverage is the share of tracked checks currently passing — an estimate from automated
+              checks, not a compliance guarantee.
             </div>
           </div>
         </RevealItem>

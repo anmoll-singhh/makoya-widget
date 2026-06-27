@@ -40,6 +40,7 @@
  */
 
 import { useState, useEffect } from "react";
+import { LoadingButton } from "../../_components";
 
 /* ── API shape (mirrors lib/proof.ts return; kept client-local) ──────────────── */
 interface ProofPack {
@@ -84,7 +85,7 @@ async function fetchAndDownloadPdf(siteId: string): Promise<void> {
   if (!res.ok) {
     let msg = "Couldn't generate the proof pack PDF — please try again shortly.";
     try {
-      const body = await res.json() as { error?: string };
+      const body = (await res.json()) as { error?: string };
       if (body.error === "no_scan") {
         msg = "No scan data found yet — run a scan first, then download the proof pack.";
       }
@@ -176,9 +177,14 @@ export function ProofClient({ siteId, domain }: Props) {
         setLoading(false);
       })
       .catch(() => {
-        if (live) { setError(true); setLoading(false); }
+        if (live) {
+          setError(true);
+          setLoading(false);
+        }
       });
-    return () => { live = false; };
+    return () => {
+      live = false;
+    };
   }, [siteId]);
 
   /* ── PDF download handler ──────────────────────────────────────────────── */
@@ -189,9 +195,10 @@ export function ProofClient({ siteId, domain }: Props) {
     try {
       await fetchAndDownloadPdf(siteId);
     } catch (err) {
-      const msg = err instanceof Error
-        ? err.message
-        : "Couldn't generate the proof pack PDF — please try again shortly.";
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Couldn't generate the proof pack PDF — please try again shortly.";
       setDownloadError(msg);
     } finally {
       setDownloading(false);
@@ -204,7 +211,11 @@ export function ProofClient({ siteId, domain }: Props) {
   /* ── Loading ─────────────────────────────────────────────────────────────── */
   if (loading) {
     return (
-      <div role="status" aria-live="polite" style={{ padding: "40px 0", textAlign: "center", color: "var(--t3)" }}>
+      <div
+        role="status"
+        aria-live="polite"
+        style={{ padding: "40px 0", textAlign: "center", color: "var(--t3)" }}
+      >
         Loading proof of effort…
       </div>
     );
@@ -221,39 +232,46 @@ export function ProofClient({ siteId, domain }: Props) {
   }
 
   /* ── Evidence item descriptions (built from REAL data) ──────────────────── */
-  const auditDesc = data.auditHistory.count > 0
-    ? `${plural(data.auditHistory.count, "audit")} on file${
-        data.auditHistory.latestScore != null
-          ? ` · latest score ${data.auditHistory.latestScore}`
-          : ""
-      }${data.auditHistory.latestOn ? ` · last ${shortDate(data.auditHistory.latestOn)}` : ""}`
-    : "No audits on file yet";
+  const auditDesc =
+    data.auditHistory.count > 0
+      ? `${plural(data.auditHistory.count, "audit")} on file${
+          data.auditHistory.latestScore != null
+            ? ` · latest score ${data.auditHistory.latestScore}`
+            : ""
+        }${data.auditHistory.latestOn ? ` · last ${shortDate(data.auditHistory.latestOn)}` : ""}`
+      : "No audits on file yet";
 
-  const remediationDesc = data.remediationCount > 0
-    ? `${plural(data.remediationCount, "fix")} logged with WCAG mapping`
-    : "No fixes logged yet";
+  const remediationDesc =
+    data.remediationCount > 0
+      ? `${plural(data.remediationCount, "fix")} logged with WCAG mapping`
+      : "No fixes logged yet";
 
   const statementDesc = data.statementPublished
     ? "Published — link your statement from your footer"
     : "Not generated yet — create one on the Statement screen";
 
-  const installDesc = data.install.daysInstalled > 0
-    ? `${plural(data.install.daysInstalled, "day")} installed${
-        data.install.firstSeenOn ? ` · since ${shortDate(data.install.firstSeenOn)}` : ""
-      }`
-    : "Widget not yet detected on your site";
+  const installDesc =
+    data.install.daysInstalled > 0
+      ? `${plural(data.install.daysInstalled, "day")} installed${
+          data.install.firstSeenOn ? ` · since ${shortDate(data.install.firstSeenOn)}` : ""
+        }`
+      : "Widget not yet detected on your site";
 
-  const vpatDesc = data.vpat.length > 0
-    ? `${plural(data.vpat.length, "document")} on file${
-        data.vpat[0].generatedOn ? ` · latest ${shortDate(data.vpat[0].generatedOn)}` : ""
-      }`
-    : "None on file yet";
+  const vpatDesc =
+    data.vpat.length > 0
+      ? `${plural(data.vpat.length, "document")} on file${
+          data.vpat[0].generatedOn ? ` · latest ${shortDate(data.vpat[0].generatedOn)}` : ""
+        }`
+      : "None on file yet";
 
-  const auditDesc2 = data.manualAudits.length > 0
-    ? `By ${data.manualAudits[0].auditor}${
-        data.manualAudits[0].performedOn ? ` · ${shortDate(data.manualAudits[0].performedOn)}` : ""
-      }`
-    : "None on file yet";
+  const auditDesc2 =
+    data.manualAudits.length > 0
+      ? `By ${data.manualAudits[0].auditor}${
+          data.manualAudits[0].performedOn
+            ? ` · ${shortDate(data.manualAudits[0].performedOn)}`
+            : ""
+        }`
+      : "None on file yet";
 
   /* ── Count items that have real evidence ──────────────────────────────────── */
   const itemsWithEvidence = [
@@ -276,39 +294,31 @@ export function ProofClient({ siteId, domain }: Props) {
       {/* Sub-header + download */}
       <div className="between" style={{ margin: "4px 0 18px" }}>
         <div className="muted tiny" style={{ maxWidth: 440 }}>
-          A documented, time-stamped record of the ongoing accessibility work on{" "}
-          <b>{domain}</b>.
+          A documented, time-stamped record of the ongoing accessibility work on <b>{domain}</b>.
         </div>
         <div>
-          <button
+          <LoadingButton
             className="btn pri"
             type="button"
-            onClick={() => { void handleDownload(); }}
-            disabled={downloading || !hasScan}
+            onClick={() => {
+              void handleDownload();
+            }}
+            loading={downloading}
+            disabled={!hasScan}
+            icon={<i className="ti ti-download" aria-hidden="true" />}
             aria-label={
               !hasScan
                 ? "Download proof pack — no scan data yet"
                 : downloading
-                ? "Generating PDF…"
-                : "Download proof pack as PDF"
+                  ? "Generating PDF…"
+                  : "Download proof pack as PDF"
             }
             title={
-              !hasScan
-                ? "No scan data yet — run a scan first to generate a proof pack"
-                : undefined
+              !hasScan ? "No scan data yet — run a scan first to generate a proof pack" : undefined
             }
           >
-            {downloading ? (
-              <>
-                <i className="ti ti-loader-2" aria-hidden="true" style={{ animation: "spin 1s linear infinite" }} />{" "}
-                Generating…
-              </>
-            ) : (
-              <>
-                <i className="ti ti-download" aria-hidden="true" /> Download proof pack
-              </>
-            )}
-          </button>
+            Download proof pack
+          </LoadingButton>
         </div>
       </div>
 
@@ -335,8 +345,9 @@ export function ProofClient({ siteId, domain }: Props) {
       <div className="note warn">
         <i className="ti ti-alert-triangle" aria-hidden="true" />
         <div>
-          If your accessibility is ever challenged — for example a demand letter — this pack documents
-          good-faith, ongoing effort. It is evidence of effort, not a guarantee against claims.
+          If your accessibility is ever challenged — for example a demand letter — this pack
+          documents good-faith, ongoing effort. It is evidence of effort, not a guarantee against
+          claims.
         </div>
       </div>
 

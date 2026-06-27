@@ -106,14 +106,14 @@ export function Shell({ sites, user, children }: ShellProps) {
   }, [navOpen, closeNav]);
 
   // Nav group expand states
-  const [widgetOpen, setWidgetOpen] = useState(() =>
-    pathname.includes("/install") || pathname.includes("/customize")
+  const [widgetOpen, setWidgetOpen] = useState(
+    () => pathname.includes("/install") || pathname.includes("/customize")
   );
-  const [complianceOpen, setComplianceOpen] = useState(() =>
-    pathname.includes("/statement") || pathname.includes("/proof")
+  const [complianceOpen, setComplianceOpen] = useState(
+    () => pathname.includes("/statement") || pathname.includes("/proof")
   );
-  const [insightsOpen, setInsightsOpen] = useState(() =>
-    pathname.includes("/reports") || pathname.includes("/analytics")
+  const [insightsOpen, setInsightsOpen] = useState(
+    () => pathname.includes("/reports") || pathname.includes("/analytics")
   );
 
   // Close switcher on Esc or outside click
@@ -167,12 +167,7 @@ export function Shell({ sites, user, children }: ShellProps) {
       </a>
 
       {/* Mobile drawer scrim — tap to dismiss. Hidden on desktop via CSS. */}
-      <div
-        className="navscrim"
-        hidden={!navOpen}
-        onClick={closeNav}
-        aria-hidden="true"
-      />
+      <div className="navscrim" hidden={!navOpen} onClick={closeNav} aria-hidden="true" />
 
       {/* ── Sidebar ─────────────────────────────────────────────────────── */}
       <aside
@@ -195,9 +190,25 @@ export function Shell({ sites, user, children }: ShellProps) {
         {/* Brand gem */}
         <div className="brand">
           <svg width="26" height="26" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-            <path d="M16 2.5L27.7 9.2L27.7 22.8L16 29.5L4.3 22.8L4.3 9.2Z" stroke="#0D1B4D" strokeWidth="2" />
-            <path d="M14 11L9 16L14 21" stroke="#0D1B4D" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M18 11L23 16L18 21" stroke="#1E63FF" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+            <path
+              d="M16 2.5L27.7 9.2L27.7 22.8L16 29.5L4.3 22.8L4.3 9.2Z"
+              stroke="#0D1B4D"
+              strokeWidth="2"
+            />
+            <path
+              d="M14 11L9 16L14 21"
+              stroke="#0D1B4D"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M18 11L23 16L18 21"
+              stroke="#1E63FF"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
           Makoya
         </div>
@@ -212,11 +223,30 @@ export function Shell({ sites, user, children }: ShellProps) {
             aria-haspopup="listbox"
             aria-label={`Switch agent. Current: ${currentSite ? siteLabel(currentSite) : "None"}`}
           >
-            <i className="ti ti-world" style={{ color: "var(--primary)", fontSize: 16 }} aria-hidden="true" />
-            <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {currentSite ? siteLabel(currentSite) : sites.length > 0 ? "Select agent" : "No agents"}
+            <i
+              className="ti ti-world"
+              style={{ color: "var(--primary)", fontSize: 16 }}
+              aria-hidden="true"
+            />
+            <span
+              style={{
+                flex: 1,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {currentSite
+                ? siteLabel(currentSite)
+                : sites.length > 0
+                  ? "Select agent"
+                  : "No agents"}
             </span>
-            <i className="ti ti-selector" style={{ marginLeft: "auto", color: "var(--t3)", fontSize: 15 }} aria-hidden="true" />
+            <i
+              className="ti ti-selector"
+              style={{ marginLeft: "auto", color: "var(--t3)", fontSize: 15 }}
+              aria-hidden="true"
+            />
           </button>
 
           {switcherOpen && sites.length > 0 && (
@@ -262,10 +292,21 @@ export function Shell({ sites, user, children }: ShellProps) {
                     fontFamily: "inherit",
                   }}
                 >
-                  <i className="ti ti-world" aria-hidden="true" style={{ fontSize: 15, color: site.id === currentSiteId ? "var(--primary-hover)" : "var(--t3)" }} />
+                  <i
+                    className="ti ti-world"
+                    aria-hidden="true"
+                    style={{
+                      fontSize: 15,
+                      color: site.id === currentSiteId ? "var(--primary-hover)" : "var(--t3)",
+                    }}
+                  />
                   {siteLabel(site)}
                   {site.id === currentSiteId && (
-                    <i className="ti ti-check" aria-hidden="true" style={{ marginLeft: "auto", fontSize: 14 }} />
+                    <i
+                      className="ti ti-check"
+                      aria-hidden="true"
+                      style={{ marginLeft: "auto", fontSize: 14 }}
+                    />
                   )}
                 </button>
               ))}
@@ -294,19 +335,13 @@ export function Shell({ sites, user, children }: ShellProps) {
         <nav aria-label="Primary">
           <ul className="nav">
             <li>
-              <Link
-                href="/dashboard"
-                className={pathname === "/dashboard" ? "on" : ""}
-              >
+              <Link href="/dashboard" className={pathname === "/dashboard" ? "on" : ""}>
                 <i className="ti ti-layout-dashboard" aria-hidden="true" />
                 Dashboard
               </Link>
             </li>
             <li>
-              <Link
-                href="/dashboard/agents"
-                className={isActive("/dashboard/agents") ? "on" : ""}
-              >
+              <Link href="/dashboard/agents" className={isActive("/dashboard/agents") ? "on" : ""}>
                 <i className="ti ti-stack-2" aria-hidden="true" />
                 Agents
               </Link>
@@ -352,7 +387,11 @@ export function Shell({ sites, user, children }: ShellProps) {
                       const href = agentHref(currentSiteId, item.href);
                       return (
                         <li key={item.href}>
-                          <Link href={href} className={pathname === href ? "on" : ""} style={{ paddingLeft: 44 }}>
+                          <Link
+                            href={href}
+                            className={pathname === href ? "on" : ""}
+                            style={{ paddingLeft: 44 }}
+                          >
                             {item.label}
                           </Link>
                         </li>
@@ -381,7 +420,11 @@ export function Shell({ sites, user, children }: ShellProps) {
                       const href = agentHref(currentSiteId, item.href);
                       return (
                         <li key={item.href}>
-                          <Link href={href} className={pathname === href ? "on" : ""} style={{ paddingLeft: 44 }}>
+                          <Link
+                            href={href}
+                            className={pathname === href ? "on" : ""}
+                            style={{ paddingLeft: 44 }}
+                          >
                             {item.label}
                           </Link>
                         </li>
@@ -410,7 +453,11 @@ export function Shell({ sites, user, children }: ShellProps) {
                       const href = agentHref(currentSiteId, item.href);
                       return (
                         <li key={item.href}>
-                          <Link href={href} className={pathname === href ? "on" : ""} style={{ paddingLeft: 44 }}>
+                          <Link
+                            href={href}
+                            className={pathname === href ? "on" : ""}
+                            style={{ paddingLeft: 44 }}
+                          >
                             {item.label}
                           </Link>
                         </li>
@@ -437,7 +484,10 @@ export function Shell({ sites, user, children }: ShellProps) {
         <nav className="foot" aria-label="Account">
           <ul className="nav">
             <li>
-              <Link href="/dashboard/account" className={isActive("/dashboard/account") ? "on" : ""}>
+              <Link
+                href="/dashboard/account"
+                className={isActive("/dashboard/account") ? "on" : ""}
+              >
                 <i className="ti ti-user" aria-hidden="true" />
                 Account
               </Link>
@@ -452,7 +502,10 @@ export function Shell({ sites, user, children }: ShellProps) {
               </Link>
             </li>
             <li>
-              <Link href="/dashboard/partners" className={isActive("/dashboard/partners") ? "on" : ""}>
+              <Link
+                href="/dashboard/partners"
+                className={isActive("/dashboard/partners") ? "on" : ""}
+              >
                 <i className="ti ti-affiliate" aria-hidden="true" />
                 Partners
               </Link>
@@ -554,12 +607,18 @@ function UserMenu({ user }: { user: ShellUser }) {
         aria-haspopup="menu"
         aria-label={`User menu for ${user.name}`}
       >
-        <span className="av" aria-hidden="true">{user.initials}</span>
+        <span className="av" aria-hidden="true">
+          {user.initials}
+        </span>
         <span>
           <span className="nm">{user.name}</span>
           <span className="rl">{user.email}</span>
         </span>
-        <i className="ti ti-chevron-down" aria-hidden="true" style={{ fontSize: 15, color: "var(--t3)" }} />
+        <i
+          className="ti ti-chevron-down"
+          aria-hidden="true"
+          style={{ fontSize: 15, color: "var(--t3)" }}
+        />
       </button>
 
       {open && (
@@ -587,9 +646,21 @@ function UserMenu({ user }: { user: ShellUser }) {
             href="/dashboard/account"
             role="menuitem"
             onClick={() => setOpen(false)}
-            style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", color: "var(--t1)", fontSize: 13, fontWeight: 600 }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              padding: "10px 14px",
+              color: "var(--t1)",
+              fontSize: 13,
+              fontWeight: 600,
+            }}
           >
-            <i className="ti ti-user" aria-hidden="true" style={{ fontSize: 15, color: "var(--t3)" }} />
+            <i
+              className="ti ti-user"
+              aria-hidden="true"
+              style={{ fontSize: 15, color: "var(--t3)" }}
+            />
             Account
           </Link>
           {/* Sign-out: POST to /auth/signout */}

@@ -8,7 +8,7 @@
  */
 
 import type { EmailProvider } from "./types";
-import { env } from "@/lib/env";
+import { env } from "@/lib/env.server";
 import { stubEmailProvider } from "./stub-provider";
 import { createResendProvider } from "./resend-provider";
 

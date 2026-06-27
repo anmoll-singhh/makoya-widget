@@ -27,27 +27,59 @@
  */
 
 import { useState, useEffect } from "react";
-import type { FeatureKey, WidgetPosition, LauncherIconKey, WidgetLauncherSize, WidgetLanguage, WidgetProfileKey } from "@makoya/shared";
+import type {
+  FeatureKey,
+  WidgetPosition,
+  LauncherIconKey,
+  WidgetLauncherSize,
+  WidgetLanguage,
+  WidgetProfileKey,
+} from "@makoya/shared";
 import type { SiteConfig } from "@/lib/sites-mappers";
 import { contrastRatio } from "@/lib/contrast";
+import { LoadingButton } from "../../_components";
 
 /* ── Feature metadata (matches packages/shared FeatureKey list) ──────────────── */
 const FEATURE_META: Record<FeatureKey, { label: string; icon: string; desc: string }> = {
-  textSize:       { label: "Bigger text",               icon: "ti-zoom-in",         desc: "Scale text up to 3× for readability" },
-  lineSpacing:    { label: "Line & letter spacing",     icon: "ti-line-height",     desc: "Adjust text spacing" },
-  contrast:       { label: "Contrast modes",            icon: "ti-contrast",        desc: "High / inverted contrast" },
-  stopMotion:     { label: "Stop animations",           icon: "ti-player-pause",    desc: "Pause motion & autoplay" },
-  readingRuler:   { label: "Reading ruler",             icon: "ti-ruler-2",         desc: "Focus line across the page" },
-  highlightLinks: { label: "Highlight links",           icon: "ti-link",            desc: "Underline & colour links" },
-  bigCursor:      { label: "Big cursor",                icon: "ti-pointer",         desc: "Enlarge the mouse cursor" },
-  readableFont:   { label: "Readable & dyslexic fonts", icon: "ti-letter-case",     desc: "Legible / dyslexia-friendly type" },
-  hideImages:     { label: "Hide images",               icon: "ti-photo-off",       desc: "Remove decorative images" },
-  saturation:     { label: "Saturation",                icon: "ti-color-swatch",    desc: "Mono / low-saturation modes" },
-  readingMask:    { label: "Reading mask",              icon: "ti-layout-navbar",   desc: "Grey-out content outside focus row" },
-  highlightTitles:{ label: "Highlight titles",          icon: "ti-heading",         desc: "Visually emphasise headings" },
-  textAlign:      { label: "Text align",                icon: "ti-align-left",      desc: "Left / centre / justify" },
-  muteSounds:     { label: "Mute sounds",               icon: "ti-volume-off",      desc: "Silence autoplay audio" },
-  readAloud:      { label: "Read page aloud",           icon: "ti-volume",          desc: "Text-to-speech" },
+  textSize: {
+    label: "Bigger text",
+    icon: "ti-zoom-in",
+    desc: "Scale text up to 3× for readability",
+  },
+  lineSpacing: {
+    label: "Line & letter spacing",
+    icon: "ti-line-height",
+    desc: "Adjust text spacing",
+  },
+  contrast: { label: "Contrast modes", icon: "ti-contrast", desc: "High / inverted contrast" },
+  stopMotion: {
+    label: "Stop animations",
+    icon: "ti-player-pause",
+    desc: "Pause motion & autoplay",
+  },
+  readingRuler: { label: "Reading ruler", icon: "ti-ruler-2", desc: "Focus line across the page" },
+  highlightLinks: { label: "Highlight links", icon: "ti-link", desc: "Underline & colour links" },
+  bigCursor: { label: "Big cursor", icon: "ti-pointer", desc: "Enlarge the mouse cursor" },
+  readableFont: {
+    label: "Readable & dyslexic fonts",
+    icon: "ti-letter-case",
+    desc: "Legible / dyslexia-friendly type",
+  },
+  hideImages: { label: "Hide images", icon: "ti-photo-off", desc: "Remove decorative images" },
+  saturation: { label: "Saturation", icon: "ti-color-swatch", desc: "Mono / low-saturation modes" },
+  readingMask: {
+    label: "Reading mask",
+    icon: "ti-layout-navbar",
+    desc: "Grey-out content outside focus row",
+  },
+  highlightTitles: {
+    label: "Highlight titles",
+    icon: "ti-heading",
+    desc: "Visually emphasise headings",
+  },
+  textAlign: { label: "Text align", icon: "ti-align-left", desc: "Left / centre / justify" },
+  muteSounds: { label: "Mute sounds", icon: "ti-volume-off", desc: "Silence autoplay audio" },
+  readAloud: { label: "Read page aloud", icon: "ti-volume", desc: "Text-to-speech" },
 };
 const FEATURE_KEYS = Object.keys(FEATURE_META) as FeatureKey[];
 
@@ -57,7 +89,9 @@ type Tab = "features" | "appearance" | "mobile";
 function shortDate(iso: string | null): string {
   if (!iso) return "—";
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  return Number.isNaN(d.getTime())
+    ? "—"
+    : d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
 /* ── Props ───────────────────────────────────────────────────────────────────── */
@@ -90,9 +124,14 @@ export function CustomizeClient({ siteId }: Props) {
         setLoading(false);
       })
       .catch(() => {
-        if (live) { setError(true); setLoading(false); }
+        if (live) {
+          setError(true);
+          setLoading(false);
+        }
       });
-    return () => { live = false; };
+    return () => {
+      live = false;
+    };
   }, [siteId]);
 
   /* ── Toggle a feature on / off ─────────────────────────────────────────────── */
@@ -147,7 +186,11 @@ export function CustomizeClient({ siteId }: Props) {
   /* ── Loading / error ─────────────────────────────────────────────────────────── */
   if (loading) {
     return (
-      <div role="status" aria-live="polite" style={{ padding: "40px 0", textAlign: "center", color: "var(--t3)" }}>
+      <div
+        role="status"
+        aria-live="polite"
+        style={{ padding: "40px 0", textAlign: "center", color: "var(--t3)" }}
+      >
         Loading widget configuration…
       </div>
     );
@@ -166,7 +209,11 @@ export function CustomizeClient({ siteId }: Props) {
   // lib/contrast.ts throws on invalid hex — guard so a partially-typed value
   // never crashes the render. The null path is already handled by ratioDisplay.
   let ratio: number | null = null;
-  try { ratio = contrastRatio(config.primaryColor, "#ffffff"); } catch { /* invalid hex — guard below */ }
+  try {
+    ratio = contrastRatio(config.primaryColor, "#ffffff");
+  } catch {
+    /* invalid hex — guard below */
+  }
   const ratioDisplay = ratio != null ? `${ratio.toFixed(1)} : 1` : "—";
   const passesAaUi = ratio != null && ratio >= 3;
 
@@ -184,7 +231,16 @@ export function CustomizeClient({ siteId }: Props) {
         </p>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           {saveOk && (
-            <span style={{ fontSize: 12.5, color: "var(--green-ink)", fontWeight: 600, display: "flex", alignItems: "center", gap: 5 }}>
+            <span
+              style={{
+                fontSize: 12.5,
+                color: "var(--green-ink)",
+                fontWeight: 600,
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+              }}
+            >
               <i className="ti ti-check" aria-hidden="true" /> Saved
             </span>
           )}
@@ -197,16 +253,16 @@ export function CustomizeClient({ siteId }: Props) {
           >
             Reset
           </button>
-          <button
+          <LoadingButton
             className="btn pri"
             type="button"
             onClick={() => void publish()}
-            disabled={saving}
-            aria-busy={saving}
+            loading={saving}
+            loadingText="Publishing…"
+            icon={<i className="ti ti-rocket" aria-hidden="true" />}
           >
-            <i className="ti ti-rocket" aria-hidden="true" />
-            {saving ? "Publishing…" : "Publish"}
-          </button>
+            Publish
+          </LoadingButton>
         </div>
       </div>
 
@@ -219,12 +275,18 @@ export function CustomizeClient({ siteId }: Props) {
       )}
 
       {/* Two-column layout: config + live preview */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 330px", gap: 24, alignItems: "start" }}>
-
+      <div
+        style={{ display: "grid", gridTemplateColumns: "1fr 330px", gap: 24, alignItems: "start" }}
+      >
         {/* Left: tabs + controls */}
         <div>
           {/* Segment tabs */}
-          <div className="seg" style={{ marginBottom: 14 }} role="tablist" aria-label="Customize sections">
+          <div
+            className="seg"
+            style={{ marginBottom: 14 }}
+            role="tablist"
+            aria-label="Customize sections"
+          >
             {(["features", "appearance", "mobile"] as Tab[]).map((t) => (
               <button
                 key={t}
@@ -243,7 +305,12 @@ export function CustomizeClient({ siteId }: Props) {
 
           {/* Features tab */}
           {tab === "features" && (
-            <div id="cu-panel-features" style={{ display: "flex", flexDirection: "column", gap: 10 }} role="tabpanel" aria-labelledby="cu-tab-features">
+            <div
+              id="cu-panel-features"
+              style={{ display: "flex", flexDirection: "column", gap: 10 }}
+              role="tabpanel"
+              aria-labelledby="cu-tab-features"
+            >
               {FEATURE_KEYS.map((key) => {
                 const meta = FEATURE_META[key];
                 const on = config.featuresEnabled.includes(key);
@@ -272,24 +339,42 @@ export function CustomizeClient({ siteId }: Props) {
 
           {/* Appearance tab */}
           {tab === "appearance" && (
-            <div id="cu-panel-appearance" style={{ display: "flex", flexDirection: "column", gap: 14 }} role="tabpanel" aria-labelledby="cu-tab-appearance">
+            <div
+              id="cu-panel-appearance"
+              style={{ display: "flex", flexDirection: "column", gap: 14 }}
+              role="tabpanel"
+              aria-labelledby="cu-tab-appearance"
+            >
               {/* Brand color */}
               <div className="card cpad">
-                <label className="fl" htmlFor="cu-color" style={{ marginTop: 0 }}>Brand color</label>
+                <label className="fl" htmlFor="cu-color" style={{ marginTop: 0 }}>
+                  Brand color
+                </label>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <input
                     id="cu-color"
                     type="color"
                     value={config.primaryColor}
-                    onChange={(e) => setConfig((c) => c ? { ...c, primaryColor: e.target.value } : c)}
-                    style={{ width: 44, height: 44, borderRadius: 8, border: "1px solid var(--border)", padding: 2, cursor: "pointer" }}
+                    onChange={(e) =>
+                      setConfig((c) => (c ? { ...c, primaryColor: e.target.value } : c))
+                    }
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 8,
+                      border: "1px solid var(--border)",
+                      padding: 2,
+                      cursor: "pointer",
+                    }}
                     aria-label="Widget primary color"
                   />
                   <input
                     type="text"
                     className="inp"
                     value={config.primaryColor}
-                    onChange={(e) => setConfig((c) => c ? { ...c, primaryColor: e.target.value } : c)}
+                    onChange={(e) =>
+                      setConfig((c) => (c ? { ...c, primaryColor: e.target.value } : c))
+                    }
                     style={{ width: 110, fontFamily: "monospace", fontSize: 13 }}
                     aria-label="Widget primary color hex value"
                   />
@@ -298,12 +383,16 @@ export function CustomizeClient({ siteId }: Props) {
 
               {/* Widget position */}
               <div className="card cpad">
-                <label className="fl" htmlFor="cu-position" style={{ marginTop: 0 }}>Widget position</label>
+                <label className="fl" htmlFor="cu-position" style={{ marginTop: 0 }}>
+                  Widget position
+                </label>
                 <select
                   id="cu-position"
                   className="inp"
                   value={config.position}
-                  onChange={(e) => setConfig((c) => c ? { ...c, position: e.target.value as WidgetPosition } : c)}
+                  onChange={(e) =>
+                    setConfig((c) => (c ? { ...c, position: e.target.value as WidgetPosition } : c))
+                  }
                 >
                   <option value="bottom-right">Bottom right</option>
                   <option value="bottom-left">Bottom left</option>
@@ -314,12 +403,18 @@ export function CustomizeClient({ siteId }: Props) {
 
               {/* Launcher icon */}
               <div className="card cpad">
-                <label className="fl" htmlFor="cu-icon" style={{ marginTop: 0 }}>Launcher icon</label>
+                <label className="fl" htmlFor="cu-icon" style={{ marginTop: 0 }}>
+                  Launcher icon
+                </label>
                 <select
                   id="cu-icon"
                   className="inp"
                   value={config.launcherIcon}
-                  onChange={(e) => setConfig((c) => c ? { ...c, launcherIcon: e.target.value as LauncherIconKey } : c)}
+                  onChange={(e) =>
+                    setConfig((c) =>
+                      c ? { ...c, launcherIcon: e.target.value as LauncherIconKey } : c
+                    )
+                  }
                 >
                   <option value="accessibility">Accessibility (person)</option>
                   <option value="person">Person</option>
@@ -330,12 +425,18 @@ export function CustomizeClient({ siteId }: Props) {
 
               {/* Launcher size */}
               <div className="card cpad">
-                <label className="fl" htmlFor="cu-size" style={{ marginTop: 0 }}>Launcher size</label>
+                <label className="fl" htmlFor="cu-size" style={{ marginTop: 0 }}>
+                  Launcher size
+                </label>
                 <select
                   id="cu-size"
                   className="inp"
                   value={config.launcherSize}
-                  onChange={(e) => setConfig((c) => c ? { ...c, launcherSize: e.target.value as WidgetLauncherSize } : c)}
+                  onChange={(e) =>
+                    setConfig((c) =>
+                      c ? { ...c, launcherSize: e.target.value as WidgetLauncherSize } : c
+                    )
+                  }
                 >
                   <option value="sm">Small</option>
                   <option value="md">Medium</option>
@@ -345,12 +446,18 @@ export function CustomizeClient({ siteId }: Props) {
 
               {/* Default language */}
               <div className="card cpad">
-                <label className="fl" htmlFor="cu-lang" style={{ marginTop: 0 }}>Widget language</label>
+                <label className="fl" htmlFor="cu-lang" style={{ marginTop: 0 }}>
+                  Widget language
+                </label>
                 <select
                   id="cu-lang"
                   className="inp"
                   value={config.defaultLanguage}
-                  onChange={(e) => setConfig((c) => c ? { ...c, defaultLanguage: e.target.value as WidgetLanguage } : c)}
+                  onChange={(e) =>
+                    setConfig((c) =>
+                      c ? { ...c, defaultLanguage: e.target.value as WidgetLanguage } : c
+                    )
+                  }
                 >
                   <option value="en">English</option>
                   <option value="es">Español</option>
@@ -361,21 +468,29 @@ export function CustomizeClient({ siteId }: Props) {
 
               {/* Statement URL */}
               <div className="card cpad">
-                <label className="fl" htmlFor="cu-stmt" style={{ marginTop: 0 }}>Accessibility statement URL <span className="muted">(optional)</span></label>
+                <label className="fl" htmlFor="cu-stmt" style={{ marginTop: 0 }}>
+                  Accessibility statement URL <span className="muted">(optional)</span>
+                </label>
                 <input
                   id="cu-stmt"
                   className="inp"
                   type="url"
                   placeholder="https://example.com/accessibility"
                   value={config.accessibilityStatementUrl}
-                  onChange={(e) => setConfig((c) => c ? { ...c, accessibilityStatementUrl: e.target.value } : c)}
+                  onChange={(e) =>
+                    setConfig((c) => (c ? { ...c, accessibilityStatementUrl: e.target.value } : c))
+                  }
                 />
-                <div className="tiny muted" style={{ marginTop: 6 }}>When set, a link appears in the widget panel.</div>
+                <div className="tiny muted" style={{ marginTop: 6 }}>
+                  When set, a link appears in the widget panel.
+                </div>
               </div>
 
               {/* Panel title */}
               <div className="card cpad">
-                <label className="fl" htmlFor="cu-panel-title" style={{ marginTop: 0 }}>Panel title <span className="muted">(optional, paid)</span></label>
+                <label className="fl" htmlFor="cu-panel-title" style={{ marginTop: 0 }}>
+                  Panel title <span className="muted">(optional, paid)</span>
+                </label>
                 <input
                   id="cu-panel-title"
                   className="inp"
@@ -383,19 +498,27 @@ export function CustomizeClient({ siteId }: Props) {
                   placeholder="Accessibility"
                   maxLength={120}
                   value={config.panelTitle}
-                  onChange={(e) => setConfig((c) => c ? { ...c, panelTitle: e.target.value } : c)}
+                  onChange={(e) => setConfig((c) => (c ? { ...c, panelTitle: e.target.value } : c))}
                 />
-                <div className="tiny muted" style={{ marginTop: 6 }}>Overrides the default heading inside the widget panel.</div>
+                <div className="tiny muted" style={{ marginTop: 6 }}>
+                  Overrides the default heading inside the widget panel.
+                </div>
               </div>
 
               {/* Default profile */}
               <div className="card cpad">
-                <label className="fl" htmlFor="cu-profile" style={{ marginTop: 0 }}>Default profile <span className="muted">(optional)</span></label>
+                <label className="fl" htmlFor="cu-profile" style={{ marginTop: 0 }}>
+                  Default profile <span className="muted">(optional)</span>
+                </label>
                 <select
                   id="cu-profile"
                   className="inp"
                   value={config.defaultProfile}
-                  onChange={(e) => setConfig((c) => c ? { ...c, defaultProfile: e.target.value as WidgetProfileKey } : c)}
+                  onChange={(e) =>
+                    setConfig((c) =>
+                      c ? { ...c, defaultProfile: e.target.value as WidgetProfileKey } : c
+                    )
+                  }
                 >
                   <option value="none">None (let visitor choose)</option>
                   <option value="vision">Vision impairment</option>
@@ -407,15 +530,21 @@ export function CustomizeClient({ siteId }: Props) {
                   <option value="cognitive">Cognitive disability</option>
                   <option value="colorBlind">Color blindness</option>
                 </select>
-                <div className="tiny muted" style={{ marginTop: 6 }}>Auto-applies a preset on the visitor&apos;s first open.</div>
+                <div className="tiny muted" style={{ marginTop: 6 }}>
+                  Auto-applies a preset on the visitor&apos;s first open.
+                </div>
               </div>
 
               {/* Hide branding */}
               <div className="card cpad">
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 500, color: "var(--t1)" }}>Hide &ldquo;Powered by Makoya&rdquo;</div>
-                    <div className="tiny muted" style={{ marginTop: 3 }}>Remove the Makoya branding from the widget panel. Paid plans only.</div>
+                    <div style={{ fontSize: 13.5, fontWeight: 500, color: "var(--t1)" }}>
+                      Hide &ldquo;Powered by Makoya&rdquo;
+                    </div>
+                    <div className="tiny muted" style={{ marginTop: 3 }}>
+                      Remove the Makoya branding from the widget panel. Paid plans only.
+                    </div>
                   </div>
                   <button
                     type="button"
@@ -423,7 +552,9 @@ export function CustomizeClient({ siteId }: Props) {
                     aria-checked={config.hideBranding}
                     aria-label={`Hide Makoya branding: ${config.hideBranding ? "enabled" : "disabled"}`}
                     className={`toggle ${config.hideBranding ? "on" : ""}`}
-                    onClick={() => setConfig((c) => c ? { ...c, hideBranding: !c.hideBranding } : c)}
+                    onClick={() =>
+                      setConfig((c) => (c ? { ...c, hideBranding: !c.hideBranding } : c))
+                    }
                   />
                 </div>
               </div>
@@ -432,7 +563,12 @@ export function CustomizeClient({ siteId }: Props) {
 
           {/* Mobile tab */}
           {tab === "mobile" && (
-            <div id="cu-panel-mobile" style={{ display: "flex", flexDirection: "column", gap: 10 }} role="tabpanel" aria-labelledby="cu-tab-mobile">
+            <div
+              id="cu-panel-mobile"
+              style={{ display: "flex", flexDirection: "column", gap: 10 }}
+              role="tabpanel"
+              aria-labelledby="cu-tab-mobile"
+            >
               <div className="feat">
                 <div className="ic" aria-hidden="true">
                   <i className="ti ti-device-mobile" aria-hidden="true" />
@@ -447,7 +583,9 @@ export function CustomizeClient({ siteId }: Props) {
                   aria-checked={config.mobileEnabled}
                   aria-label={`Show widget on mobile: ${config.mobileEnabled ? "enabled" : "disabled"}`}
                   className={`toggle ${config.mobileEnabled ? "on" : ""}`}
-                  onClick={() => setConfig((c) => c ? { ...c, mobileEnabled: !c.mobileEnabled } : c)}
+                  onClick={() =>
+                    setConfig((c) => (c ? { ...c, mobileEnabled: !c.mobileEnabled } : c))
+                  }
                 />
               </div>
               <div className="feat">
@@ -456,7 +594,9 @@ export function CustomizeClient({ siteId }: Props) {
                 </div>
                 <div style={{ flex: 1 }}>
                   <div className="nm">DOM observer</div>
-                  <div className="de">Re-apply preferences after SPA route changes and dynamic DOM updates</div>
+                  <div className="de">
+                    Re-apply preferences after SPA route changes and dynamic DOM updates
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -464,7 +604,9 @@ export function CustomizeClient({ siteId }: Props) {
                   aria-checked={config.domObserverEnabled}
                   aria-label={`DOM observer: ${config.domObserverEnabled ? "enabled" : "disabled"}`}
                   className={`toggle ${config.domObserverEnabled ? "on" : ""}`}
-                  onClick={() => setConfig((c) => c ? { ...c, domObserverEnabled: !c.domObserverEnabled } : c)}
+                  onClick={() =>
+                    setConfig((c) => (c ? { ...c, domObserverEnabled: !c.domObserverEnabled } : c))
+                  }
                 />
               </div>
               <div className="feat">
@@ -473,7 +615,9 @@ export function CustomizeClient({ siteId }: Props) {
                 </div>
                 <div style={{ flex: 1 }}>
                   <div className="nm">Inherit host fonts</div>
-                  <div className="de">Use your site&apos;s fonts inside the widget panel instead of the default stack</div>
+                  <div className="de">
+                    Use your site&apos;s fonts inside the widget panel instead of the default stack
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -481,7 +625,9 @@ export function CustomizeClient({ siteId }: Props) {
                   aria-checked={config.inheritFonts}
                   aria-label={`Inherit host fonts: ${config.inheritFonts ? "enabled" : "disabled"}`}
                   className={`toggle ${config.inheritFonts ? "on" : ""}`}
-                  onClick={() => setConfig((c) => c ? { ...c, inheritFonts: !c.inheritFonts } : c)}
+                  onClick={() =>
+                    setConfig((c) => (c ? { ...c, inheritFonts: !c.inheritFonts } : c))
+                  }
                 />
               </div>
               {/* Custom trigger selector */}
@@ -495,10 +641,13 @@ export function CustomizeClient({ siteId }: Props) {
                   type="text"
                   placeholder="#my-a11y-button"
                   value={config.customTriggerSelector}
-                  onChange={(e) => setConfig((c) => c ? { ...c, customTriggerSelector: e.target.value } : c)}
+                  onChange={(e) =>
+                    setConfig((c) => (c ? { ...c, customTriggerSelector: e.target.value } : c))
+                  }
                 />
                 <div className="tiny muted" style={{ marginTop: 6 }}>
-                  A CSS selector for a host-page element that opens the widget panel when clicked. Leave empty to use the built-in launcher only.
+                  A CSS selector for a host-page element that opens the widget panel when clicked.
+                  Leave empty to use the built-in launcher only.
                 </div>
               </div>
             </div>
@@ -507,7 +656,10 @@ export function CustomizeClient({ siteId }: Props) {
 
         {/* Right: live preview + brand color card */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div className="tiny muted" style={{ fontWeight: 700, textTransform: "uppercase", letterSpacing: ".05em" }}>
+          <div
+            className="tiny muted"
+            style={{ fontWeight: 700, textTransform: "uppercase", letterSpacing: ".05em" }}
+          >
             Live preview
           </div>
 
@@ -587,7 +739,8 @@ export function CustomizeClient({ siteId }: Props) {
                 style={{ fontSize: 16 }}
               />
               <div>
-                Contrast {ratioDisplay}{passesAaUi
+                Contrast {ratioDisplay}
+                {passesAaUi
                   ? " — passes WCAG AA for UI components (≥3:1)"
                   : " — below WCAG AA for UI components (needs ≥3:1)"}
               </div>
@@ -597,8 +750,7 @@ export function CustomizeClient({ siteId }: Props) {
           {/* Last published */}
           {saved && (
             <div className="tiny muted" style={{ paddingLeft: 4 }}>
-              Last published{" "}
-              {shortDate(null) /* config doesn't carry updatedAt — just show note */}
+              Last published {shortDate(null) /* config doesn't carry updatedAt — just show note */}
               — changes are live once you Publish.
             </div>
           )}
