@@ -31,29 +31,32 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           <span className="admin-badge">Admin</span>
         </Link>
 
-        {/* Primary nav */}
+        {/* Primary nav.
+            Labels are wrapped in .admin-lbl so they can collapse to sr-only on
+            narrow phones (icon-only topbar) while AT still announces them; the
+            explicit aria-label keeps each control named when the text is hidden. */}
         <nav className="admin-nav" aria-label="Admin navigation">
-          <Link href="/admin/requests">
+          <Link href="/admin/requests" aria-label="Requests">
             <i className="ti ti-message-dots" aria-hidden="true" />
-            Requests
+            <span className="admin-lbl">Requests</span>
           </Link>
-          <Link href="/admin/leads">
+          <Link href="/admin/leads" aria-label="Leads">
             <i className="ti ti-users" aria-hidden="true" />
-            Leads
+            <span className="admin-lbl">Leads</span>
           </Link>
         </nav>
 
         {/* Trailing controls */}
         <div className="admin-topbar-end">
-          <Link href="/dashboard" className="btn">
+          <Link href="/dashboard" className="btn" aria-label="My dashboard">
             <i className="ti ti-layout-dashboard" aria-hidden="true" />
-            My dashboard
+            <span className="admin-lbl">My dashboard</span>
           </Link>
           {/* Sign-out: real POST to /auth/signout — functionality unchanged */}
           <form action="/auth/signout" method="post">
-            <button type="submit" className="btn">
+            <button type="submit" className="btn" aria-label="Sign out">
               <i className="ti ti-logout" aria-hidden="true" />
-              Sign out
+              <span className="admin-lbl">Sign out</span>
             </button>
           </form>
         </div>

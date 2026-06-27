@@ -17,6 +17,8 @@ import { notFound, redirect } from "next/navigation";
 import { getAdminUser } from "@/lib/auth/require-admin";
 import { getAdminSiteDetail } from "@/lib/admin";
 import { PlanSelect } from "@/components/admin/PlanSelect";
+import { PageTransition, RevealItem } from "@/components/motion/PageTransition";
+import { MotionTable, MotionRow } from "@/components/admin/MotionTable";
 
 /** Map a scan score to a v7 pill tone. */
 function scoreTone(score: number): string {
@@ -51,73 +53,75 @@ export default async function AdminSiteDetail({
   if (!site) notFound();
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+    <PageTransition stagger={0.08} className="admin-detail-stack">
       {/* ── Back link ────────────────────────────────────────────────── */}
-      <div>
+      <RevealItem>
         <Link href="/admin" className="btn">
           <i className="ti ti-arrow-left" aria-hidden="true" />
           All customers
         </Link>
-      </div>
+      </RevealItem>
 
       {/* ── Customer header card ──────────────────────────────────────── */}
-      <div className="card cpad between">
-        {/* Domain avatar + identity */}
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <span className="admin-dom-av" style={{ width: "46px", height: "46px", fontSize: "18px", borderRadius: "13px" }} aria-hidden="true">
-            {(site.domain[0] ?? "?").toUpperCase()}
-          </span>
-          <div>
-            <h1
-              style={{
-                fontFamily: "'Satoshi', system-ui, sans-serif",
-                fontSize: "20px",
-                fontWeight: 700,
-                color: "var(--deep)",
-                letterSpacing: "-.02em",
-              }}
-            >
-              {site.domain}
-            </h1>
-            <p style={{ fontSize: "13px", color: "var(--t2)", marginTop: "2px" }}>
-              {site.ownerEmail} · joined {new Date(site.createdAt).toLocaleDateString()}
-            </p>
+      <RevealItem>
+        <div className="card cpad between admin-detail-head">
+          {/* Domain avatar + identity */}
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <span className="admin-dom-av" style={{ width: "46px", height: "46px", fontSize: "18px", borderRadius: "13px" }} aria-hidden="true">
+              {(site.domain[0] ?? "?").toUpperCase()}
+            </span>
+            <div>
+              <h1
+                style={{
+                  fontFamily: "'Satoshi', system-ui, sans-serif",
+                  fontSize: "20px",
+                  fontWeight: 700,
+                  color: "var(--deep)",
+                  letterSpacing: "-.02em",
+                }}
+              >
+                {site.domain}
+              </h1>
+              <p style={{ fontSize: "13px", color: "var(--t2)", marginTop: "2px" }}>
+                {site.ownerEmail} · joined {new Date(site.createdAt).toLocaleDateString()}
+              </p>
+            </div>
+          </div>
+
+          {/* Plan select — PlanSelect client component, functionality unchanged */}
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <span style={{ fontSize: "13px", color: "var(--t2)", fontWeight: 600 }}>Plan</span>
+            <PlanSelect siteId={site.id} plan={site.plan} />
           </div>
         </div>
-
-        {/* Plan select — PlanSelect client component, functionality unchanged */}
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <span style={{ fontSize: "13px", color: "var(--t2)", fontWeight: 600 }}>Plan</span>
-          <PlanSelect siteId={site.id} plan={site.plan} />
-        </div>
-      </div>
+      </RevealItem>
 
       {/* ── Scan history ──────────────────────────────────────────────── */}
-      <section>
+      <RevealItem as="section">
         <p className="admin-section-label">Scan history</p>
-        <div className="tcard">
+        <MotionTable className="tcard admin-tbl-scans admin-card-tbl" role="table" aria-label="Scan history">
+          <div className="thead" role="row">
+            <div role="columnheader">Score</div>
+            <div role="columnheader" style={{ textAlign: "right" }}>Logged</div>
+          </div>
           {site.scans.length === 0 && (
-            <div className="trow" style={{ gridTemplateColumns: "1fr" }}>
-              <p style={{ color: "var(--t2)", fontSize: "13px" }}>No scans yet.</p>
-            </div>
+            <MotionRow className="trow" style={{ gridTemplateColumns: "1fr" }} role="row">
+              <div role="cell" style={{ color: "var(--t2)", fontSize: "13px" }}>No scans yet.</div>
+            </MotionRow>
           )}
           {site.scans.map((sc) => (
-            <div
-              key={sc.id}
-              className="trow"
-              style={{
-                gridTemplateColumns: "auto 1fr",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              {/* Score pill */}
-              <span className={`pill ${scoreTone(sc.score)}`}>
-                {sc.score}
-                <span style={{ opacity: 0.7, fontWeight: 500 }}>/100</span>
-              </span>
+            <MotionRow key={sc.id} className="trow" role="row">
+              {/* Score pill (the mobile card title row) */}
+              <div role="cell" data-primary>
+                <span className={`pill ${scoreTone(sc.score)}`}>
+                  {sc.score}
+                  <span style={{ opacity: 0.7, fontWeight: 500 }}>/100</span>
+                </span>
+              </div>
               {/* Timestamp */}
-              <span
+              <div
+                role="cell"
+                data-label="Logged"
                 style={{
                   color: "var(--t3)",
                   fontSize: "12.5px",
@@ -126,36 +130,36 @@ export default async function AdminSiteDetail({
                 }}
               >
                 {new Date(sc.createdAt).toLocaleString()}
-              </span>
-            </div>
+              </div>
+            </MotionRow>
           ))}
-        </div>
-      </section>
+        </MotionTable>
+      </RevealItem>
 
       {/* ── Consultation requests ─────────────────────────────────────── */}
-      <section>
+      <RevealItem as="section">
         <p className="admin-section-label">Consultation requests</p>
-        <div className="tcard">
+        <MotionTable className="tcard admin-tbl-detreq admin-card-tbl" role="table" aria-label="Consultation requests for this customer">
+          <div className="thead" role="row">
+            <div role="columnheader">Type</div>
+            <div role="columnheader">When</div>
+            <div role="columnheader">Status</div>
+          </div>
           {site.requests.length === 0 && (
-            <div className="trow" style={{ gridTemplateColumns: "1fr" }}>
-              <p style={{ color: "var(--t2)", fontSize: "13px" }}>No requests.</p>
-            </div>
+            <MotionRow className="trow" style={{ gridTemplateColumns: "1fr" }} role="row">
+              <div role="cell" style={{ color: "var(--t2)", fontSize: "13px" }}>No requests.</div>
+            </MotionRow>
           )}
           {site.requests.map((r) => (
-            <div
-              key={r.id}
-              className="trow"
-              style={{
-                gridTemplateColumns: "1fr auto auto",
-                alignItems: "center",
-              }}
-            >
-              {/* Type */}
-              <span style={{ fontWeight: 700, color: "var(--deep)", fontSize: "13.5px" }}>
+            <MotionRow key={r.id} className="trow" role="row">
+              {/* Type (the mobile card title row) */}
+              <div role="cell" data-primary style={{ fontWeight: 700, color: "var(--deep)", fontSize: "13.5px" }}>
                 {r.type === "book_call" ? "Book a call" : "Full report"}
-              </span>
+              </div>
               {/* Date */}
-              <span
+              <div
+                role="cell"
+                data-label="When"
                 style={{
                   color: "var(--t3)",
                   fontSize: "12px",
@@ -163,15 +167,17 @@ export default async function AdminSiteDetail({
                 }}
               >
                 {new Date(r.createdAt).toLocaleDateString()}
-              </span>
+              </div>
               {/* Status pill */}
-              <span className={`pill ${statusTone(r.status)}`} style={{ textTransform: "capitalize" }}>
-                {r.status}
-              </span>
-            </div>
+              <div role="cell" data-label="Status">
+                <span className={`pill ${statusTone(r.status)}`} style={{ textTransform: "capitalize" }}>
+                  {r.status}
+                </span>
+              </div>
+            </MotionRow>
           ))}
-        </div>
-      </section>
-    </div>
+        </MotionTable>
+      </RevealItem>
+    </PageTransition>
   );
 }

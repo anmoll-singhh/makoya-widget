@@ -14,6 +14,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { PLANS, type Plan } from "@/lib/admin-constants";
+import { LoadingButton } from "@/components/motion/LoadingButton";
 
 const LOADER_URL = "https://makoya-gamma.vercel.app/widget/loader.js";
 
@@ -228,13 +229,20 @@ export function AddCustomerForm() {
       )}
 
       <div className="mt-4">
-        <button
+        {/* Creative async button: instead of a 3-dot spinner the label morphs
+            into the brand "scan" loader while the customer is created. Uses the
+            dashboard .btn.pri styling for visual parity with the rest of admin.
+            LoadingButton renders a real <button> and is reduced-motion safe. */}
+        <LoadingButton
           type="submit"
+          loading={busy}
+          busyLabel="Creating…"
           disabled={busy || !email.trim() || !domain.trim()}
-          className="transition-colors inline-flex items-center rounded-xl bg-signal-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-signal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-500/40 disabled:opacity-60"
+          className="btn pri"
         >
-          {busy ? "Creating…" : "Create customer"}
-        </button>
+          <i className="ti ti-user-plus" aria-hidden="true" />
+          Create customer
+        </LoadingButton>
       </div>
     </form>
   );

@@ -11,6 +11,8 @@ import { redirect } from "next/navigation";
 import { getAdminUser } from "@/lib/auth/require-admin";
 import { listConsultationRequests } from "@/lib/admin";
 import { StatusSelect } from "@/components/admin/StatusSelect";
+import { PageTransition, RevealItem } from "@/components/motion/PageTransition";
+import { MotionTable, MotionRow } from "@/components/admin/MotionTable";
 
 /** Map a request status to a v7 pill tone. */
 function statusTone(status: string): string {
@@ -33,28 +35,30 @@ export default async function AdminRequests() {
   const open = requests.filter((r) => r.status === "new").length;
 
   return (
-    <div>
+    <PageTransition stagger={0.08}>
       {/* ── Page header ──────────────────────────────────────────────── */}
-      <div className="between" style={{ marginBottom: "22px" }}>
-        <div>
-          <div className="pagehead" style={{ marginBottom: 0 }}>
-            Admin CRM
-            <b>Consultation requests</b>
+      <RevealItem>
+        <div className="between" style={{ marginBottom: "22px" }}>
+          <div>
+            <div className="pagehead" style={{ marginBottom: 0 }}>
+              Admin CRM
+              <b>Consultation requests</b>
+            </div>
+            <p style={{ fontSize: "13px", color: "var(--t2)", marginTop: "4px" }}>
+              {open > 0
+                ? `${open} new request${open === 1 ? "" : "s"} waiting on you.`
+                : "All caught up."}
+            </p>
           </div>
-          <p style={{ fontSize: "13px", color: "var(--t2)", marginTop: "4px" }}>
-            {open > 0
-              ? `${open} new request${open === 1 ? "" : "s"} waiting on you.`
-              : "All caught up."}
-          </p>
+          <Link href="/admin" className="btn">
+            <i className="ti ti-arrow-left" aria-hidden="true" />
+            Customers
+          </Link>
         </div>
-        <Link href="/admin" className="btn">
-          <i className="ti ti-arrow-left" aria-hidden="true" />
-          Customers
-        </Link>
-      </div>
+      </RevealItem>
 
-      {/* ── Requests table ───────────────────────────────────────────── */}
-      <div className="tcard admin-tbl-requests" role="table" aria-label="Consultation requests">
+      {/* ── Requests table (stacked cards < 768px via .admin-card-tbl) ─── */}
+      <MotionTable className="tcard admin-tbl-requests admin-card-tbl" role="table" aria-label="Consultation requests">
         {/* Header */}
         <div className="thead" role="row">
           <div role="columnheader">Site</div>
@@ -65,7 +69,7 @@ export default async function AdminRequests() {
 
         {/* Empty state */}
         {requests.length === 0 && (
-          <div
+          <MotionRow
             className="trow"
             style={{ gridTemplateColumns: "1fr", justifyItems: "center", color: "var(--t2)" }}
             role="row"
@@ -73,14 +77,14 @@ export default async function AdminRequests() {
             <div role="cell">
               No requests yet — they appear when a customer asks for the full report or a call.
             </div>
-          </div>
+          </MotionRow>
         )}
 
         {/* Rows */}
         {requests.map((r) => (
-          <div className="trow" key={r.id} role="row">
-            {/* Site */}
-            <div role="cell">
+          <MotionRow className="trow" key={r.id} role="row">
+            {/* Site (the mobile card title row) */}
+            <div role="cell" data-primary>
               <Link
                 href={`/admin/sites/${r.siteId}`}
                 style={{ fontWeight: 700, color: "var(--primary-hover)", textDecoration: "none" }}
@@ -90,22 +94,22 @@ export default async function AdminRequests() {
             </div>
 
             {/* Type */}
-            <div role="cell" style={{ color: "var(--t2)" }}>
+            <div role="cell" data-label="Type" style={{ color: "var(--t2)" }}>
               {r.type === "book_call" ? "Book a call" : "Full report"}
             </div>
 
             {/* When */}
-            <div role="cell" style={{ color: "var(--t3)", fontSize: "12.5px", fontVariantNumeric: "tabular-nums" }}>
+            <div role="cell" data-label="When" style={{ color: "var(--t3)", fontSize: "12.5px", fontVariantNumeric: "tabular-nums" }}>
               {new Date(r.createdAt).toLocaleString()}
             </div>
 
             {/* Status: StatusSelect client component — functionality unchanged */}
-            <div role="cell">
+            <div role="cell" data-label="Status">
               <StatusSelect id={r.id} status={r.status} />
             </div>
-          </div>
+          </MotionRow>
         ))}
-      </div>
-    </div>
+      </MotionTable>
+    </PageTransition>
   );
 }

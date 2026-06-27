@@ -17,6 +17,8 @@ import { redirect } from "next/navigation";
 import { getAdminUser } from "@/lib/auth/require-admin";
 import { listAdminSites } from "@/lib/admin";
 import { AddCustomerForm } from "@/components/admin/AddCustomerForm";
+import { PageTransition, RevealItem } from "@/components/motion/PageTransition";
+import { MotionTable, MotionRow } from "@/components/admin/MotionTable";
 
 /** Map a nullable score to a v7 pill tone class. */
 function scoreTone(score: number | null): string {
@@ -44,52 +46,68 @@ export default async function AdminHome() {
   ];
 
   return (
-    <div>
+    // Whole-screen entrance + staggered cascade of the major blocks.
+    // PageTransition/RevealItem self-disable under prefers-reduced-motion.
+    <PageTransition stagger={0.08}>
       {/* ── Page header ──────────────────────────────────────────────── */}
-      <div className="between" style={{ marginBottom: "22px" }}>
-        <div className="pagehead" style={{ marginBottom: 0 }}>
-          Admin CRM
-          <b>Customers</b>
+      <RevealItem>
+        <div className="between" style={{ marginBottom: "22px" }}>
+          <div className="pagehead" style={{ marginBottom: 0 }}>
+            Admin CRM
+            <b>Customers</b>
+          </div>
+          <Link href="/admin/requests" className="btn pri">
+            <i className="ti ti-message-dots" aria-hidden="true" />
+            Requests inbox
+            {openTotal > 0 && (
+              <span
+                className="pill high"
+                style={{ marginLeft: "2px", padding: "2px 7px", fontSize: "11px" }}
+                aria-label={`${openTotal} open`}
+              >
+                {openTotal}
+              </span>
+            )}
+          </Link>
         </div>
-        <Link href="/admin/requests" className="btn pri">
-          <i className="ti ti-message-dots" aria-hidden="true" />
-          Requests inbox
-          {openTotal > 0 && (
-            <span
-              className="pill high"
-              style={{ marginLeft: "2px", padding: "2px 7px", fontSize: "11px" }}
-              aria-label={`${openTotal} open`}
-            >
-              {openTotal}
-            </span>
-          )}
-        </Link>
-      </div>
+      </RevealItem>
 
       {/* ── Onboard a new customer ───────────────────────────────────── */}
-      {/* AddCustomerForm is kept byte-for-byte — only the page layout changes */}
-      <AddCustomerForm />
+      <RevealItem>
+        <AddCustomerForm />
+      </RevealItem>
 
       {/* ── Stat cards ────────────────────────────────────────────────── */}
-      <div className="admin-stats" style={{ marginTop: "24px" }}>
-        {stats.map((s) => (
-          <div key={s.label} className="mcard">
-            <div className="l">
-              <i className={s.icon} aria-hidden="true" />
-              {s.label}
+      <RevealItem>
+        <div className="admin-stats" style={{ marginTop: "24px" }}>
+          {stats.map((s) => (
+            <div key={s.label} className="mcard">
+              <div className="l">
+                <i className={s.icon} aria-hidden="true" />
+                {s.label}
+              </div>
+              <div
+                className="big"
+                style={s.accent ? { color: "var(--warn)" } : undefined}
+              >
+                {s.value}
+              </div>
             </div>
-            <div
-              className="big"
-              style={s.accent ? { color: "var(--warn)" } : undefined}
-            >
-              {s.value}
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      </RevealItem>
 
-      {/* ── Customer table ────────────────────────────────────────────── */}
-      <div className="tcard admin-tbl-customers" role="table" aria-label="Customer list">
+      {/* ── Customer table ───────────────────────────────────────────────
+          MotionTable IS the role="table" element + a stagger parent; each
+          MotionRow IS a role="row" stagger child. Below 768px admin.css
+          (.admin-card-tbl) collapses the grid into stacked cards using each
+          cell's data-label; the .thead stays sr-only for column association. */}
+      <MotionTable
+        className="tcard admin-tbl-customers admin-card-tbl"
+        role="table"
+        aria-label="Customer list"
+        style={{ marginTop: "24px" }}
+      >
         {/* Header */}
         <div className="thead" role="row">
           <div role="columnheader">Customer</div>
@@ -100,20 +118,20 @@ export default async function AdminHome() {
 
         {/* Empty state */}
         {sites.length === 0 && (
-          <div
+          <MotionRow
             className="trow"
             style={{ gridTemplateColumns: "1fr", justifyItems: "center", color: "var(--t2)" }}
             role="row"
           >
             <div role="cell">No customers yet — they&apos;ll appear here as people add sites.</div>
-          </div>
+          </MotionRow>
         )}
 
         {/* Rows */}
         {sites.map((s) => (
-          <div className="trow" key={s.id} role="row">
-            {/* Customer: avatar + domain + email */}
-            <div role="cell">
+          <MotionRow className="trow" key={s.id} role="row">
+            {/* Customer: avatar + domain + email (the mobile card title row) */}
+            <div role="cell" data-primary>
               <Link
                 href={`/admin/sites/${s.id}`}
                 style={{ display: "flex", alignItems: "center", gap: "12px", textDecoration: "none" }}
@@ -142,30 +160,30 @@ export default async function AdminHome() {
             </div>
 
             {/* Plan */}
-            <div role="cell">
+            <div role="cell" data-label="Plan">
               <span className="pill gray" style={{ textTransform: "capitalize" }}>
                 {s.plan}
               </span>
             </div>
 
             {/* Last score */}
-            <div role="cell">
+            <div role="cell" data-label="Last score">
               <span className={`pill ${scoreTone(s.lastScanScore)}`}>
                 {s.lastScanScore ?? "—"}
               </span>
             </div>
 
             {/* Open requests */}
-            <div role="cell">
+            <div role="cell" data-label="Open">
               {s.openRequests > 0 ? (
                 <span className="pill high">{s.openRequests}</span>
               ) : (
                 <span style={{ color: "var(--t3)", fontSize: "13px" }}>0</span>
               )}
             </div>
-          </div>
+          </MotionRow>
         ))}
-      </div>
-    </div>
+      </MotionTable>
+    </PageTransition>
   );
 }
