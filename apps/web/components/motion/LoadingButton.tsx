@@ -60,7 +60,14 @@ function ScanLoader({ reduce }: { reduce: boolean }) {
           </linearGradient>
         </defs>
         {/* faint track */}
-        <circle cx="12" cy="12" r="9" stroke="currentColor" strokeOpacity="0.25" strokeWidth="2.5" />
+        <circle
+          cx="12"
+          cy="12"
+          r="9"
+          stroke="currentColor"
+          strokeOpacity="0.25"
+          strokeWidth="2.5"
+        />
         {/* rotating scanner arc */}
         <motion.g
           style={{ originX: "12px", originY: "12px" }}

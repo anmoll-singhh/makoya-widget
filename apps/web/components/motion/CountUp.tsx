@@ -33,7 +33,7 @@ export function CountUp({
   const ref = React.useRef<HTMLSpanElement>(null);
   const fmt = React.useCallback(
     (n: number) => `${prefix}${n.toFixed(decimals)}${suffix}`,
-    [decimals, prefix, suffix],
+    [decimals, prefix, suffix]
   );
 
   React.useEffect(() => {
