@@ -11,6 +11,12 @@
  *    "guaranteed", or "lawsuit-proof". The FTC fined accessiBe $1M for exactly
  *    those automated-compliance claims.
  *  - State real findings plainly; offer to fix them at the source and monitor.
+ *
+ * Block 26 additions:
+ *  - Issues are now sorted by severity (critical → minor) before being exposed.
+ *  - `remainingItems` — a punch-list of every issue (all Open) for the PDF footer
+ *    section "Remaining items to fix". Derived from the sorted issue list so the
+ *    two sections always agree.
  */
 
 import { hostOf } from "@/lib/utils/url";
@@ -59,6 +65,19 @@ export interface ReportContentIssue {
   measuredEvidence: string;
 }
 
+/**
+ * One row in the "remaining items to fix" punch-list at the end of the report.
+ * All items have status "Open" — the PDF is a snapshot of what was found, not
+ * a ticket tracker. Readers use this section as a plain checklist.
+ */
+export interface RemainingItem {
+  num: number;
+  /** Human severity label ("Critical", "Serious", "Moderate", "Minor", or "—"). */
+  severity: string;
+  title: string;
+  status: "Open";
+}
+
 /** Human labels for the structured disability groups (PDF badge text). */
 const DISABILITY_LABEL: Record<string, string> = {
   "blind": "Blind",
@@ -94,7 +113,10 @@ export interface ReportContent {
   dateLabel: string;
   totals: Required<ReportPdfTotals>;
   severityRows: SeverityRow[];
+  /** Issues sorted by severity: critical first, then serious, moderate, minor, null last. */
   issues: ReportContentIssue[];
+  /** Punch-list of every issue (all Open) for the "Remaining items to fix" section. */
+  remainingItems: RemainingItem[];
   intro: string;
   partialNote: string | null;
   disclaimer: string;
@@ -141,6 +163,12 @@ function verdictFor(score: number): string {
   return "Several visitors likely can't use parts of this page.";
 }
 
+/** Severity sort key: critical=0 < serious=1 < moderate=2 < minor=3 < null=4. */
+function severitySortKey(impact: ReportSeverity | null): number {
+  if (impact === null) return SEVERITY_ORDER.length;
+  return SEVERITY_ORDER.indexOf(impact);
+}
+
 export function buildReportContent(input: ReportPdfInput): ReportContent {
   const host = hostOf(input.url);
   const score = clampScore(input.score);
@@ -162,6 +190,8 @@ export function buildReportContent(input: ReportPdfInput): ReportContent {
     count: totals[key],
   }));
 
+  // Map, defensively cap fields, then sort by severity so Critical items appear
+  // first in the detailed section and the punch-list.
   const issues: ReportContentIssue[] = (input.topIssues ?? [])
     .slice(0, MAX_ISSUES)
     .map((i) => {
@@ -177,7 +207,17 @@ export function buildReportContent(input: ReportPdfInput): ReportContent {
         howToFix: clip(i.howToFix),
         measuredEvidence: clip(i.measuredEvidence),
       };
-    });
+    })
+    .sort((a, b) => severitySortKey(a.impact) - severitySortKey(b.impact));
+
+  // Punch-list: every issue found, numbered, status Open.
+  // Derived from the already-sorted `issues` list so order is consistent.
+  const remainingItems: RemainingItem[] = issues.map((issue, idx) => ({
+    num: idx + 1,
+    severity: issue.impactLabel || "—",
+    title: issue.title,
+    status: "Open",
+  }));
 
   const intro =
     total > 0
@@ -220,6 +260,7 @@ export function buildReportContent(input: ReportPdfInput): ReportContent {
     totals,
     severityRows,
     issues,
+    remainingItems,
     intro,
     partialNote,
     disclaimer,

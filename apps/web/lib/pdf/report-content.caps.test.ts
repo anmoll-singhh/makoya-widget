@@ -36,6 +36,10 @@ describe("buildReportContent — defensive input caps", () => {
       topIssues,
     });
     expect(c.issues).toHaveLength(50);
+    // punch-list is derived from the capped issues — must match exactly
+    expect(c.remainingItems).toHaveLength(50);
+    expect(c.remainingItems[0].num).toBe(1);
+    expect(c.remainingItems[49].num).toBe(50);
   });
 
   it("truncates over-long string fields to 600 chars", () => {

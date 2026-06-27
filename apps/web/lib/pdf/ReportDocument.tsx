@@ -1,222 +1,644 @@
 /**
- * lib/pdf/ReportDocument.tsx — the visual layout of the scan report PDF.
+ * lib/pdf/ReportDocument.tsx — branded, premium PDF layout for the scan report.
  *
- * Pure presentation: it takes a fully-built `ReportContent` (see report-content.ts,
+ * Pure presentation: takes a fully-built `ReportContent` (see report-content.ts,
  * where all copy + the honesty guardrail live) and arranges it with
  * @react-pdf/renderer primitives. No data logic here, no I/O.
  *
- * Fonts: we deliberately use the built-in Helvetica family (no Font.register).
- * Registering web fonts means a network fetch at render time, which is exactly
- * the kind of thing that breaks intermittently on serverless — and our widget
- * rules ("always render with a fallback") apply in spirit here too.
+ * Block 26 redesign:
+ *  - Full-width navy (#0D1B4D) cover header + signal-blue (#1E63FF) accent stripe.
+ *  - Score hero: large number, verdict, flex-based progress bar.
+ *  - Severity breakdown TABLE (header row + data rows + total row).
+ *  - Per-issue detail cards: key/value row table with labels, disability chips,
+ *    bullet how-to-fix, monospace evidence. Cards sorted critical-first (done in
+ *    the content model).
+ *  - "Remaining items to fix" punch-list TABLE at the end: # / Severity / Issue / Status.
+ *  - Fixed footer with page numbers via react-pdf render prop.
+ *
+ * Fonts: built-in Helvetica family only — no Font.register() because network
+ * fetches at serverless render time are unreliable (widget rule: always fallback).
  */
 
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import type { ReportContent, ReportSeverity } from "./report-content";
 
-const BRAND = "#2563eb";
-const INK = "#0f172a";
-const MUTED = "#475569";
-const FAINT = "#94a3b8";
-const LINE = "#e2e8f0";
+// ── Brand palette ────────────────────────────────────────────────────────────
+const NAVY   = "#0D1B4D";
+const BLUE   = "#1E63FF";
+const GREEN  = "#1FA86B";
+const WHITE  = "#FFFFFF";
+const INK    = "#0f172a";
+const MUTED  = "#475569";
+const FAINT  = "#94a3b8";
+const LINE   = "#e2e8f0";
+const SURF   = "#f8fafc";
 
 const SEVERITY_COLOR: Record<ReportSeverity, string> = {
   critical: "#dc2626",
-  serious: "#ea580c",
+  serious:  "#ea580c",
   moderate: "#d97706",
-  minor: "#0284c7",
+  minor:    "#0284c7",
+};
+
+const SEVERITY_BG: Record<ReportSeverity, string> = {
+  critical: "#fff0f0",
+  serious:  "#fff7ed",
+  moderate: "#fffbeb",
+  minor:    "#eff6ff",
+};
+
+const SEVERITY_DESCRIPTION: Record<ReportSeverity, string> = {
+  critical: "Blocks users entirely — fix first.",
+  serious:  "Significant barrier for many visitors.",
+  moderate: "Creates friction; reduces usability.",
+  minor:    "Small inconvenience; fix when possible.",
 };
 
 function scoreColor(score: number): string {
-  if (score >= 80) return "#059669";
+  if (score >= 80) return GREEN;
   if (score >= 60) return "#d97706";
   return "#dc2626";
 }
 
+// ── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  page: { paddingTop: 48, paddingBottom: 56, paddingHorizontal: 48, fontFamily: "Helvetica", color: INK, fontSize: 10.5, lineHeight: 1.5 },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", borderBottomWidth: 1, borderBottomColor: LINE, paddingBottom: 12, marginBottom: 20 },
-  wordmark: { fontFamily: "Helvetica-Bold", fontSize: 18, color: INK },
-  wordmarkDot: { color: BRAND },
-  tagline: { fontSize: 8.5, color: FAINT, marginTop: 2 },
-  metaRight: { textAlign: "right", fontSize: 8.5, color: FAINT },
-  h1: { fontFamily: "Helvetica-Bold", fontSize: 15, marginBottom: 4 },
-  intro: { color: MUTED, marginBottom: 18 },
-  scoreRow: { flexDirection: "row", alignItems: "center", gap: 18, padding: 16, borderWidth: 1, borderColor: LINE, borderRadius: 8, marginBottom: 16 },
-  scoreNum: { fontFamily: "Helvetica-Bold", fontSize: 40, lineHeight: 1 },
-  scoreOf: { fontSize: 11, color: FAINT },
-  verdict: { fontFamily: "Helvetica-Bold", fontSize: 11.5, marginBottom: 2 },
-  verdictSub: { color: MUTED, fontSize: 10 },
-  sevGrid: { flexDirection: "row", gap: 8, marginBottom: 22 },
-  sevCell: { flex: 1, borderWidth: 1, borderColor: LINE, borderRadius: 6, paddingVertical: 8, paddingHorizontal: 10 },
-  sevCount: { fontFamily: "Helvetica-Bold", fontSize: 16 },
-  sevLabel: { fontSize: 8.5, color: MUTED, marginTop: 1 },
-  sectionTitle: { fontFamily: "Helvetica-Bold", fontSize: 12, marginBottom: 10 },
-  issue: { borderWidth: 1, borderColor: LINE, borderRadius: 6, padding: 11, marginBottom: 8 },
-  issueHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 4 },
-  issueTitle: { fontFamily: "Helvetica-Bold", fontSize: 10.5, flex: 1 },
-  chip: { fontFamily: "Helvetica-Bold", fontSize: 7.5, color: "#ffffff", borderRadius: 8, paddingVertical: 2, paddingHorizontal: 7 },
-  issueBody: { color: MUTED },
-  issueAffects: { color: FAINT, fontSize: 9, marginTop: 3 },
-  emptyBox: { borderWidth: 1, borderColor: "#bbf7d0", backgroundColor: "#f0fdf4", borderRadius: 6, padding: 12, marginBottom: 22, color: "#15803d" },
-  steps: { marginBottom: 20 },
-  step: { flexDirection: "row", gap: 6, marginBottom: 4 },
-  stepBullet: { color: BRAND, fontFamily: "Helvetica-Bold" },
-  stepText: { flex: 1, color: MUTED },
-  note: { fontSize: 9, color: FAINT, marginBottom: 14 },
-  disclaimer: { borderWidth: 1, borderColor: LINE, backgroundColor: "#f8fafc", borderRadius: 6, padding: 12, fontSize: 9, color: MUTED },
-  disclaimerLabel: { fontFamily: "Helvetica-Bold", color: INK, fontSize: 9.5, marginBottom: 3 },
-  footer: { position: "absolute", left: 48, right: 48, bottom: 28, borderTopWidth: 1, borderTopColor: LINE, paddingTop: 8, fontSize: 8, color: FAINT, textAlign: "center" },
-  // Diagonal brand watermark, repeated on EVERY page via `fixed`. Faint enough
-  // not to impair reading, present enough to mark provenance on every sheet.
+  // Page: no horizontal padding — handled inside coverBand + body so the header
+  // can bleed edge-to-edge at its own padding level.
+  page: {
+    paddingTop: 0,
+    paddingBottom: 64,
+    paddingHorizontal: 0,
+    fontFamily: "Helvetica",
+    color: INK,
+    fontSize: 10,
+    lineHeight: 1.55,
+    backgroundColor: WHITE,
+  },
+
+  // ── Cover header ──────────────────────────────────────────────────────────
+  coverBand: {
+    backgroundColor: NAVY,
+    paddingTop: 40,
+    paddingBottom: 24,
+    paddingHorizontal: 48,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+  },
+  wordmark: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 28,
+    color: WHITE,
+    letterSpacing: 0.4,
+  },
+  wordmarkDot: { color: BLUE },
+  tagline: { fontSize: 8.5, color: "#93c5fd", marginTop: 4 },
+  metaBlock: { textAlign: "right" },
+  metaReportLabel: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 7.5,
+    color: "#cbd5e1",
+    letterSpacing: 1.2,
+    marginBottom: 5,
+  },
+  metaUrl: { fontSize: 8.5, color: "#e2e8f0", marginBottom: 2 },
+  metaDate: { fontSize: 8, color: "#94a3b8" },
+
+  // Signal-blue stripe under the header
+  accentStripe: {
+    height: 4,
+    backgroundColor: BLUE,
+    marginBottom: 26,
+  },
+
+  // ── Main body wrapper (provides horizontal padding for all sections) ───────
+  body: { paddingHorizontal: 48 },
+
+  // ── Typography ────────────────────────────────────────────────────────────
+  reportTitle: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 16,
+    color: INK,
+    marginBottom: 6,
+  },
+  intro: { color: MUTED, marginBottom: 20, fontSize: 9.5 },
+  sectionTitle: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 12.5,
+    color: INK,
+    marginBottom: 8,
+    marginTop: 2,
+  },
+  sectionRule: {
+    borderBottomWidth: 1,
+    borderBottomColor: LINE,
+    marginBottom: 14,
+  },
+
+  // ── Score hero ────────────────────────────────────────────────────────────
+  scoreHero: {
+    flexDirection: "row",
+    borderWidth: 1,
+    borderColor: LINE,
+    borderRadius: 8,
+    marginBottom: 22,
+    backgroundColor: WHITE,
+  },
+  scoreLeft: {
+    width: 116,
+    backgroundColor: SURF,
+    borderRightWidth: 1,
+    borderRightColor: LINE,
+    borderTopLeftRadius: 8,
+    borderBottomLeftRadius: 8,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 22,
+  },
+  scoreNum: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 58,
+    lineHeight: 1,
+    textAlign: "center",
+  },
+  scoreOf: { fontSize: 11, color: FAINT, textAlign: "center", marginTop: 3 },
+  scoreRight: { flex: 1, padding: 18, justifyContent: "center" },
+  verdict: { fontFamily: "Helvetica-Bold", fontSize: 13, marginBottom: 5 },
+  verdictSub: { color: MUTED, fontSize: 9, marginBottom: 12 },
+  scoreBarBg: {
+    height: 8,
+    backgroundColor: LINE,
+    borderRadius: 4,
+    flexDirection: "row",
+  },
+  scoreBarFill: { borderRadius: 4, height: 8 },
+
+  // ── Severity breakdown table ───────────────────────────────────────────────
+  table: {
+    borderWidth: 1,
+    borderColor: LINE,
+    borderRadius: 6,
+    marginBottom: 22,
+  },
+  tHeadRow: {
+    flexDirection: "row",
+    backgroundColor: NAVY,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    borderTopLeftRadius: 5,
+    borderTopRightRadius: 5,
+  },
+  tHeadCell: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 7.5,
+    color: WHITE,
+    letterSpacing: 0.8,
+  },
+  tRow: {
+    flexDirection: "row",
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    borderTopWidth: 1,
+    borderTopColor: LINE,
+    alignItems: "center",
+  },
+  tRowAlt: { backgroundColor: SURF },
+  tTotalRow: {
+    flexDirection: "row",
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderTopWidth: 2,
+    borderTopColor: "#cbd5e1",
+    backgroundColor: "#eef2ff",
+    borderBottomLeftRadius: 5,
+    borderBottomRightRadius: 5,
+    alignItems: "center",
+  },
+  tCell: { fontSize: 9, color: INK },
+  tCellMuted: { fontSize: 9, color: MUTED },
+  tCellBold: { fontFamily: "Helvetica-Bold", fontSize: 9, color: INK },
+  tTotalLabel: { fontFamily: "Helvetica-Bold", fontSize: 9.5, color: NAVY },
+
+  // Severity dot (coloured circle used in the severity table)
+  sevDot: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
+
+  // ── Issue cards ───────────────────────────────────────────────────────────
+  issueCard: {
+    marginBottom: 10,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: LINE,
+  },
+  issueCardHead: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: LINE,
+    gap: 8,
+  },
+  issueTitle: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 10,
+    color: INK,
+    flex: 1,
+  },
+  chip: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 7,
+    color: WHITE,
+    borderRadius: 4,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+  },
+  // Key/value row inside an issue card
+  issueRow: {
+    flexDirection: "row",
+    borderTopWidth: 1,
+    borderTopColor: LINE,
+  },
+  issueRowLabel: {
+    width: 108,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    backgroundColor: SURF,
+    borderRightWidth: 1,
+    borderRightColor: LINE,
+    fontFamily: "Helvetica-Bold",
+    fontSize: 7.5,
+    color: MUTED,
+  },
+  issueRowValue: {
+    flex: 1,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    fontSize: 9,
+    color: INK,
+  },
+  // Disability group chips
+  chipsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 4,
+  },
+  groupChip: {
+    fontSize: 7.5,
+    color: BLUE,
+    borderWidth: 1,
+    borderColor: "#bfdbfe",
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    backgroundColor: "#eff6ff",
+  },
+  // Bullet row for how-to-fix
+  bulletRow: {
+    flexDirection: "row",
+    gap: 5,
+    marginBottom: 2,
+  },
+  bulletDot: { color: BLUE, fontFamily: "Helvetica-Bold", fontSize: 10 },
+  bulletText: { flex: 1, color: MUTED, fontSize: 9 },
+  // Monospace evidence block
+  evidenceBlock: {
+    fontFamily: "Courier",
+    fontSize: 8,
+    color: "#374151",
+    backgroundColor: "#f1f5f9",
+    padding: 5,
+    borderRadius: 3,
+  },
+
+  // ── Empty / all-clear box ─────────────────────────────────────────────────
+  emptyBox: {
+    borderWidth: 1,
+    borderColor: "#bbf7d0",
+    backgroundColor: "#f0fdf4",
+    borderRadius: 6,
+    padding: 14,
+    marginBottom: 22,
+    color: "#15803d",
+    fontSize: 9.5,
+  },
+
+  // ── Next steps ────────────────────────────────────────────────────────────
+  steps: { marginBottom: 22 },
+  step: { flexDirection: "row", gap: 8, marginBottom: 5 },
+  stepArrow: { color: BLUE, fontFamily: "Helvetica-Bold", fontSize: 10 },
+  stepText: { flex: 1, color: MUTED, fontSize: 9.5 },
+
+  // ── Partial note ──────────────────────────────────────────────────────────
+  note: { fontSize: 8.5, color: FAINT, marginBottom: 16 },
+
+  // ── Honest disclaimer box ─────────────────────────────────────────────────
+  disclaimer: {
+    borderWidth: 1,
+    borderColor: "#fde68a",
+    backgroundColor: "#fffbeb",
+    borderRadius: 6,
+    padding: 13,
+    marginBottom: 26,
+  },
+  disclaimerLabel: {
+    fontFamily: "Helvetica-Bold",
+    color: "#92400e",
+    fontSize: 9.5,
+    marginBottom: 4,
+  },
+  disclaimerText: { fontSize: 9, color: "#78350f", lineHeight: 1.6 },
+
+  // ── Remaining items punch-list ────────────────────────────────────────────
+  punchTitle: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 12.5,
+    color: INK,
+    marginBottom: 4,
+  },
+  punchSub: { fontSize: 9, color: MUTED, marginBottom: 10 },
+
+  // ── Fixed page footer ─────────────────────────────────────────────────────
+  footer: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 48,
+    paddingTop: 10,
+    paddingBottom: 14,
+    borderTopWidth: 1,
+    borderTopColor: LINE,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: WHITE,
+  },
+  footerText: { fontSize: 7.5, color: FAINT },
+  footerPage: { fontSize: 7.5, color: FAINT },
+
+  // ── Diagonal brand watermark (repeated via `fixed`) ───────────────────────
   watermark: {
     position: "absolute",
-    top: "42%",
-    left: -40,
-    right: -40,
+    top: "40%",
+    left: -20,
+    right: -20,
     textAlign: "center",
     transform: "rotate(-28deg)",
     fontFamily: "Helvetica-Bold",
-    fontSize: 96,
-    letterSpacing: 6,
-    color: BRAND,
-    opacity: 0.06,
-  },
-  watermarkFoot: {
-    position: "absolute",
-    left: 48,
-    right: 48,
-    bottom: 14,
-    textAlign: "center",
-    fontSize: 7,
-    color: FAINT,
-    opacity: 0.8,
+    fontSize: 98,
+    letterSpacing: 8,
+    color: BLUE,
+    opacity: 0.03,
   },
 });
 
+// ── Component ────────────────────────────────────────────────────────────────
+
 export function ReportDocument({ content }: { content: ReportContent }) {
   const c = content;
+  const sc = scoreColor(c.score);
+
   return (
     <Document title={`Accessibility report — ${c.host}`} author="Makoya">
       <Page size="A4" style={s.page}>
-        {/* Brand watermark — `fixed` repeats it on every page */}
-        <Text style={s.watermark} fixed>
-          Makoya
-        </Text>
-        <Text style={s.watermarkFoot} fixed>
-          Makoya — honest web accessibility · makoya
-        </Text>
 
-        {/* Brand header */}
-        <View style={s.header}>
+        {/* Faint brand watermark — `fixed` repeats on every page */}
+        <Text style={s.watermark} fixed>Makoya</Text>
+
+        {/* ── Cover header band ──────────────────────────────────────────── */}
+        <View style={s.coverBand}>
           <View>
             <Text style={s.wordmark}>
               Makoya<Text style={s.wordmarkDot}>.</Text>
             </Text>
             <Text style={s.tagline}>Honest web accessibility</Text>
           </View>
-          <View>
-            <Text style={s.metaRight}>Accessibility report</Text>
-            <Text style={s.metaRight}>{c.url}</Text>
-            <Text style={s.metaRight}>{c.dateLabel}</Text>
+          <View style={s.metaBlock}>
+            <Text style={s.metaReportLabel}>ACCESSIBILITY REPORT</Text>
+            <Text style={s.metaUrl}>{c.url}</Text>
+            <Text style={s.metaDate}>{c.dateLabel}</Text>
           </View>
         </View>
 
-        <Text style={s.h1}>Accessibility scan for {c.host}</Text>
-        <Text style={s.intro}>{c.intro}</Text>
+        {/* Signal-blue accent stripe */}
+        <View style={s.accentStripe} />
 
-        {/* Score */}
-        <View style={s.scoreRow}>
-          <Text>
-            <Text style={[s.scoreNum, { color: scoreColor(c.score) }]}>{c.score}</Text>
-            <Text style={s.scoreOf}> / 100</Text>
-          </Text>
-          <View style={{ flex: 1 }}>
-            <Text style={s.verdict}>{c.scoreVerdict}</Text>
-            <Text style={s.verdictSub}>
-              {c.totals.total} {c.totals.total === 1 ? "issue" : "issues"} found on this page.
-            </Text>
-          </View>
-        </View>
+        {/* ── Body (all sections share this horizontal padding) ──────────── */}
+        <View style={s.body}>
 
-        {/* Severity breakdown */}
-        <View style={s.sevGrid}>
-          {c.severityRows.map((row) => (
-            <View key={row.key} style={s.sevCell}>
-              <Text style={[s.sevCount, { color: SEVERITY_COLOR[row.key] }]}>{row.count}</Text>
-              <Text style={s.sevLabel}>{row.label}</Text>
+          {/* Site title & intro */}
+          <Text style={s.reportTitle}>Accessibility scan — {c.host}</Text>
+          <Text style={s.intro}>{c.intro}</Text>
+
+          {/* ── Score hero ────────────────────────────────────────────────── */}
+          <View style={s.scoreHero}>
+            <View style={s.scoreLeft}>
+              <Text style={[s.scoreNum, { color: sc }]}>{c.score}</Text>
+              <Text style={s.scoreOf}>/ 100</Text>
             </View>
-          ))}
-        </View>
+            <View style={s.scoreRight}>
+              <Text style={[s.verdict, { color: sc }]}>{c.scoreVerdict}</Text>
+              <Text style={s.verdictSub}>
+                {c.totals.total} {c.totals.total === 1 ? "issue" : "issues"} detected across Critical, Serious, Moderate, and Minor categories.
+              </Text>
+              {/* Proportional score bar built with flex so no % widths needed */}
+              <View style={s.scoreBarBg}>
+                {c.score > 0 && (
+                  <View style={[s.scoreBarFill, { flex: c.score, backgroundColor: sc }]} />
+                )}
+                {c.score < 100 && (
+                  <View style={{ flex: 100 - c.score }} />
+                )}
+              </View>
+            </View>
+          </View>
 
-        {/* Issues or clean state */}
-        {c.issues.length > 0 ? (
-          <>
-            <Text style={s.sectionTitle}>Top things to fix</Text>
-            {c.issues.map((issue, idx) => (
-              <View key={`${issue.id}-${idx}`} style={s.issue} wrap={false}>
-                <View style={s.issueHead}>
-                  <Text style={s.issueTitle}>{issue.title}</Text>
-                  {issue.impact && (
-                    <Text style={[s.chip, { backgroundColor: SEVERITY_COLOR[issue.impact] }]}>
-                      {issue.impactLabel}
-                    </Text>
-                  )}
+          {/* ── Severity breakdown table ─────────────────────────────────── */}
+          <Text style={s.sectionTitle}>Severity breakdown</Text>
+          <View style={s.table}>
+            {/* Header */}
+            <View style={s.tHeadRow}>
+              <Text style={[s.tHeadCell, { flex: 1.4 }]}>Severity</Text>
+              <Text style={[s.tHeadCell, { flex: 0.5 }]}>Count</Text>
+              <Text style={[s.tHeadCell, { flex: 3 }]}>What it means</Text>
+            </View>
+            {/* Data rows */}
+            {c.severityRows.map((row, idx) => (
+              <View key={row.key} style={[s.tRow, idx % 2 === 1 ? s.tRowAlt : {}]}>
+                <View style={{ flex: 1.4, flexDirection: "row", alignItems: "center" }}>
+                  <View style={[s.sevDot, { backgroundColor: SEVERITY_COLOR[row.key] }]} />
+                  <Text style={[s.tCellBold, { color: SEVERITY_COLOR[row.key] }]}>
+                    {row.label}
+                  </Text>
                 </View>
-                <Text style={s.issueBody}>{issue.whatItMeans}</Text>
-                {issue.measuredEvidence ? (
-                  <Text style={[s.issueBody, { fontFamily: "Courier", fontSize: 8, color: "#374151" }]}>
-                    {issue.measuredEvidence}
-                  </Text>
-                ) : null}
-                {issue.disabilityGroups && issue.disabilityGroups.length > 0 ? (
-                  <Text style={[s.issueAffects, { color: "#1d4ed8" }]}>
-                    Who: {issue.disabilityGroups.join(" · ")}
-                  </Text>
-                ) : null}
-                {issue.howToFix ? (
-                  <Text style={[s.issueBody, { marginTop: 2 }]}>
-                    <Text style={{ fontFamily: "Helvetica-Bold" }}>How to fix: </Text>
-                    {issue.howToFix}
-                  </Text>
-                ) : null}
-                {issue.whoItAffects ? (
-                  <Text style={s.issueAffects}>Affects: {issue.whoItAffects}</Text>
-                ) : null}
+                <Text style={[s.tCellBold, { flex: 0.5 }]}>{row.count}</Text>
+                <Text style={[s.tCellMuted, { flex: 3 }]}>
+                  {SEVERITY_DESCRIPTION[row.key]}
+                </Text>
               </View>
             ))}
-          </>
-        ) : (
-          <View style={s.emptyBox}>
-            <Text>
-              No issues flagged in this automated pass. That&apos;s a good sign — but see the note
-              below on what automated scans can and can&apos;t catch.
-            </Text>
-          </View>
-        )}
-
-        {c.partialNote && <Text style={s.note}>{c.partialNote}</Text>}
-
-        {/* Next steps */}
-        <View style={s.steps}>
-          <Text style={s.sectionTitle}>What to do next</Text>
-          {c.nextSteps.map((step, i) => (
-            <View key={i} style={s.step}>
-              <Text style={s.stepBullet}>•</Text>
-              <Text style={s.stepText}>{step}</Text>
+            {/* Total row */}
+            <View style={s.tTotalRow}>
+              <Text style={[s.tTotalLabel, { flex: 1.4 }]}>Total issues</Text>
+              <Text style={[s.tTotalLabel, { flex: 0.5 }]}>{c.totals.total}</Text>
+              <Text style={[s.tCellMuted, { flex: 3 }]}>
+                All detected accessibility barriers on this page
+              </Text>
             </View>
-          ))}
+          </View>
+
+          {/* ── Issues section ───────────────────────────────────────────── */}
+          {c.issues.length > 0 ? (
+            <>
+              <Text style={s.sectionTitle}>Issues found</Text>
+              <View style={s.sectionRule} />
+
+              {c.issues.map((issue, idx) => (
+                <View
+                  key={`${issue.id}-${idx}`}
+                  style={s.issueCard}
+                  wrap={false}
+                >
+                  {/* Card header: title + severity chip on tinted background */}
+                  <View style={[
+                    s.issueCardHead,
+                    { backgroundColor: issue.impact ? SEVERITY_BG[issue.impact] : SURF },
+                  ]}>
+                    <Text style={s.issueTitle}>{issue.title}</Text>
+                    {issue.impact && (
+                      <Text style={[s.chip, { backgroundColor: SEVERITY_COLOR[issue.impact] }]}>
+                        {issue.impactLabel}
+                      </Text>
+                    )}
+                  </View>
+
+                  {/* Key/value detail rows */}
+                  {issue.whatItMeans ? (
+                    <View style={s.issueRow}>
+                      <Text style={s.issueRowLabel}>What it means</Text>
+                      <Text style={s.issueRowValue}>{issue.whatItMeans}</Text>
+                    </View>
+                  ) : null}
+
+                  {issue.whoItAffects ? (
+                    <View style={s.issueRow}>
+                      <Text style={s.issueRowLabel}>Who it affects</Text>
+                      <Text style={s.issueRowValue}>{issue.whoItAffects}</Text>
+                    </View>
+                  ) : null}
+
+                  {issue.disabilityGroups.length > 0 ? (
+                    <View style={s.issueRow}>
+                      <Text style={s.issueRowLabel}>Groups affected</Text>
+                      <View style={[s.issueRowValue, { paddingVertical: 6 }]}>
+                        <View style={s.chipsRow}>
+                          {issue.disabilityGroups.map((grp, gi) => (
+                            <Text key={gi} style={s.groupChip}>{grp}</Text>
+                          ))}
+                        </View>
+                      </View>
+                    </View>
+                  ) : null}
+
+                  {issue.howToFix ? (
+                    <View style={s.issueRow}>
+                      <Text style={s.issueRowLabel}>How to fix</Text>
+                      <View style={[s.issueRowValue, { paddingTop: 6, paddingBottom: 4 }]}>
+                        <View style={s.bulletRow}>
+                          <Text style={s.bulletDot}>•</Text>
+                          <Text style={s.bulletText}>{issue.howToFix}</Text>
+                        </View>
+                      </View>
+                    </View>
+                  ) : null}
+
+                  {issue.measuredEvidence ? (
+                    <View style={s.issueRow}>
+                      <Text style={s.issueRowLabel}>Evidence</Text>
+                      <View style={s.issueRowValue}>
+                        <Text style={s.evidenceBlock}>{issue.measuredEvidence}</Text>
+                      </View>
+                    </View>
+                  ) : null}
+                </View>
+              ))}
+            </>
+          ) : (
+            <View style={s.emptyBox}>
+              <Text>
+                No issues flagged in this automated pass. That is a good sign — but see the note
+                below on what automated scans can and cannot catch.
+              </Text>
+            </View>
+          )}
+
+          {c.partialNote ? (
+            <Text style={s.note}>Note: {c.partialNote}</Text>
+          ) : null}
+
+          {/* ── Next steps ───────────────────────────────────────────────── */}
+          <Text style={s.sectionTitle}>What to do next</Text>
+          <View style={s.steps}>
+            {c.nextSteps.map((step, i) => (
+              <View key={i} style={s.step}>
+                <Text style={s.stepArrow}>-</Text>
+                <Text style={s.stepText}>{step}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* ── Honest disclaimer ────────────────────────────────────────── */}
+          <View style={s.disclaimer}>
+            <Text style={s.disclaimerLabel}>What this report is — and is not</Text>
+            <Text style={s.disclaimerText}>{c.disclaimer}</Text>
+          </View>
+
+          {/* ── Remaining items punch-list ───────────────────────────────── */}
+          {c.remainingItems.length > 0 ? (
+            <>
+              <Text style={s.punchTitle}>Remaining items to fix</Text>
+              <Text style={s.punchSub}>
+                {c.remainingItems.length} {c.remainingItems.length === 1 ? "item" : "items"} outstanding — sorted by severity. Use this as your checklist.
+              </Text>
+              <View style={s.table}>
+                {/* Header */}
+                <View style={s.tHeadRow}>
+                  <Text style={[s.tHeadCell, { flex: 0.4 }]}>#</Text>
+                  <Text style={[s.tHeadCell, { flex: 1.1 }]}>Severity</Text>
+                  <Text style={[s.tHeadCell, { flex: 5 }]}>Issue</Text>
+                  <Text style={[s.tHeadCell, { flex: 0.8 }]}>Status</Text>
+                </View>
+                {c.remainingItems.map((item, idx) => (
+                  <View
+                    key={item.num}
+                    style={[s.tRow, idx % 2 === 1 ? s.tRowAlt : {}, { alignItems: "flex-start", paddingVertical: 6 }]}
+                  >
+                    <Text style={[s.tCellMuted, { flex: 0.4, fontSize: 8 }]}>{item.num}</Text>
+                    <Text style={[s.tCellBold, { flex: 1.1, fontSize: 8 }]}>{item.severity}</Text>
+                    <Text style={[s.tCell, { flex: 5, fontSize: 8.5 }]}>{item.title}</Text>
+                    <Text style={{ flex: 0.8, fontSize: 8, color: "#ea580c", fontFamily: "Helvetica-Bold" }}>
+                      {item.status}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </>
+          ) : null}
+
+        </View>{/* /body */}
+
+        {/* ── Fixed footer with page numbers — repeats every page ───────── */}
+        <View style={s.footer} fixed>
+          <Text style={s.footerText}>{c.footer}</Text>
+          <Text
+            style={s.footerPage}
+            render={({ pageNumber, totalPages }: { pageNumber: number; totalPages: number }) =>
+              `Page ${pageNumber} of ${totalPages}`
+            }
+          />
         </View>
 
-        {/* Honest disclaimer */}
-        <View style={s.disclaimer}>
-          <Text style={s.disclaimerLabel}>What this report is — and isn&apos;t</Text>
-          <Text>{c.disclaimer}</Text>
-        </View>
-
-        <Text style={s.footer} fixed>
-          {c.footer}
-        </Text>
       </Page>
     </Document>
   );

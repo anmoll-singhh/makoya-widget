@@ -57,6 +57,7 @@ describe("buildReportContent", () => {
       c.footer,
       ...c.nextSteps,
       ...c.issues.flatMap((i) => [i.title, i.whatItMeans, i.whoItAffects]),
+      ...c.remainingItems.map((r) => r.title),
     ].join(" \n ");
     expect(banned.test(allText)).toBe(false);
   });
@@ -81,5 +82,43 @@ describe("buildReportContent", () => {
   it("notes a partial scan when flagged", () => {
     const c = buildReportContent({ ...base, isPartialScan: true });
     expect(c.partialNote).toBeTruthy();
+  });
+
+  it("builds a remainingItems punch-list that mirrors the issue list", () => {
+    const c = buildReportContent(base);
+    expect(c.remainingItems).toHaveLength(c.issues.length);
+    expect(c.remainingItems[0]).toMatchObject({
+      num: 1,
+      severity: expect.any(String),
+      title: expect.any(String),
+      status: "Open",
+    });
+  });
+
+  it("sorts issues by severity (critical first) and the punch-list matches", () => {
+    const c = buildReportContent({
+      ...base,
+      totals: { critical: 1, serious: 1, moderate: 1, minor: 1 },
+      topIssues: [
+        { id: "a", impact: "minor" as const,    help: "Minor issue",    whatItMeans: "m", whoItAffects: "u" },
+        { id: "b", impact: "critical" as const, help: "Critical issue", whatItMeans: "m", whoItAffects: "u" },
+        { id: "c", impact: "moderate" as const, help: "Moderate issue", whatItMeans: "m", whoItAffects: "u" },
+        { id: "d", impact: "serious" as const,  help: "Serious issue",  whatItMeans: "m", whoItAffects: "u" },
+      ],
+    });
+    expect(c.issues.map((i) => i.impact)).toEqual(["critical", "serious", "moderate", "minor"]);
+    // punch-list order follows sorted issues
+    expect(c.remainingItems.map((r) => r.severity)).toEqual(["Critical", "Serious", "Moderate", "Minor"]);
+    expect(c.remainingItems.map((r) => r.num)).toEqual([1, 2, 3, 4]);
+  });
+
+  it("produces an empty remainingItems list when there are no issues", () => {
+    const c = buildReportContent({
+      ...base,
+      score: 100,
+      totals: { critical: 0, serious: 0, moderate: 0, minor: 0 },
+      topIssues: [],
+    });
+    expect(c.remainingItems).toEqual([]);
   });
 });
