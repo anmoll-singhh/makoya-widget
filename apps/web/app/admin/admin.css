@@ -153,6 +153,18 @@
   grid-template-columns: 1fr 130px 170px 150px;
 }
 
+/* Customer-detail · scan history: Score | Logged */
+.admin-tbl-scans .thead,
+.admin-tbl-scans .trow {
+  grid-template-columns: 140px 1fr;
+}
+
+/* Customer-detail · consultation requests: Type | When | Status */
+.admin-tbl-detreq .thead,
+.admin-tbl-detreq .trow {
+  grid-template-columns: 1fr 150px 120px;
+}
+
 /* ── Domain avatar ────────────────────────────────────────────────────────
    Used in customer rows: a small coloured tile showing the first letter. */
 .admin-dom-av {
@@ -204,15 +216,167 @@
   }
 }
 
-@media (max-width: 768px) {
-  .admin-tbl-customers .thead,
-  .admin-tbl-customers .trow { grid-template-columns: 1fr 90px 80px 60px; }
+/* ════════════════════════════════════════════════════════════════════════════
+ * MOBILE-FIRST + MOTION SCAFFOLD (block 26 — mobile-motion-hardening, Lane C)
+ *
+ * Founder: "make it mobile first … most users will be on mobile … text not
+ * readable … whole app feels slow … load animations everywhere." dashboard.css
+ * already ships the v7 token + component layer and ALL a11y media guards
+ * (reduced-motion / reduced-transparency / forced-colors). This block adds the
+ * admin-specific MOBILE behaviour on top — the entrance/cascade motion itself
+ * lives in the React layer (PageTransition / MotionTable / shadcn Skeleton).
+ *
+ *   1. Admin list tables (.admin-card-tbl) collapse from the desktop grid into
+ *      readable STACKED CARDS below 768px — not a shrunk-down wide table. Each
+ *      cell shows its column label via its data-label attribute (::before); the
+ *      real .thead is KEPT in the a11y tree (sr-only, not display:none) so the
+ *      screen-reader column association survives the visual collapse.
+ *   2. Comfortable >=44px tap targets for the plan/status <select>s and the
+ *      onboarding form controls on coarse pointers (selects/inputs scoped here
+ *      because the globals.css coarse rule only covers buttons + checkboxes).
+ *   3. Responsive content padding, stat grid, and an icon-only topbar on narrow
+ *      phones (action labels kept as sr-only text so AT still announces them).
+ * ════════════════════════════════════════════════════════════════════════════ */
 
-  .admin-tbl-leads .thead,
-  .admin-tbl-leads .trow { grid-template-columns: 1fr 100px 70px 60px 90px 90px; }
+/* Customer-detail page: vertical stack (replaces the old inline flex column so
+   the PageTransition wrapper keeps the same layout). */
+.admin-detail-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
 
-  .admin-tbl-requests .thead,
-  .admin-tbl-requests .trow { grid-template-columns: 1fr 110px 130px 120px; }
+/* ── Saving / saved inline indicators (PlanSelect / StatusSelect) ──────────── */
+.admin-saving {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary-hover);
+}
+.admin-saving .sp {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 2px solid var(--primary-soft);
+  border-top-color: var(--primary);
+  animation: mky-spin 0.7s linear infinite; /* killed by global reduced-motion guard */
+  flex: none;
+}
+.admin-saved {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--green-ink);
+}
 
-  .admin-stats { grid-template-columns: 1fr 1fr 1fr; }
+/* ── Coarse-pointer tap targets for admin form controls ────────────────────── */
+@media (pointer: coarse) {
+  .admin-layout select,
+  .admin-layout input,
+  .admin-layout textarea {
+    min-height: 44px;
+    font-size: max(16px, 1em); /* iOS Safari never zooms on focus */
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * MOBILE (< 768px): tables → stacked cards, compact shell.
+ * Mobile-first intent: this is the small-screen baseline; the desktop grid
+ * templates above are the progressive enhancement at >=768px.
+ * ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 767.98px) {
+  /* Tighter shell so cards get the full phone width. */
+  .admin-topbar { padding: 0 14px; gap: 8px; height: 58px; }
+  .admin-content { padding: 18px 14px 48px; }
+  .admin-nav { margin-left: 6px; }
+  .admin-nav a { padding: 8px 10px; }
+
+  /* Icon-only topbar actions on phones; labels stay for AT (.admin-lbl → sr-only). */
+  .admin-lbl {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .admin-nav a,
+  .admin-topbar-end .btn {
+    padding: 0;
+    width: 44px;
+    height: 44px;
+    justify-content: center;
+    gap: 0;
+  }
+  .admin-nav a i,
+  .admin-topbar-end .btn i { font-size: 20px; }
+
+  /* Stat cards: 1-up full-width below 420px, 3-up above (numbers are short). */
+  .admin-stats { grid-template-columns: 1fr; gap: 12px; }
+
+  /* Detail header: stack identity over the plan control, full-width tap area. */
+  .admin-detail-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+  .admin-detail-head > div:last-child { justify-content: space-between; }
+
+  /* ── The card transform ──────────────────────────────────────────────────
+     Keep the .thead in the a11y tree (sr-only) but hide it visually; render
+     each .trow as a self-contained card with per-cell "Label  Value" rows. */
+  .admin-card-tbl .thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .admin-card-tbl .trow {
+    grid-template-columns: 1fr !important;
+    gap: 9px;
+    padding: 16px;
+  }
+  .admin-card-tbl .trow > [role="cell"] {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    min-height: 26px;
+    text-align: left;
+  }
+  .admin-card-tbl .trow > [role="cell"]::before {
+    content: attr(data-label);
+    flex: none;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--t3);
+  }
+  /* The identity cell (customer / email / site) becomes the card title row:
+     full-width, left-aligned, no label, separated by a hairline. */
+  .admin-card-tbl .trow > [role="cell"][data-primary] {
+    justify-content: flex-start;
+    padding-bottom: 11px;
+    margin-bottom: 2px;
+    border-bottom: 1px dashed var(--border);
+    min-height: 44px;
+  }
+  .admin-card-tbl .trow > [role="cell"][data-primary]::before { content: none; }
+}
+
+@media (min-width: 420px) and (max-width: 767.98px) {
+  .admin-stats { grid-template-columns: repeat(3, 1fr); gap: 10px; }
 }

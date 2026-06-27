@@ -28,6 +28,8 @@ import { redirect } from "next/navigation";
 import { getAdminUser } from "@/lib/auth/require-admin";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { listLeads, type Lead, type LeadTotals } from "@/lib/leads";
+import { PageTransition, RevealItem } from "@/components/motion/PageTransition";
+import { MotionTable, MotionRow } from "@/components/admin/MotionTable";
 
 // Always render fresh — leads change as the funnel runs.
 export const dynamic = "force-dynamic";
@@ -89,30 +91,32 @@ export default async function AdminLeads() {
   const newCount = leads.filter((l) => l.status === "new").length;
 
   return (
-    <div>
+    <PageTransition stagger={0.08}>
       {/* ── Page header ──────────────────────────────────────────────── */}
-      <div className="between" style={{ marginBottom: "22px" }}>
-        <div>
-          <div className="pagehead" style={{ marginBottom: 0 }}>
-            Admin CRM
-            <b>Leads</b>
+      <RevealItem>
+        <div className="between" style={{ marginBottom: "22px" }}>
+          <div>
+            <div className="pagehead" style={{ marginBottom: 0 }}>
+              Admin CRM
+              <b>Leads</b>
+            </div>
+            <p style={{ fontSize: "13px", color: "var(--t2)", marginTop: "4px" }}>
+              {leads.length === 0
+                ? "Scanner leads will appear here as people request their report."
+                : `${leads.length} lead${leads.length === 1 ? "" : "s"} from the scanner` +
+                  (newCount > 0 ? ` · ${newCount} new` : "") +
+                  " — worst-scoring sites first."}
+            </p>
           </div>
-          <p style={{ fontSize: "13px", color: "var(--t2)", marginTop: "4px" }}>
-            {leads.length === 0
-              ? "Scanner leads will appear here as people request their report."
-              : `${leads.length} lead${leads.length === 1 ? "" : "s"} from the scanner` +
-                (newCount > 0 ? ` · ${newCount} new` : "") +
-                " — worst-scoring sites first."}
-          </p>
+          <Link href="/admin" className="btn">
+            <i className="ti ti-arrow-left" aria-hidden="true" />
+            Customers
+          </Link>
         </div>
-        <Link href="/admin" className="btn">
-          <i className="ti ti-arrow-left" aria-hidden="true" />
-          Customers
-        </Link>
-      </div>
+      </RevealItem>
 
-      {/* ── Leads table ───────────────────────────────────────────────── */}
-      <div className="tcard admin-tbl-leads" role="table" aria-label="Leads">
+      {/* ── Leads table (stacked cards < 768px via .admin-card-tbl) ────── */}
+      <MotionTable className="tcard admin-tbl-leads admin-card-tbl" role="table" aria-label="Leads">
         {/* Header */}
         <div className="thead" role="row">
           <div role="columnheader">Email</div>
@@ -125,7 +129,7 @@ export default async function AdminLeads() {
 
         {/* Empty state */}
         {leads.length === 0 && (
-          <div
+          <MotionRow
             className="trow"
             style={{ gridTemplateColumns: "1fr", justifyItems: "center", color: "var(--t2)" }}
             role="row"
@@ -133,19 +137,19 @@ export default async function AdminLeads() {
             <div role="cell">
               No leads yet — they appear when someone runs the public scanner and asks for the report.
             </div>
-          </div>
+          </MotionRow>
         )}
 
         {/* Rows */}
         {leads.map((lead) => (
-          <div className="trow" key={lead.id} role="row">
-            {/* Email */}
-            <div role="cell" style={{ fontWeight: 600, color: "var(--deep)" }}>
+          <MotionRow className="trow" key={lead.id} role="row">
+            {/* Email (the mobile card title row) */}
+            <div role="cell" data-primary style={{ fontWeight: 600, color: "var(--deep)" }}>
               {lead.email}
             </div>
 
             {/* Site domain */}
-            <div role="cell">
+            <div role="cell" data-label="Site">
               <a
                 href={lead.url}
                 target="_blank"
@@ -157,31 +161,31 @@ export default async function AdminLeads() {
             </div>
 
             {/* Score */}
-            <div role="cell">
+            <div role="cell" data-label="Score">
               <span className={`pill ${scoreTone(lead.score)}`}>
                 {lead.score ?? "—"}
               </span>
             </div>
 
             {/* Issue count */}
-            <div role="cell" style={{ fontWeight: 700, color: "var(--deep)", fontVariantNumeric: "tabular-nums" }}>
+            <div role="cell" data-label="Issues" style={{ fontWeight: 700, color: "var(--deep)", fontVariantNumeric: "tabular-nums" }}>
               {issueTotal(lead.totals)}
             </div>
 
             {/* Status */}
-            <div role="cell">
+            <div role="cell" data-label="Status">
               <span className={`pill ${statusTone(lead.status)}`} style={{ textTransform: "capitalize" }}>
                 {lead.status}
               </span>
             </div>
 
             {/* Date */}
-            <div role="cell" style={{ color: "var(--t3)", fontSize: "12.5px" }}>
+            <div role="cell" data-label="When" style={{ color: "var(--t3)", fontSize: "12.5px" }}>
               {new Date(lead.createdAt).toLocaleDateString()}
             </div>
-          </div>
+          </MotionRow>
         ))}
-      </div>
-    </div>
+      </MotionTable>
+    </PageTransition>
   );
 }
