@@ -468,9 +468,34 @@ export function MikeClient({ siteId, domain }: Props) {
         <div className="pagehead">
           Mike — audit <b>Accessibility overview</b>
         </div>
-        <div role="status" aria-live="polite" style={{ padding: "40px 0", textAlign: "center", color: "var(--t3)" }}>
-          Loading issues…
+        <div aria-hidden="true">
+          {/* KPI-row skeleton */}
+          <div className="grid3" style={{ marginBottom: 18 }}>
+            {[0, 1, 2].map((i) => (
+              <div className="kpi" key={i}>
+                <div className="skel" style={{ width: 110, height: 14, marginBottom: 14 }} />
+                <div className="skel" style={{ width: 80, height: 28 }} />
+              </div>
+            ))}
+          </div>
+          {/* Issue-list skeleton */}
+          <div className="card pad">
+            <div className="skel" style={{ width: 180, height: 18, marginBottom: 16 }} />
+            {[0, 1, 2, 3, 4].map((i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: "1px solid var(--border)" }}>
+                <div className="skel" style={{ width: 34, height: 34, borderRadius: 9, flex: "none" }} />
+                <div style={{ flex: 1 }}>
+                  <div className="skel" style={{ width: "60%", height: 14, marginBottom: 6 }} />
+                  <div className="skel" style={{ width: "35%", height: 11 }} />
+                </div>
+                <div className="skel" style={{ width: 70, height: 22, borderRadius: 999, flex: "none" }} />
+              </div>
+            ))}
+          </div>
         </div>
+        <span className="sr-only" role="status" aria-live="polite">
+          Loading issues…
+        </span>
       </>
     );
   }

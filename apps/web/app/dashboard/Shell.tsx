@@ -19,6 +19,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { Site } from "@/lib/sites";
 import { Tour } from "./_components/Tour";
+import { PageTransition } from "./_components/motion";
 
 interface ShellUser {
   name: string;
@@ -71,6 +72,39 @@ export function Shell({ sites, user, children }: ShellProps) {
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
 
+  // Mobile nav drawer — the sidebar becomes an off-canvas slide-in sheet under
+  // 768px (most users are on phones). Open state drives a `data-nav-open` attr on
+  // the .app root that the CSS uses to slide the <aside> in over a scrim.
+  const [navOpen, setNavOpen] = useState(false);
+  const asideRef = useRef<HTMLElement>(null);
+  const navToggleRef = useRef<HTMLButtonElement>(null);
+  const closeNav = useCallback(() => setNavOpen(false), []);
+
+  // Close the drawer whenever the route changes (a nav link was tapped).
+  useEffect(() => {
+    setNavOpen(false);
+  }, [pathname]);
+
+  // While the drawer is open: Esc closes it, body scroll is locked, and focus
+  // moves into the drawer; on close, focus returns to the toggle. This is the
+  // accessibility contract for a modal-style sheet.
+  useEffect(() => {
+    if (!navOpen) return;
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") closeNav();
+    }
+    document.addEventListener("keydown", handleKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    // Move focus into the drawer for keyboard + screen-reader users.
+    asideRef.current?.focus();
+    return () => {
+      document.removeEventListener("keydown", handleKey);
+      document.body.style.overflow = prevOverflow;
+      navToggleRef.current?.focus();
+    };
+  }, [navOpen, closeNav]);
+
   // Nav group expand states
   const [widgetOpen, setWidgetOpen] = useState(() =>
     pathname.includes("/install") || pathname.includes("/customize")
@@ -119,7 +153,11 @@ export function Shell({ sites, user, children }: ShellProps) {
   const signOutRef = useRef<HTMLFormElement>(null);
 
   return (
-    <div className="app" style={{ fontFamily: "'Manrope', system-ui, sans-serif" }}>
+    <div
+      className="app"
+      data-nav-open={navOpen ? "true" : undefined}
+      style={{ fontFamily: "'Manrope', system-ui, sans-serif" }}
+    >
       {/* First-login product tour — renders as a portal-style fixed overlay */}
       <Tour />
 
@@ -128,8 +166,32 @@ export function Shell({ sites, user, children }: ShellProps) {
         Skip to main content
       </a>
 
+      {/* Mobile drawer scrim — tap to dismiss. Hidden on desktop via CSS. */}
+      <div
+        className="navscrim"
+        hidden={!navOpen}
+        onClick={closeNav}
+        aria-hidden="true"
+      />
+
       {/* ── Sidebar ─────────────────────────────────────────────────────── */}
-      <aside className="side">
+      <aside
+        className="side"
+        id="dashboard-nav"
+        ref={asideRef}
+        tabIndex={-1}
+        aria-label="Sidebar navigation"
+      >
+        {/* Mobile-only close button inside the drawer */}
+        <button
+          type="button"
+          className="navclose"
+          onClick={closeNav}
+          aria-label="Close navigation menu"
+        >
+          <i className="ti ti-x" aria-hidden="true" />
+        </button>
+
         {/* Brand gem */}
         <div className="brand">
           <svg width="26" height="26" viewBox="0 0 32 32" fill="none" aria-hidden="true">
@@ -415,6 +477,18 @@ export function Shell({ sites, user, children }: ShellProps) {
       <div className="main">
         {/* Glass topbar */}
         <header className="topbar mk-glass" role="banner">
+          {/* Mobile hamburger — opens the off-canvas nav drawer. Hidden ≥768px. */}
+          <button
+            type="button"
+            className="navtoggle"
+            ref={navToggleRef}
+            onClick={() => setNavOpen(true)}
+            aria-label="Open navigation menu"
+            aria-expanded={navOpen}
+            aria-controls="dashboard-nav"
+          >
+            <i className="ti ti-menu-2" aria-hidden="true" />
+          </button>
           <div className="search" role="search">
             <i className="ti ti-search" aria-hidden="true" style={{ fontSize: 18 }} />
             <span style={{ color: "var(--t3)" }}>Search…</span>
@@ -431,9 +505,11 @@ export function Shell({ sites, user, children }: ShellProps) {
           </div>
         </header>
 
-        {/* Page content */}
+        {/* Page content — PageTransition gives every screen a consistent,
+            reduced-motion-safe entrance (fade + rise + child stagger). The
+            `key` ties the animation to the route so it replays on navigation. */}
         <main className="wrap" id="main">
-          {children}
+          <PageTransition key={pathname}>{children}</PageTransition>
         </main>
       </div>
     </div>

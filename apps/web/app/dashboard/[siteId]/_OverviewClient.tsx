@@ -15,6 +15,27 @@
  *   - Activity feed       → data.activity
  *   - Framework coverage  → data.coverage
  *
+ * PERF — no client fetch waterfall:
+ *   The server `page.tsx` now fetches the overview view-model with `getOverview`
+ *   and passes it down as `initialData`. When present we render real content on
+ *   the FIRST paint (no spinner, no round-trip). The client-side `fetch` only
+ *   runs as a fallback when `initialData` is absent (e.g. the server fetch was
+ *   skipped/failed) so the screen still works standalone.
+ *
+ * READABILITY (founder directive):
+ *   The hero sits on a LIGHT aurora gradient (`.hero-bg`), so the previous white
+ *   `rgba(255,255,255,.6)` hero text was effectively invisible. All hero text is
+ *   now solid, high-contrast navy/ink (var(--deep)/--t1/--t2) — most of it simply
+ *   inherits the already-correct dashboard.css classes (.jt/.gn/.glab/…) instead
+ *   of being overridden white inline. Small captions are bumped up in size.
+ *
+ * MOTION (accessible):
+ *   - Score + KPI numbers count up via <CountUp>.
+ *   - The score ring fills via <GaugeRing> (animated strokeDashoffset).
+ *   - KPI tiles + rows cascade in via <Reveal>/<RevealItem>.
+ *   Every one of these collapses to a static final state under
+ *   `prefers-reduced-motion: reduce` (see _components/motion.tsx).
+ *
  * Honesty rules (from CLAUDE.md):
  *  - No "compliant" / "guaranteed accessible" copy.
  *  - Journey shown honestly: not_installed → only Connect step shown as open.
@@ -22,11 +43,12 @@
  *
  * v7 CSS classes (all in app/dashboard/dashboard.css, imported by the layout):
  *   .pagehead, .hero, .hero-bg, .hero-grid, .gcard, .gwrap, .grid4, .kpi,
- *   .card, .pad, .dch, .row2, .row3, .it, .ic, .pill, .note, .fw, etc.
+ *   .card, .pad, .dch, .row2, .row3, .it, .ic, .pill, .note, .fw, .skel, etc.
  */
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { CountUp, GaugeRing, Reveal, RevealItem } from "../_components/motion";
 
 /* ── API shape (mirrors lib/overview.ts return; kept client-local) ───────────── */
 interface CoverageEntry {
@@ -41,7 +63,7 @@ interface ActivityEntry {
   wcagRef: string | null;
   createdAt: string;
 }
-interface OverviewData {
+export interface OverviewData {
   score: number | null;
   scoreDelta: number | null;
   status: string;
@@ -56,9 +78,6 @@ interface OverviewData {
 }
 
 /* ── Helpers ─────────────────────────────────────────────────────────────────── */
-function num(n: number | null | undefined): string {
-  return typeof n === "number" && Number.isFinite(n) ? n.toLocaleString() : "—";
-}
 function relTime(iso: string): string {
   const t = new Date(iso).getTime();
   if (Number.isNaN(t)) return "";
@@ -71,11 +90,6 @@ function relTime(iso: string): string {
   if (d < 30) return `${d}d ago`;
   const mo = Math.floor(d / 30);
   return `${mo}mo ago`;
-}
-/** stroke-dashoffset for a ring: circumference ≈ 98, filled to (value/100). */
-function ringOffset(value: number): number {
-  const circ = 98;
-  return circ * (1 - Math.max(0, Math.min(1, value / 100)));
 }
 /** Derive journey step state from install/monitoring status. */
 function journeyState(status: string): { connect: boolean; scan: boolean; improve: "now" | boolean } {
@@ -118,11 +132,12 @@ function TrendChart({ trend }: { trend: { period: string; score: number | null }
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          fontSize: 11,
-          color: "var(--t3)",
+          fontSize: 11.5,
+          color: "var(--t2)",
           height: `${h}px`,
           padding: "4px 0",
           textAlign: "right",
+          fontWeight: 600,
         }}
       >
         <span>100</span>
@@ -165,9 +180,10 @@ function TrendChart({ trend }: { trend: { period: string; score: number | null }
           style={{
             display: "flex",
             justifyContent: "space-between",
-            fontSize: 11,
-            color: "var(--t3)",
+            fontSize: 11.5,
+            color: "var(--t2)",
             marginTop: 6,
+            fontWeight: 600,
           }}
         >
           {points.map((p) => (
@@ -179,19 +195,76 @@ function TrendChart({ trend }: { trend: { period: string; score: number | null }
   );
 }
 
+/* ── Loading skeleton — shaped like the real Overview content ─────────────────── */
+function OverviewSkeleton() {
+  return (
+    <div aria-hidden="true">
+      {/* Hero placeholder */}
+      <div className="hero" style={{ minHeight: 220 }}>
+        <div className="hero-bg" aria-hidden="true" />
+        <div className="hero-grid" style={{ position: "relative" }}>
+          <div className="gcard" style={{ flexDirection: "column", alignItems: "flex-start", gap: 12 }}>
+            <div className="skel" style={{ width: 160, height: 16 }} />
+            <div className="skel" style={{ width: 240, height: 28 }} />
+            <div className="skel" style={{ width: "80%", height: 14 }} />
+            <div className="skel" style={{ width: "100%", height: 60, marginTop: 8 }} />
+          </div>
+          <div className="gcard" style={{ justifyContent: "center" }}>
+            <div className="skel" style={{ width: 158, height: 158, borderRadius: "50%" }} />
+          </div>
+        </div>
+      </div>
+      {/* KPI placeholders */}
+      <div className="grid4" style={{ marginBottom: 20 }}>
+        {[0, 1, 2, 3].map((i) => (
+          <div className="kpi" key={i}>
+            <div className="kt">
+              <div className="skel" style={{ width: 42, height: 42, borderRadius: 13 }} />
+              <div className="skel" style={{ width: 110, height: 14 }} />
+            </div>
+            <div className="skel" style={{ width: 90, height: 30, marginTop: 6 }} />
+          </div>
+        ))}
+      </div>
+      {/* Rows placeholders */}
+      <div className="row2">
+        <div className="card pad">
+          <div className="skel" style={{ width: 200, height: 18, marginBottom: 16 }} />
+          <div className="skel" style={{ width: "100%", height: 168 }} />
+        </div>
+        <div className="card pad">
+          <div className="skel" style={{ width: 160, height: 18, marginBottom: 16 }} />
+          <div className="skel" style={{ width: "100%", height: 110 }} />
+        </div>
+      </div>
+      <span className="sr-only" role="status" aria-live="polite">
+        Loading your overview…
+      </span>
+    </div>
+  );
+}
+
 /* ── Props ───────────────────────────────────────────────────────────────────── */
 interface Props {
   siteId: string;
   domain: string;
+  /** Server-fetched view-model — when present, renders without a client waterfall. */
+  initialData?: OverviewData | null;
 }
 
 /* ── Main Component ──────────────────────────────────────────────────────────── */
-export function OverviewClient({ siteId, domain }: Props) {
-  const [data, setData] = useState<OverviewData | null>(null);
-  const [loading, setLoading] = useState(true);
+export function OverviewClient({ siteId, domain, initialData }: Props) {
+  const [data, setData] = useState<OverviewData | null>(initialData ?? null);
+  const [loading, setLoading] = useState(initialData == null);
   const [error, setError] = useState(false);
 
   useEffect(() => {
+    // Server already supplied the data → skip the fetch (no waterfall).
+    if (initialData != null) {
+      setData(initialData);
+      setLoading(false);
+      return;
+    }
     let live = true;
     setLoading(true);
     setError(false);
@@ -212,14 +285,10 @@ export function OverviewClient({ siteId, domain }: Props) {
     return () => {
       live = false;
     };
-  }, [siteId]);
+  }, [siteId, initialData]);
 
   if (loading) {
-    return (
-      <div role="status" aria-live="polite" style={{ padding: "40px 0", textAlign: "center", color: "var(--t3)" }}>
-        Loading overview…
-      </div>
-    );
+    return <OverviewSkeleton />;
   }
 
   if (error || !data) {
@@ -232,7 +301,6 @@ export function OverviewClient({ siteId, domain }: Props) {
   }
 
   const score = data.score;
-  const gaugeOffset = ringOffset(score ?? 0);
   const delta = data.scoreDelta;
   const journey = journeyState(data.status);
 
@@ -247,34 +315,34 @@ export function OverviewClient({ siteId, domain }: Props) {
       <section className="hero">
         <div className="hero-bg" aria-hidden="true">
           <svg viewBox="0 0 1000 300" preserveAspectRatio="none">
-            <g fill="none" stroke="#fff" strokeWidth="2">
-              <path d="M-50 210 C 250 90,520 250,1050 70" opacity=".6" />
-              <path d="M-50 250 C 300 150,600 280,1050 130" opacity=".4" />
-              <path d="M-50 160 C 280 60,560 200,1050 30" opacity=".35" />
+            <g fill="none" stroke="#0D1B4D" strokeWidth="2">
+              <path d="M-50 210 C 250 90,520 250,1050 70" opacity=".10" />
+              <path d="M-50 250 C 300 150,600 280,1050 130" opacity=".08" />
+              <path d="M-50 160 C 280 60,560 200,1050 30" opacity=".07" />
             </g>
           </svg>
         </div>
         <div className="hero-grid">
           {/* Left: domain + journey */}
           <div className="gcard" style={{ flexDirection: "column", alignItems: "flex-start", gap: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 7, color: "rgba(255,255,255,.7)", fontSize: 12.5, fontWeight: 700, marginBottom: 2 }}>
-              <i className="ti ti-world" aria-hidden="true" style={{ fontSize: 14 }} />
+            <div style={{ display: "flex", alignItems: "center", gap: 7, color: "var(--t2)", fontSize: 13, fontWeight: 700, marginBottom: 2 }}>
+              <i className="ti ti-world" aria-hidden="true" style={{ fontSize: 15, color: "var(--primary-hover)" }} />
               {domain}
             </div>
-            <h1 style={{ fontFamily: "'Satoshi'", fontSize: 24, fontWeight: 700, color: "#fff", letterSpacing: "-.02em", lineHeight: 1.2 }}>
+            <h1 style={{ fontFamily: "'Satoshi'", fontSize: 25, fontWeight: 700, color: "var(--deep)", letterSpacing: "-.02em", lineHeight: 1.2 }}>
               {score == null
                 ? "No score yet"
                 : score >= 90
                 ? "You're AA-ready"
                 : `${Math.max(0, 90 - score)} points from AA`}
             </h1>
-            <div style={{ color: "rgba(255,255,255,.75)", fontSize: 13.5, marginBottom: 8 }}>
+            <div style={{ color: "var(--t2)", fontSize: 14, lineHeight: 1.5, marginBottom: 8 }}>
               Monitoring accessibility across {domain}.
               {data.needsHuman > 0 && ` ${data.needsHuman} issue${data.needsHuman === 1 ? "" : "s"} need human review.`}
             </div>
 
             {/* Compliance journey */}
-            <div className="jlabel" style={{ color: "rgba(255,255,255,.65)", fontSize: 11.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 8 }}>
+            <div className="jlabel" style={{ marginBottom: 10 }}>
               Your compliance journey
             </div>
             <div className="journey" role="list" style={{ display: "flex", alignItems: "center", gap: 0 }}>
@@ -282,15 +350,13 @@ export function OverviewClient({ siteId, domain }: Props) {
               <div
                 className={`jnode ${journey.connect ? "done" : "now"}`}
                 role="listitem"
-                style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}
+                style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}
               >
                 <div className="jc" aria-hidden="true">
                   {journey.connect ? <i className="ti ti-check" /> : "1"}
                 </div>
-                <div className="jt" style={{ color: "#fff", fontSize: 11.5, fontWeight: 700 }}>Connect</div>
-                <div className="js" style={{ color: "rgba(255,255,255,.6)", fontSize: 10.5 }}>
-                  {journey.connect ? "Complete" : "In progress"}
-                </div>
+                <div className="jt">Connect</div>
+                <div className="js">{journey.connect ? "Complete" : "In progress"}</div>
               </div>
               <div className={`jline ${journey.connect ? "done" : ""}`} aria-hidden="true" />
 
@@ -298,15 +364,13 @@ export function OverviewClient({ siteId, domain }: Props) {
               <div
                 className={`jnode ${journey.scan ? "done" : ""}`}
                 role="listitem"
-                style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}
+                style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}
               >
                 <div className="jc" aria-hidden="true">
                   {journey.scan ? <i className="ti ti-check" /> : "2"}
                 </div>
-                <div className="jt" style={{ color: "#fff", fontSize: 11.5, fontWeight: 700 }}>Scan</div>
-                <div className="js" style={{ color: "rgba(255,255,255,.6)", fontSize: 10.5 }}>
-                  {journey.scan ? "Complete" : "Upcoming"}
-                </div>
+                <div className="jt">Scan</div>
+                <div className="js">{journey.scan ? "Complete" : "Upcoming"}</div>
               </div>
               <div className={`jline ${journey.scan ? "done" : ""}`} aria-hidden="true" />
 
@@ -314,23 +378,21 @@ export function OverviewClient({ siteId, domain }: Props) {
               <div
                 className={`jnode ${journey.improve === true ? "done" : journey.improve === "now" ? "now" : ""}`}
                 role="listitem"
-                style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}
+                style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}
               >
                 <div className="jc" aria-hidden="true">
                   {journey.improve === true ? <i className="ti ti-check" /> : "3"}
                 </div>
-                <div className="jt" style={{ color: "#fff", fontSize: 11.5, fontWeight: 700 }}>Improve</div>
-                <div className="js" style={{ color: "rgba(255,255,255,.6)", fontSize: 10.5 }}>
-                  {journey.improve === "now" ? "In progress" : "Upcoming"}
-                </div>
+                <div className="jt">Improve</div>
+                <div className="js">{journey.improve === "now" ? "In progress" : "Upcoming"}</div>
               </div>
               <div className="jline" aria-hidden="true" />
 
               {/* Sustain */}
-              <div className="jnode" role="listitem" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+              <div className="jnode" role="listitem" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
                 <div className="jc" aria-hidden="true">4</div>
-                <div className="jt" style={{ color: "#fff", fontSize: 11.5, fontWeight: 700 }}>Sustain</div>
-                <div className="js" style={{ color: "rgba(255,255,255,.6)", fontSize: 10.5 }}>Upcoming</div>
+                <div className="jt">Sustain</div>
+                <div className="js">Upcoming</div>
               </div>
             </div>
           </div>
@@ -338,45 +400,23 @@ export function OverviewClient({ siteId, domain }: Props) {
           {/* Right: score gauge */}
           <div className="gcard" style={{ justifyContent: "center" }}>
             <div className="hg">
-              <div
-                className="gwrap"
-                role="img"
-                aria-label={`Accessibility score: ${score ?? "not yet available"} out of 100`}
-                style={{ width: 158, height: 158, position: "relative" }}
+              <GaugeRing
+                value={score}
+                size={158}
+                gradientId="ov-g"
+                trackColor="rgba(13,27,77,.12)"
+                ariaLabel={`Accessibility score: ${score ?? "not yet available"} out of 100`}
               >
-                <svg width="158" height="158" viewBox="0 0 36 36" aria-hidden="true">
-                  <defs>
-                    <linearGradient id="ov-g" x1="0" y1="0" x2="1" y2="1">
-                      <stop offset="0" stopColor="#1E63FF" />
-                      <stop offset="1" stopColor="#1FA86B" />
-                    </linearGradient>
-                  </defs>
-                  <circle cx="18" cy="18" r="15.6" fill="none" stroke="rgba(255,255,255,.25)" strokeWidth="3" />
-                  <circle
-                    cx="18"
-                    cy="18"
-                    r="15.6"
-                    fill="none"
-                    stroke="url(#ov-g)"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeDasharray="98"
-                    strokeDashoffset={gaugeOffset.toFixed(2)}
-                    transform="rotate(-90 18 18)"
-                  />
-                </svg>
-                <div className="gc" style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                  <div className="gn" style={{ fontFamily: "'Satoshi'", fontSize: 38, fontWeight: 700, color: "#fff", lineHeight: 1 }}>
-                    {score ?? "—"}
-                  </div>
-                  <div className="gu" style={{ fontSize: 13, color: "rgba(255,255,255,.7)", fontWeight: 600 }}>/ 100</div>
+                <div className="gn" style={{ fontFamily: "'Satoshi'", fontSize: 40, fontWeight: 700, color: "var(--deep)", lineHeight: 1 }}>
+                  {score == null ? "—" : <CountUp value={score} />}
                 </div>
-              </div>
-              <div className="glab" style={{ color: "rgba(255,255,255,.85)", fontWeight: 700, fontSize: 14, marginTop: 12, textAlign: "center" }}>
+                <div className="gu" style={{ fontSize: 13, color: "var(--t2)", fontWeight: 600 }}>/ 100</div>
+              </GaugeRing>
+              <div className="glab" style={{ color: "var(--deep)", fontWeight: 700, fontSize: 14.5, marginTop: 12, textAlign: "center" }}>
                 Accessibility score
               </div>
               {delta != null && (
-                <div className="gd" style={{ color: "#fff", fontSize: 12.5, fontWeight: 700, marginTop: 3, textAlign: "center" }}>
+                <div className="gd" style={{ color: delta >= 0 ? "var(--green-ink)" : "var(--danger)", fontSize: 13, fontWeight: 700, marginTop: 3, textAlign: "center" }}>
                   {delta >= 0 ? "↑" : "↓"} {Math.abs(delta)} pts vs last month
                 </div>
               )}
@@ -385,10 +425,10 @@ export function OverviewClient({ siteId, domain }: Props) {
         </div>
       </section>
 
-      {/* KPI tiles — 4 real metrics from /overview */}
-      <div className="grid4" style={{ marginBottom: 20 }}>
+      {/* KPI tiles — 4 real metrics from /overview, cascade in */}
+      <Reveal className="grid4" style={{ marginBottom: 20 }}>
         {/* Accessibility score */}
-        <div className="kpi">
+        <RevealItem className="kpi">
           <div className="kt">
             <div className="kicon" style={{ background: "var(--primary)" }}>
               <i className="ti ti-accessible" aria-hidden="true" />
@@ -398,7 +438,7 @@ export function OverviewClient({ siteId, domain }: Props) {
           <div className="kb">
             <div>
               <div className="knum">
-                {score ?? "—"} <span>/ 100</span>
+                {score == null ? "—" : <CountUp value={score} />} <span>/ 100</span>
               </div>
               {delta != null && (
                 <div className={`kdel ${delta >= 0 ? "up" : "down"}`}>
@@ -407,10 +447,10 @@ export function OverviewClient({ siteId, domain }: Props) {
               )}
             </div>
           </div>
-        </div>
+        </RevealItem>
 
         {/* Open issues */}
-        <div className="kpi">
+        <RevealItem className="kpi">
           <div className="kt">
             <div className="kicon" style={{ background: "var(--deep)" }}>
               <i className="ti ti-alert-circle" aria-hidden="true" />
@@ -419,16 +459,16 @@ export function OverviewClient({ siteId, domain }: Props) {
           </div>
           <div className="kb">
             <div>
-              <div className="knum">{num(data.openIssues)}</div>
+              <div className="knum"><CountUp value={data.openIssues} /></div>
               {data.needsHuman > 0 && (
                 <div className="kdel down">{data.needsHuman} need human review</div>
               )}
             </div>
           </div>
-        </div>
+        </RevealItem>
 
         {/* Issues resolved this month */}
-        <div className="kpi">
+        <RevealItem className="kpi">
           <div className="kt">
             <div className="kicon" style={{ background: "var(--primary)" }}>
               <i className="ti ti-circle-check" aria-hidden="true" />
@@ -437,14 +477,14 @@ export function OverviewClient({ siteId, domain }: Props) {
           </div>
           <div className="kb">
             <div>
-              <div className="knum">{num(data.issuesResolvedThisMonth)}</div>
+              <div className="knum"><CountUp value={data.issuesResolvedThisMonth} /></div>
               <div className="kdel up">issues fixed</div>
             </div>
           </div>
-        </div>
+        </RevealItem>
 
         {/* Widget opens */}
-        <div className="kpi">
+        <RevealItem className="kpi">
           <div className="kt">
             <div className="kicon" style={{ background: "#1FA86B" }}>
               <i className="ti ti-click" aria-hidden="true" />
@@ -453,22 +493,24 @@ export function OverviewClient({ siteId, domain }: Props) {
           </div>
           <div className="kb">
             <div>
-              <div className="knum">{num(data.widgetOpens)}</div>
+              <div className="knum"><CountUp value={data.widgetOpens} /></div>
               <div className="kdel up">last 30 days</div>
             </div>
           </div>
-        </div>
-      </div>
+        </RevealItem>
+      </Reveal>
 
-      {/* Row 2: trend chart + next best action */}
-      <div className="row2" style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 18, marginBottom: 20 }}>
-        <section className="card pad">
+      {/* Row 2: trend chart + next best action.
+          Columns come from the responsive `.row2` class (collapses to 1col on
+          mobile) — never inline grid-template, which a media query can't undo. */}
+      <Reveal className="row2" style={{ marginBottom: 20 }}>
+        <RevealItem as="section" className="card pad">
           <div className="dch">
             <h3>Accessibility score trend</h3>
           </div>
           <TrendChart trend={data.trend} />
           <div className="between" style={{ marginTop: 12 }}>
-            <div style={{ display: "flex", gap: 18, fontSize: 12, color: "var(--t2)" }}>
+            <div style={{ display: "flex", gap: 18, fontSize: 12.5, color: "var(--t2)", fontWeight: 600 }}>
               <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <span style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--primary)" }} />
                 Score
@@ -478,9 +520,9 @@ export function OverviewClient({ siteId, domain }: Props) {
               View full analytics →
             </Link>
           </div>
-        </section>
+        </RevealItem>
 
-        <section className="card pad">
+        <RevealItem as="section" className="card pad">
           <div className="dch">
             <h3>
               <i
@@ -547,16 +589,15 @@ export function OverviewClient({ siteId, domain }: Props) {
               </>
             )}
           </div>
-        </section>
-      </div>
+        </RevealItem>
+      </Reveal>
 
-      {/* Row 3: activity feed + framework coverage */}
-      <div
-        className="row3"
-        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}
-      >
+      {/* Row 3: activity feed + framework coverage.
+          `.grid2` gives two equal columns that collapse to one on mobile. */}
+      <Reveal className="grid2">
+
         {/* Activity feed */}
-        <section className="card pad feed">
+        <RevealItem as="section" className="card pad feed">
           <div className="dch">
             <h3>Activity feed</h3>
           </div>
@@ -601,10 +642,10 @@ export function OverviewClient({ siteId, domain }: Props) {
               );
             })
           )}
-        </section>
+        </RevealItem>
 
         {/* Framework coverage */}
-        <section className="card pad">
+        <RevealItem as="section" className="card pad">
           <div className="dch">
             <h3>Framework progress</h3>
             <Link className="viewall" href={`/dashboard/${siteId}/reports`}>
@@ -672,14 +713,14 @@ export function OverviewClient({ siteId, domain }: Props) {
               </div>
             </>
           )}
-          <div className="note info" style={{ marginTop: 14, fontSize: 12 }}>
+          <div className="note info" style={{ marginTop: 14, fontSize: 12.5 }}>
             <i className="ti ti-info-circle" aria-hidden="true" />
             <div>
               Coverage is the share of tracked checks currently passing — an estimate from automated checks, not a compliance guarantee.
             </div>
           </div>
-        </section>
-      </div>
+        </RevealItem>
+      </Reveal>
     </>
   );
 }

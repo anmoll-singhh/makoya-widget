@@ -9,3 +9,11 @@ export { Toggle } from "./Toggle";
 export { Note } from "./Note";
 export { PageHead } from "./PageHead";
 export { Seg } from "./Seg";
+export {
+  Reveal,
+  RevealItem,
+  PageTransition,
+  CountUp,
+  GaugeRing,
+  LoadingButton,
+} from "./motion";
