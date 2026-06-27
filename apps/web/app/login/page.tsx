@@ -8,16 +8,21 @@
  * Fonts: Satoshi (headings/body via login.css), Tabler icons (webfont).
  * The CSS import makes this a route-level isolated stylesheet — it does not
  * bleed into the dashboard or other routes.
+ *
+ * Motion (block 26): the card rises/fades in on mount via <PageTransition>, which
+ * self-disables under prefers-reduced-motion. The .login-card className is moved
+ * onto the PageTransition wrapper so the skin is unchanged.
  */
 
 import "./login.css";
 import { LoginForm } from "./LoginForm";
+import { PageTransition } from "@/components/motion/PageTransition";
 
 export default function LoginPage() {
   return (
     <div className="login-body">
       <div className="login-stage">
-        <div className="login-card">
+        <PageTransition className="login-card">
           {/* Brand gem + wordmark */}
           <div className="login-brand">
             <svg width="26" height="26" viewBox="0 0 32 32" fill="none" aria-hidden="true">
@@ -34,7 +39,7 @@ export default function LoginPage() {
 
           {/* Form (auth logic + styles in LoginForm.tsx) */}
           <LoginForm />
-        </div>
+        </PageTransition>
       </div>
 
       {/* Bottom tagline */}

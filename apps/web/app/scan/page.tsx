@@ -31,6 +31,8 @@ import { ScanForm } from "@/components/scan/ScanForm";
 import { ScanResults } from "@/components/scan/ScanResults";
 import { ScanEmailGate } from "@/components/scan/ScanEmailGate";
 import { ScanLoading } from "@/components/makoya/ScanLoading";
+import { PageTransition } from "@/components/motion/PageTransition";
+import { Reveal } from "@/components/landing/Reveal";
 import type { ScanResult } from "@/lib/scan/types";
 
 // useSearchParams() (the ?url= deep-link) requires a Suspense boundary under the
@@ -110,12 +112,15 @@ function PublicScanPageInner() {
       <ScanHeader />
 
       <main className="mx-auto max-w-3xl px-6 py-12 sm:py-16">
-        <ScanForm
-          url={url}
-          onUrlChange={setUrl}
-          onSubmit={runScan}
-          scanning={scanning}
-        />
+        {/* Entrance motion on mount (self-disables under reduced motion). */}
+        <PageTransition>
+          <ScanForm
+            url={url}
+            onUrlChange={setUrl}
+            onSubmit={runScan}
+            scanning={scanning}
+          />
+        </PageTransition>
 
         {/* Loading — the methodical line-tick loader, not a spinner/sweep.
             aria-live is on the OUTER wrapper (always in the DOM) so screen
@@ -146,7 +151,7 @@ function PublicScanPageInner() {
 
         {/* Results + email gate */}
         {result && !scanning && (
-          <div className="mt-12 space-y-8">
+          <Reveal className="mt-12 space-y-8">
             <ScanResults
               result={result}
               capturedEmail={capturedEmail}
@@ -166,7 +171,7 @@ function PublicScanPageInner() {
                 }}
               />
             </div>
-          </div>
+          </Reveal>
         )}
       </main>
     </div>
