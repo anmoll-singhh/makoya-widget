@@ -163,6 +163,7 @@
 }
 
 .login-btn {
+  position: relative; /* anchors LoadingButton's visually-hidden live region */
   width: 100%;
   height: 47px;
   border: none;
@@ -297,6 +298,123 @@
   border: 1px solid #cfe6d8;
 }
 
+/* ───────────────────────────────────────────────────────────────────────────
+ * "Caught in 4K" gag modal (CaughtIn4kModal.tsx).
+ * Framer Motion handles the entrance spring; these rules are layout + skin only.
+ * ─────────────────────────────────────────────────────────────────────────── */
+.c4k-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* honour the iOS safe area so the card never tucks under a notch/home bar */
+  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  background: rgba(6, 16, 46, .55);
+  backdrop-filter: blur(3px);
+}
+
+.c4k-card {
+  width: 100%;
+  max-width: 380px;
+  background: #fff;
+  border-radius: 18px;
+  padding: 28px 26px 24px;
+  text-align: center;
+  box-shadow: 0 30px 80px rgba(3, 8, 28, .5);
+  outline: none;
+}
+
+.c4k-card:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.c4k-icon {
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), #1FA86B);
+}
+
+.c4k-title {
+  font-family: 'Satoshi', 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 21px;
+  color: var(--ink);
+  margin: 0 0 8px;
+}
+
+.c4k-desc {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--t2);
+  margin: 0 0 20px;
+}
+
+.c4k-btn {
+  width: 100%;
+  min-height: 46px;
+  border: none;
+  border-radius: 11px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 14.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .15s;
+}
+
+.c4k-btn:hover { background: var(--accent-d); }
+.c4k-btn:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+
+/* ───────────────────────────────────────────────────────────────────────────
+ * Mobile-first hardening (≈375px target).
+ *
+ * The base layout above is a desktop split (430px card on a 7vw rail). On phones
+ * we stack to a full-width card, shrink the splash padding, and — critically —
+ * bump inputs to 16px so iOS Safari does not auto-zoom on focus. Touch targets
+ * stay ≥44px. Pinch-zoom is never disabled (see layout.tsx viewport).
+ * ─────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 560px) {
+  .login-stage {
+    padding: 0 18px;
+    justify-content: center;
+  }
+  .login-card {
+    width: 100%;
+    max-width: 430px;
+    padding: 28px 22px 24px;
+    border-radius: 18px;
+  }
+  .login-h1 { font-size: 24px; }
+  .login-sub { font-size: 13.5px; }
+  /* 16px avoids the iOS focus-zoom; matches recommended minimum. */
+  .login-input { font-size: 16px; height: 48px; }
+  /* Give the password toggle a ≥44px hit area without moving the icon. */
+  .login-field .eye-btn {
+    width: 44px;
+    height: 44px;
+    justify-content: flex-end;
+    right: 8px;
+  }
+  /* Keep the bottom tagline from colliding with the stacked card. */
+  .login-tag {
+    position: static;
+    display: block;
+    text-align: center;
+    margin: 22px 0 max(18px, env(safe-area-inset-bottom));
+    color: rgba(255, 255, 255, .7);
+  }
+}
+
 /* a11y guards */
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
@@ -304,4 +422,5 @@
 @media (forced-colors: active) {
   .login-card { border: 1px solid CanvasText; }
   .login-input { border: 1px solid ButtonText; }
+  .c4k-card { border: 1px solid CanvasText; }
 }
