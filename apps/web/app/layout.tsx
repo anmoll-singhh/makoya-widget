@@ -19,6 +19,16 @@ export const metadata = {
     "An honest accessibility scan: a real 0–100 score and the exact issues on your site, in plain English. No 'instant compliance' lies.",
 };
 
+// Mobile-first viewport (block 26). `viewport-fit=cover` lets the safe-area
+// insets in globals.css take effect on notched phones. `maximumScale` is left
+// unset so users can always pinch-zoom (WCAG 1.4.4 — never disable zoom).
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#0D1B4D",
+  viewportFit: "cover" as const,
+};
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
