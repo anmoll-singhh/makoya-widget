@@ -27,16 +27,18 @@
  * normal email/password is unlikely to trip it, but classic payloads will.
  */
 const INJECTION_PATTERNS: readonly RegExp[] = [
-  // Tautologies: ' OR 1=1, " OR 'a'='a, OR 1=1
-  /('|")\s*(or|and)\s+('|")?\s*\w+\s*=\s*('|")?\s*\w+/i,
-  /\b(or|and)\s+\d+\s*=\s*\d+\b/i,
+  // Tautologies: OR 1=1, OR 'a'='a, " OR 1 = 1, AND 1=1 — the operands may be
+  // bare or wrapped in quotes, so optional quotes surround each side.
+  /\b(or|and)\b\s+['"]?\s*\w+\s*['"]?\s*=\s*['"]?\s*\w+/i,
   // UNION-based extraction
   /\bunion\b\s+(all\s+)?\bselect\b/i,
   // Destructive / stacked statements
   /\bdrop\s+table\b/i,
   /;\s*(drop|delete|update|insert|truncate|alter)\b/i,
-  // SQL comment markers (classic payload terminators)
-  /--\s/,
+  // SQL comment markers (classic payload terminators). A double-dash is the
+  // canonical inline SQL comment (`admin'--`); it's vanishingly rare in a real
+  // password, so we match it anywhere (documented false-positive tradeoff).
+  /--/,
   /\/\*/,
   /#\s*$/,
   // SQL Server extended procedures
