@@ -62,7 +62,7 @@ export function CaughtIn4kModal({
     const root = dialogRef.current;
     if (!root) return;
     const items = Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
-      (el) => el.offsetParent !== null,
+      (el) => el.offsetParent !== null
     );
     if (items.length === 0) {
       e.preventDefault();
@@ -116,9 +116,9 @@ export function CaughtIn4kModal({
               📷 Caught in 4K
             </h2>
             <p id="c4k-desc" className="c4k-desc">
-              Really… SQL injection?? Nice try. Our backend uses parameterised
-              queries, so that payload was never going anywhere — but we admire the
-              effort. Come back with a real password. 😉
+              SQL injection in this economy, really?? Nice try. Our backend uses parameterised
+              queries, so that payload was never going anywhere — but we admire the effort. Come
+              back with a real password. 😉
             </p>
             <button type="button" className="c4k-btn" onClick={onClose}>
               Okay, you caught me
