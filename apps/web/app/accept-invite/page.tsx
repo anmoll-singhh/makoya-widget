@@ -27,8 +27,19 @@ export default function AcceptInvitePage() {
 
   useEffect(() => {
     // Read the token client-side (avoids useSearchParams' Suspense requirement).
-    const t = new URLSearchParams(window.location.search).get("token") ?? "";
+    // Also check sessionStorage for a token stashed before a login redirect.
+    const params = new URLSearchParams(window.location.search);
+    const t = params.get("token") ?? sessionStorage.getItem("mky_invite_token") ?? "";
     setToken(t);
+
+    if (t) {
+      // Scrub the token from the URL immediately so it never sits in browser
+      // history, referrer headers, or PostHog's $current_url capture.
+      // We store it in sessionStorage first so the flow survives the login round-trip.
+      sessionStorage.setItem("mky_invite_token", t);
+      history.replaceState({}, "", window.location.pathname);
+    }
+
     if (!t) {
       setPhase("no-token");
       return;
@@ -53,6 +64,10 @@ export default function AcceptInvitePage() {
           body: JSON.stringify({ token: t }),
         });
         if (!live) return;
+        if (res.ok) {
+          // Invite accepted — clear the stashed token before redirecting.
+          sessionStorage.removeItem("mky_invite_token");
+        }
         setPhase(res.ok ? "success" : "error");
       } catch {
         if (live) setPhase("error");
@@ -64,9 +79,9 @@ export default function AcceptInvitePage() {
     };
   }, []);
 
-  const loginHref = `/login?next=${encodeURIComponent(
-    `/accept-invite?token=${encodeURIComponent(token)}`
-  )}`;
+  // Token is stashed in sessionStorage (scrubbed from URL above); redirect to
+  // /login with a safe next= path — never nest the token in the query string.
+  const loginHref = `/login?next=/accept-invite`;
 
   return (
     <main

@@ -46,7 +46,15 @@ function PageviewTracker() {
     if (!enabled) return;
     let url = window.location.origin + pathname;
     const qs = searchParams?.toString();
-    if (qs) url += `?${qs}`;
+    if (qs) {
+      // Strip sensitive query params before forwarding to PostHog so tokens /
+      // OAuth codes never escape to a third party (Finding 2, security audit).
+      const SENSITIVE = ["token", "code", "state", "access_token", "refresh_token"];
+      const safe = new URLSearchParams(qs);
+      SENSITIVE.forEach((k) => safe.delete(k));
+      const safeQs = safe.toString();
+      if (safeQs) url += `?${safeQs}`;
+    }
     posthog.capture("$pageview", { $current_url: url });
   }, [pathname, searchParams]);
 

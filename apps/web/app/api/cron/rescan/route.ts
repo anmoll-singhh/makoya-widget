@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { runAndStoreScan } from "@/lib/scan-runner";
+import { captureError } from "@/lib/observability";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -31,8 +32,7 @@ export async function GET(req: Request) {
       scanned++;
     } catch (e) {
       failed++;
-      // Observable: a persistently failing site is logged and counted.
-      console.error(`[cron/rescan] scan failed for site ${s.id} (${s.domain}):`, e instanceof Error ? e.message : e);
+      captureError(e, { route: "cron/rescan", siteId: s.id });
     }
   }
   return NextResponse.json({ ok: true, scanned, failed });

@@ -112,7 +112,7 @@ export function LoginForm() {
     const { data, error: signUpError } = await supabase().auth.signUp({ email, password });
     setBusy(false);
     if (signUpError) {
-      setError(signUpError.message);
+      setError("Account creation failed. Please try again or sign in if you already have an account.");
       return;
     }
     if (data.session) {

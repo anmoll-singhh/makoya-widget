@@ -99,7 +99,7 @@ export function Customizer({ sites, activeSiteId, initialConfig, plan }: Customi
           <span className="text-sm font-medium text-[var(--ink-600)] shrink-0">Site:</span>
           <Select
             value={activeSiteId}
-            onValueChange={(id) => router.push(`/dashboard?site=${id}`)}
+            onValueChange={(id) => router.push(`/dashboard/${id}/customize`)}
           >
             <SelectTrigger className="w-64">
               <SelectValue />

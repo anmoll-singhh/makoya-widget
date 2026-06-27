@@ -31,8 +31,11 @@ export const stubEmailProvider: EmailProvider = {
   name: "stub",
   async send(email: OutboundEmail): Promise<SendResult> {
     outbox.push({ ...email, at: new Date().toISOString() });
-    // eslint-disable-next-line no-console
-    console.info(`[email:stub] → ${email.to} :: ${email.subject}`);
+    // Only log in non-production to avoid leaking recipient addresses to logs.
+    if (process.env.NODE_ENV !== "production") {
+      // eslint-disable-next-line no-console
+      console.info(`[email:stub] → ${email.to} :: ${email.subject}`);
+    }
     return { ok: true, provider: "stub", id: `stub_${outbox.length}` };
   },
 };

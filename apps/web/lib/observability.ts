@@ -112,6 +112,6 @@ export function logWidgetGate(info: {
   /** Which check produced the would-be denial (Phase 1.5). */
   reason: "domain" | "license" | "token" | "no-site";
 }): void {
-  // TODO(phase-3): forward to PostHog/Sentry as a structured event.
-  console.warn(`[widget-gate] ${info.enforced ? "deny" : "monitor_would_deny"}`, info);
+  // TODO(phase-3): forward to PostHog/Sentry as a structured event instead of
+  // a console.warn (which would leak siteId/host/licenseStatus to server logs).
 }

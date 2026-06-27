@@ -3,6 +3,7 @@ import { getAdminSupabase } from "@/lib/supabase/admin";
 import type { Plan, RequestStatus } from "@/lib/admin-constants";
 import { createSite } from "@/lib/sites";
 import { issueCountFromTotals } from "@/lib/issue-count-utils";
+import { captureError } from "@/lib/observability";
 
 /** id -> email for all auth users (paged). */
 async function emailMap(): Promise<Map<string, string>> {
@@ -77,7 +78,7 @@ export async function listAdminSites(): Promise<AdminSiteRow[]> {
     admin.from("sites").select("id, owner_id, domain, plan, created_at").order("created_at", { ascending: false }),
     emailMap(),
   ]);
-  if (error) console.error("[admin] listAdminSites sites query:", error.message);
+  if (error) captureError(error, { fn: "listAdminSites", step: "sites query" });
   // Per-site scan + open-count run in parallel across all sites (not serial).
   return Promise.all((sites ?? []).map(async (s) => {
     const [{ data: latest }, { count }] = await Promise.all([
@@ -108,7 +109,7 @@ export interface AdminSiteDetail {
 export async function getAdminSiteDetail(siteId: string): Promise<AdminSiteDetail | null> {
   const admin = getAdminSupabase();
   const { data: s, error: sErr } = await admin.from("sites").select("id, owner_id, domain, plan, created_at").eq("id", siteId).maybeSingle();
-  if (sErr) console.error("[admin] getAdminSiteDetail site query:", sErr.message);
+  if (sErr) captureError(sErr, { fn: "getAdminSiteDetail", step: "site query" });
   if (!s) return null;
   // Resolve just this one owner's email (not the full user list).
   const { data: ownerData } = await admin.auth.admin.getUserById(s.owner_id);

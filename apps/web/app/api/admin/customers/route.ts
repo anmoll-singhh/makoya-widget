@@ -3,6 +3,7 @@ import { getAdminUser } from "@/lib/auth/require-admin";
 import { isValidPlan } from "@/lib/admin-constants";
 import { createCustomer } from "@/lib/admin";
 import { mintSiteToken } from "@/lib/licensing/token";
+import { captureError } from "@/lib/observability";
 
 export async function POST(req: Request) {
   const admin = await getAdminUser();
@@ -24,7 +25,8 @@ export async function POST(req: Request) {
     // without having to log in as the client first.
     const token = mintSiteToken(result.siteId);
     return NextResponse.json({ ...result, token }, { status: 201 });
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? "create failed" }, { status: 500 });
+  } catch (e: unknown) {
+    captureError(e, { route: "admin/customers" });
+    return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }
 }
