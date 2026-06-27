@@ -425,3 +425,99 @@ body{ font-size:14.5px; line-height:1.5; }
 .btn.ghost{ color:var(--primary-hover); }
 /* page subtitles */
 .hl .sub,.pagehead{ color:var(--t2); }
+
+/* =====================================================================
+   v8 — SKELETONS, MOBILE DRAWER & MOBILE-FIRST  (mobile-motion-hardening)
+   - Token-matched loading skeletons (cool palette, not shadcn's warm beige).
+   - The sidebar becomes an off-canvas slide-in sheet under 768px.
+   - Tap targets ≥44px; hero/cards/charts stay readable at 360–414px.
+   All motion is suppressed under prefers-reduced-motion (see guards below).
+   ===================================================================== */
+
+/* ---- loading skeletons (shaped like the real content) ---- */
+.skel{
+  position:relative;overflow:hidden;border-radius:8px;
+  background:linear-gradient(90deg,#EAEEF6 0%,#F2F5FB 50%,#EAEEF6 100%);
+  background-size:200% 100%;
+  animation:mky-skel 1.25s ease-in-out infinite;
+}
+@keyframes mky-skel{ from{background-position:200% 0} to{background-position:-200% 0} }
+@media (prefers-reduced-motion:reduce){ .skel{ animation:none;background:#EDF0F6 } }
+@media (forced-colors:active){ .skel{ background:GrayText;animation:none } }
+
+/* ---- mobile nav drawer: hidden chrome on desktop ---- */
+.navtoggle{display:none}
+.navclose{display:none}
+.navscrim{display:none}
+
+/* =====================================================================
+   MOBILE — phones first (≤768px). The grid collapses to one column and
+   the sidebar slides in over a scrim instead of taking layout width.
+   ===================================================================== */
+@media (max-width:768px){
+  /* single-column app; the aside is taken out of flow (fixed) */
+  .app{grid-template-columns:1fr}
+
+  /* off-canvas sidebar sheet */
+  .side{
+    position:fixed;top:0;left:0;height:100dvh;width:min(86vw,300px);
+    z-index:70;transform:translateX(-100%);
+    transition:transform .28s cubic-bezier(.22,1,.36,1);
+    box-shadow:var(--sh-pop);padding:0 12px 12px;
+    overscroll-behavior:contain;
+  }
+  .app[data-nav-open="true"] .side{transform:none}
+
+  /* dimmed scrim — only painted while the drawer is open */
+  .app[data-nav-open="true"] .navscrim{
+    display:block;position:fixed;inset:0;z-index:60;
+    background:rgba(13,27,77,.40);
+    -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);
+  }
+
+  /* hamburger in the topbar + close button inside the drawer */
+  .navtoggle{
+    display:grid;place-items:center;width:44px;height:44px;flex:none;
+    border-radius:11px;background:rgba(255,255,255,.85);
+    border:1px solid var(--border);color:var(--t1);font-size:22px;cursor:pointer;
+  }
+  .navtoggle:hover{background:#fff}
+  .navclose{
+    display:grid;place-items:center;width:44px;height:44px;margin:8px 0 0 auto;
+    border-radius:11px;background:var(--bg);border:1px solid var(--border);
+    color:var(--t1);font-size:22px;cursor:pointer;
+  }
+
+  /* comfortable tap targets (≥44px) for nav + controls */
+  .nav a,.grp>button{min-height:44px}
+  .switch{min-height:44px}
+
+  /* tighter chrome paddings on small screens */
+  .topbar{margin:10px 12px 0;padding:10px 12px;gap:10px}
+  .search{font-size:13.5px;padding:9px 12px}
+  .wrap{padding:14px 14px 30px}
+  .user .nm,.user .rl{max-width:96px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  /* hero stacks; gauge centers; copy stays readable */
+  .hero{padding:20px 16px;border-radius:18px}
+  .hero-grid{grid-template-columns:1fr;gap:14px}
+  .gcard{padding:16px 14px;gap:14px}
+  .hl h1{font-size:24px}
+
+  /* the compliance journey scrolls horizontally instead of squashing */
+  .journey{max-width:none;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
+  .jnode{min-width:74px}
+
+  /* all multi-column rows collapse */
+  .row,.row2,.row3,.grid2,.grid3,.grid4,.hero-grid{grid-template-columns:1fr!important}
+
+  /* cards a touch tighter */
+  .pad{padding:16px 16px}
+}
+
+/* very small phones (≤400px): drop the user name text, keep the avatar */
+@media (max-width:400px){
+  .user .nm,.user .rl{display:none}
+  .user{padding:5px}
+  .pagehead b{font-size:20px}
+}
