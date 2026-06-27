@@ -41,6 +41,8 @@ export default function AcceptInvitePage() {
     }
 
     if (!t) {
+      // Clear any stale token so it is never re-sent on a later visit.
+      sessionStorage.removeItem("mky_invite_token");
       setPhase("no-token");
       return;
     }
@@ -70,7 +72,11 @@ export default function AcceptInvitePage() {
         }
         setPhase(res.ok ? "success" : "error");
       } catch {
-        if (live) setPhase("error");
+        if (live) {
+          // Clear the stashed token on failure so it is never re-sent.
+          sessionStorage.removeItem("mky_invite_token");
+          setPhase("error");
+        }
       }
     })();
 
@@ -113,13 +119,19 @@ export default function AcceptInvitePage() {
         </h1>
 
         {phase === "checking" && (
-          <p role="status" style={{ marginTop: 14, fontSize: 14, color: "#5b6478", lineHeight: 1.6 }}>
+          <p
+            role="status"
+            style={{ marginTop: 14, fontSize: 14, color: "#5b6478", lineHeight: 1.6 }}
+          >
             Checking your invite…
           </p>
         )}
 
         {phase === "no-token" && (
-          <p role="alert" style={{ marginTop: 14, fontSize: 14, color: "#8a5200", lineHeight: 1.6 }}>
+          <p
+            role="alert"
+            style={{ marginTop: 14, fontSize: 14, color: "#8a5200", lineHeight: 1.6 }}
+          >
             This invite link is missing its token. Please use the exact link your teammate sent you.
           </p>
         )}
@@ -127,8 +139,8 @@ export default function AcceptInvitePage() {
         {phase === "needs-login" && (
           <>
             <p style={{ marginTop: 14, fontSize: 14, color: "#5b6478", lineHeight: 1.6 }}>
-              Sign in (or create your account) with the email this invite was sent to, then you&apos;ll
-              join the team automatically.
+              Sign in (or create your account) with the email this invite was sent to, then
+              you&apos;ll join the team automatically.
             </p>
             <a
               href={loginHref}
@@ -150,7 +162,10 @@ export default function AcceptInvitePage() {
         )}
 
         {phase === "accepting" && (
-          <p role="status" style={{ marginTop: 14, fontSize: 14, color: "#5b6478", lineHeight: 1.6 }}>
+          <p
+            role="status"
+            style={{ marginTop: 14, fontSize: 14, color: "#5b6478", lineHeight: 1.6 }}
+          >
             Joining the team…
           </p>
         )}
@@ -184,9 +199,12 @@ export default function AcceptInvitePage() {
 
         {phase === "error" && (
           <>
-            <p role="alert" style={{ marginTop: 14, fontSize: 14, color: "#8a5200", lineHeight: 1.6 }}>
-              We couldn&apos;t accept this invite. It may have already been used or expired, or it was
-              sent to a different email. Ask whoever invited you to send a fresh invite.
+            <p
+              role="alert"
+              style={{ marginTop: 14, fontSize: 14, color: "#8a5200", lineHeight: 1.6 }}
+            >
+              We couldn&apos;t accept this invite. It may have already been used or expired, or it
+              was sent to a different email. Ask whoever invited you to send a fresh invite.
             </p>
             <Link
               href="/dashboard"

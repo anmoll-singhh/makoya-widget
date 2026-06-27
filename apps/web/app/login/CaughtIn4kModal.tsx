@@ -62,7 +62,7 @@ export function CaughtIn4kModal({
     const root = dialogRef.current;
     if (!root) return;
     const items = Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
-      (el) => el.offsetParent !== null || el === root,
+      (el) => el.offsetParent !== null,
     );
     if (items.length === 0) {
       e.preventDefault();

@@ -474,7 +474,11 @@ export function Shell({ sites, user, children }: ShellProps) {
       </aside>
 
       {/* ── Main area ───────────────────────────────────────────────────── */}
-      <div className="main">
+      {/* inert makes the content wrapper non-interactive while the mobile drawer
+          is open. This provides a focus trap (keyboard can't reach hidden content),
+          prevents background scroll on iOS (no JS needed), and ensures screen
+          readers cannot wander into the page behind the drawer scrim. */}
+      <div className="main" inert={navOpen || undefined}>
         {/* Glass topbar */}
         <header className="topbar mk-glass" role="banner">
           {/* Mobile hamburger — opens the off-canvas nav drawer. Hidden ≥768px. */}

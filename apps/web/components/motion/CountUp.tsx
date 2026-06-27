@@ -43,7 +43,10 @@ export function CountUp({
       el.textContent = fmt(Number.isFinite(value) ? value : 0);
       return;
     }
-    const controls = animate(0, value, {
+    // Seed from whatever is already painted so there is no flash-to-zero when
+    // the component remounts after an SSR-hydrated final value is in the DOM.
+    const from = parseFloat((el.textContent ?? "0").replace(/[^0-9.-]/g, "")) || 0;
+    const controls = animate(from, value, {
       duration: durationMs / 1000,
       ease: [0.22, 1, 0.36, 1],
       onUpdate: (latest) => {

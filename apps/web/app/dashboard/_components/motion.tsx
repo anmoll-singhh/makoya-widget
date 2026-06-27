@@ -32,6 +32,7 @@
 import {
   forwardRef,
   useEffect,
+  useId,
   useRef,
   useState,
   type ButtonHTMLAttributes,
@@ -285,7 +286,7 @@ const RING_CIRC = 98; // matches the 36-viewBox r=15.6 ring used across the dash
 export function GaugeRing({
   value,
   size = 158,
-  gradientId = "mky-gauge",
+  gradientId,
   trackColor = "rgba(13,27,77,.12)",
   from = "#1E63FF",
   to = "#1FA86B",
@@ -293,6 +294,10 @@ export function GaugeRing({
   ariaLabel,
 }: GaugeRingProps) {
   const reduce = useReducedMotion();
+  const uid = useId();
+  // Use caller-supplied id if provided, otherwise derive a document-unique one
+  // so multiple GaugeRing instances on the same page don't share a gradient def.
+  const gId = gradientId ?? `mky-gauge-${uid}`;
   const pct = value == null ? 0 : Math.max(0, Math.min(100, value));
   const targetOffset = RING_CIRC * (1 - pct / 100);
 
@@ -304,7 +309,7 @@ export function GaugeRing({
     >
       <svg width={size} height={size} viewBox="0 0 36 36" aria-hidden="true">
         <defs>
-          <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
+          <linearGradient id={gId} x1="0" y1="0" x2="1" y2="1">
             <stop offset="0" stopColor={from} />
             <stop offset="1" stopColor={to} />
           </linearGradient>
@@ -322,7 +327,7 @@ export function GaugeRing({
           cy="18"
           r="15.6"
           fill="none"
-          stroke={`url(#${gradientId})`}
+          stroke={`url(#${gId})`}
           strokeWidth="3"
           strokeLinecap="round"
           strokeDasharray={RING_CIRC}

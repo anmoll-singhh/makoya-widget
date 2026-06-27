@@ -46,7 +46,7 @@
  *   .card, .pad, .dch, .row2, .row3, .it, .ic, .pill, .note, .fw, .skel, etc.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { CountUp, GaugeRing, Reveal, RevealItem } from "../_components/motion";
 
@@ -198,49 +198,52 @@ function TrendChart({ trend }: { trend: { period: string; score: number | null }
 /* ── Loading skeleton — shaped like the real Overview content ─────────────────── */
 function OverviewSkeleton() {
   return (
-    <div aria-hidden="true">
-      {/* Hero placeholder */}
-      <div className="hero" style={{ minHeight: 220 }}>
-        <div className="hero-bg" aria-hidden="true" />
-        <div className="hero-grid" style={{ position: "relative" }}>
-          <div className="gcard" style={{ flexDirection: "column", alignItems: "flex-start", gap: 12 }}>
-            <div className="skel" style={{ width: 160, height: 16 }} />
-            <div className="skel" style={{ width: 240, height: 28 }} />
-            <div className="skel" style={{ width: "80%", height: 14 }} />
-            <div className="skel" style={{ width: "100%", height: 60, marginTop: 8 }} />
-          </div>
-          <div className="gcard" style={{ justifyContent: "center" }}>
-            <div className="skel" style={{ width: 158, height: 158, borderRadius: "50%" }} />
-          </div>
-        </div>
-      </div>
-      {/* KPI placeholders */}
-      <div className="grid4" style={{ marginBottom: 20 }}>
-        {[0, 1, 2, 3].map((i) => (
-          <div className="kpi" key={i}>
-            <div className="kt">
-              <div className="skel" style={{ width: 42, height: 42, borderRadius: 13 }} />
-              <div className="skel" style={{ width: 110, height: 14 }} />
-            </div>
-            <div className="skel" style={{ width: 90, height: 30, marginTop: 6 }} />
-          </div>
-        ))}
-      </div>
-      {/* Rows placeholders */}
-      <div className="row2">
-        <div className="card pad">
-          <div className="skel" style={{ width: 200, height: 18, marginBottom: 16 }} />
-          <div className="skel" style={{ width: "100%", height: 168 }} />
-        </div>
-        <div className="card pad">
-          <div className="skel" style={{ width: 160, height: 18, marginBottom: 16 }} />
-          <div className="skel" style={{ width: "100%", height: 110 }} />
-        </div>
-      </div>
+    <>
+      {/* Live region OUTSIDE aria-hidden so screen readers announce it. */}
       <span className="sr-only" role="status" aria-live="polite">
         Loading your overview…
       </span>
-    </div>
+      <div aria-hidden="true">
+        {/* Hero placeholder */}
+        <div className="hero" style={{ minHeight: 220 }}>
+          <div className="hero-bg" aria-hidden="true" />
+          <div className="hero-grid" style={{ position: "relative" }}>
+            <div className="gcard" style={{ flexDirection: "column", alignItems: "flex-start", gap: 12 }}>
+              <div className="skel" style={{ width: 160, height: 16 }} />
+              <div className="skel" style={{ width: 240, height: 28 }} />
+              <div className="skel" style={{ width: "80%", height: 14 }} />
+              <div className="skel" style={{ width: "100%", height: 60, marginTop: 8 }} />
+            </div>
+            <div className="gcard" style={{ justifyContent: "center" }}>
+              <div className="skel" style={{ width: 158, height: 158, borderRadius: "50%" }} />
+            </div>
+          </div>
+        </div>
+        {/* KPI placeholders */}
+        <div className="grid4" style={{ marginBottom: 20 }}>
+          {[0, 1, 2, 3].map((i) => (
+            <div className="kpi" key={i}>
+              <div className="kt">
+                <div className="skel" style={{ width: 42, height: 42, borderRadius: 13 }} />
+                <div className="skel" style={{ width: 110, height: 14 }} />
+              </div>
+              <div className="skel" style={{ width: 90, height: 30, marginTop: 6 }} />
+            </div>
+          ))}
+        </div>
+        {/* Rows placeholders */}
+        <div className="row2">
+          <div className="card pad">
+            <div className="skel" style={{ width: 200, height: 18, marginBottom: 16 }} />
+            <div className="skel" style={{ width: "100%", height: 168 }} />
+          </div>
+          <div className="card pad">
+            <div className="skel" style={{ width: 160, height: 18, marginBottom: 16 }} />
+            <div className="skel" style={{ width: "100%", height: 110 }} />
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -257,14 +260,24 @@ export function OverviewClient({ siteId, domain, initialData }: Props) {
   const [data, setData] = useState<OverviewData | null>(initialData ?? null);
   const [loading, setLoading] = useState(initialData == null);
   const [error, setError] = useState(false);
+  // Guard so initialData is seeded exactly once on mount. initialData is a new
+  // object ref on every RSC re-render (router.refresh()), so it is intentionally
+  // excluded from the effect deps — including it would reset displayed data on
+  // every refresh even though the underlying values haven't changed.
+  const seededRef = useRef(false);
 
   useEffect(() => {
-    // Server already supplied the data → skip the fetch (no waterfall).
-    if (initialData != null) {
-      setData(initialData);
-      setLoading(false);
-      return;
+    // First mount: if the server supplied initialData, use it and skip the fetch.
+    if (!seededRef.current) {
+      seededRef.current = true;
+      if (initialData != null) {
+        setData(initialData);
+        setLoading(false);
+        return;
+      }
     }
+    // Client-fetch fallback: runs when initialData was absent, or when siteId
+    // changes (navigation to a different agent).
     let live = true;
     setLoading(true);
     setError(false);
@@ -285,7 +298,9 @@ export function OverviewClient({ siteId, domain, initialData }: Props) {
     return () => {
       live = false;
     };
-  }, [siteId, initialData]);
+  // initialData intentionally omitted — seeded via ref guard above.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [siteId]);
 
   if (loading) {
     return <OverviewSkeleton />;
