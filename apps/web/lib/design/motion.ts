@@ -64,3 +64,53 @@ export const inkStroke = {
     },
   },
 } satisfies Variants;
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * App-wide entrance variants (block 26 — mobile-motion-hardening).
+ *
+ * These power the dashboard / admin / public screen entrances and the staggered
+ * card grids. Same EASE_INK + DUR tokens so motion feels like one system.
+ * Every consumer must short-circuit with useReducedMotion() to a resting render.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** Whole-screen entrance: a touch more travel than revealVariant, plays on mount. */
+export const pageEnter = {
+  hidden: { opacity: 0, y: 14 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: DUR.section, ease: EASE_INK },
+  },
+} satisfies Variants;
+
+/** Card / KPI tile rise — child of a staggerParent. Bigger pop than reveal. */
+export const cardRise = {
+  hidden: { opacity: 0, y: 18, scale: 0.985 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { duration: 0.5, ease: EASE_INK },
+  },
+} satisfies Variants;
+
+/** Scale-in for modals / popovers / success marks. */
+export const scaleIn = {
+  hidden: { opacity: 0, scale: 0.92 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    transition: { duration: DUR.mark, ease: EASE_INK },
+  },
+} satisfies Variants;
+
+/** Springy bounce for delight moments (success badge, the "Caught in 4K" modal). */
+export const popSpring = {
+  hidden: { opacity: 0, scale: 0.8, y: 8 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: { type: "spring", stiffness: 420, damping: 24 },
+  },
+} satisfies Variants;

@@ -279,3 +279,53 @@ body {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; animation-iteration-count: 1 !important; }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * MOBILE-FIRST BASE + SHARED MOTION (block 26 — mobile-motion-hardening)
+ * Founder: "mobile first, most users on mobile" + maximal-but-accessible motion.
+ * These are app-wide primitives the dashboard/admin/public lanes all build on.
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+/* Respect notches / home indicators on phones. */
+html { -webkit-text-size-adjust: 100%; }
+@supports (padding: max(0px)) {
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* Comfortable tap targets on touch devices (WCAG 2.5.5 / 2.5.8).
+   Only on coarse pointers so mouse-dense desktop UIs stay compact. */
+@media (pointer: coarse) {
+  button, a[role="button"], .btn, [data-slot="button"], input[type="checkbox"], input[type="radio"] {
+    min-height: 44px;
+  }
+  /* text inputs at >=16px so iOS Safari never zooms the viewport on focus */
+  input, select, textarea { font-size: max(16px, 1em); }
+}
+
+/* Never let a wide element cause a horizontal scrollbar on phones. */
+img, svg, video, canvas { max-width: 100%; height: auto; }
+
+/* ── Shared skeleton shimmer (used with shadcn <Skeleton> and hand-CSS) ─────── */
+@keyframes mk-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.mk-skeleton {
+  border-radius: 10px;
+  background: linear-gradient(100deg, var(--muted) 30%, color-mix(in oklch, var(--muted), #fff 40%) 50%, var(--muted) 70%);
+  background-size: 200% 100%;
+  animation: mk-shimmer 1.4s ease-in-out infinite;
+}
+
+/* ── Generic entrance keyframes for non-React (hand-CSS) surfaces ───────────── */
+@keyframes mk-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.mk-rise { animation: mk-rise 0.5s cubic-bezier(0.22,1,0.36,1) both; }
+
+/* All of the above stop dead under reduced-motion. */
+@media (prefers-reduced-motion: reduce) {
+  .mk-skeleton { animation: none; }
+  .mk-rise { animation: none; }
+}
