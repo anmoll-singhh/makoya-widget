@@ -9,6 +9,7 @@
  *   makeSeg           — segmented control (role=group, aria-pressed per option)
  *   makeStepper       — +/– numeric stepper (continuous range)
  *   makeDiscreteStepper — +/– stepper over a fixed list of {value,label} items
+ *   makeColorPalette  — swatch color-picker (role=group, aria-pressed per swatch)
  *   row               — icon + label + control layout row
  *
  * CSS class contract (must match PANEL_CSS in ui.ts):
@@ -16,6 +17,7 @@
  *   .mky-switch
  *   .mky-seg
  *   .mky-stepper  .mky-step  .mky-stepval
+ *   .mky-palette  .mky-palette-label  .mky-swatch
  */
 
 import type { Lang } from "./i18n";
@@ -307,4 +309,69 @@ export function makeDiscreteStepper(
 
   wrapper.append(dec, val, inc);
   return wrapper;
+}
+
+// ---------------------------------------------------------------------------
+// makeColorPalette
+// ---------------------------------------------------------------------------
+
+/**
+ * Creates a color swatch palette (role=group, aria-pressed per swatch).
+ *
+ * @param groupLabel - Accessible label for the group + prefix in swatch labels.
+ * @param current    - The currently-selected color value.
+ * @param swatches   - Array of `{ value, name }` — one circular swatch button
+ *                     per entry.  `value` is used as the button's background
+ *                     color and as the value passed to `set`.
+ * @param set        - Setter called with the chosen value when a swatch is clicked.
+ * @param onChange   - Side-effect callback (apply + save prefs, …).
+ *
+ * CSS class contract: `.mky-palette` (wrapper), `.mky-palette-label` (label
+ * span), `.mky-swatch` (each circular swatch button).
+ */
+export function makeColorPalette(
+  groupLabel: string,
+  current: string,
+  swatches: { value: string; name: string }[],
+  set: (v: string) => void,
+  onChange: () => void
+): HTMLElement {
+  const palette = document.createElement("div");
+  palette.className = "mky-palette";
+  palette.setAttribute("role", "group");
+  palette.setAttribute("aria-label", groupLabel);
+
+  const labelEl = document.createElement("span");
+  labelEl.className = "mky-palette-label";
+  labelEl.textContent = groupLabel;
+  palette.appendChild(labelEl);
+
+  const btns: HTMLButtonElement[] = [];
+
+  function repaint(selectedValue: string): void {
+    btns.forEach((b) =>
+      b.setAttribute("aria-pressed", String(b.dataset.swatchValue === selectedValue))
+    );
+  }
+
+  for (const swatch of swatches) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "mky-swatch";
+    btn.style.background = swatch.value;
+    btn.dataset.swatchValue = swatch.value;
+    btn.setAttribute("aria-label", `${groupLabel}: ${swatch.name}`);
+    btn.setAttribute("aria-pressed", String(swatch.value === current));
+
+    btn.addEventListener("click", () => {
+      set(swatch.value);
+      repaint(swatch.value);
+      onChange();
+    });
+
+    btns.push(btn);
+    palette.appendChild(btn);
+  }
+
+  return palette;
 }

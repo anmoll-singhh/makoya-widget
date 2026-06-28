@@ -39,18 +39,58 @@ import type { Lang } from "./i18n";
 // ---------------------------------------------------------------------------
 
 /**
+ * Convert a CSS hex color (#rgb or #rrggbb) to an rgba() string with the
+ * given alpha. Falls back to rgba(0,0,0,alpha) on any parse failure so that
+ * named colors or malformed input never throw.
+ */
+function hexToRgba(hex: string, alpha: number): string {
+  try {
+    const clean = hex.trim().replace(/^#/, "");
+    let r: number, g: number, b: number;
+    if (clean.length === 3) {
+      r = parseInt(clean[0] + clean[0], 16);
+      g = parseInt(clean[1] + clean[1], 16);
+      b = parseInt(clean[2] + clean[2], 16);
+    } else if (clean.length === 6) {
+      r = parseInt(clean.slice(0, 2), 16);
+      g = parseInt(clean.slice(2, 4), 16);
+      b = parseInt(clean.slice(4, 6), 16);
+    } else {
+      return `rgba(0,0,0,${alpha})`;
+    }
+    if (isNaN(r) || isNaN(g) || isNaN(b)) return `rgba(0,0,0,${alpha})`;
+    return `rgba(${r},${g},${b},${alpha})`;
+  } catch {
+    return `rgba(0,0,0,${alpha})`;
+  }
+}
+
+/**
  * Cursor-following reading ruler.
  *
  * A fixed full-width band (~28px) that tracks clientY via mousemove.
- * on()  — appends the band element + attaches the listener.  Idempotent.
- * off() — removes the element + detaches the listener.
+ * on()        — appends the band element + attaches the listener. Idempotent.
+ * off()       — removes the element + detaches the listener.
+ * setColor(c) — updates the ruler band color (hex string). If the ruler is
+ *               currently active the live element is updated immediately;
+ *               otherwise the color is stored and applied on the next on().
+ *               The band background uses a translucent (~0.18 alpha) variant
+ *               of the color; the border uses the full-opacity color.
  */
-export function makeRuler(): { on(): void; off(): void } {
+export function makeRuler(): { on(): void; off(): void; setColor(c: string): void } {
   let el: HTMLDivElement | null = null;
+  let currentColor = "#ffd400"; // default yellow; updated by setColor()
 
   const move = (e: MouseEvent) => {
     if (el) el.style.top = `${e.clientY}px`;
   };
+
+  function applyColor(c: string): void {
+    if (!el) return;
+    el.style.background = hexToRgba(c, 0.18);
+    el.style.borderTop = `2px solid ${c}`;
+    el.style.borderBottom = `2px solid ${c}`;
+  }
 
   return {
     on() {
@@ -63,13 +103,11 @@ export function makeRuler(): { on(): void; off(): void } {
         "top:0",
         "width:100vw",
         "height:28px",
-        "background:rgba(0,0,0,.06)",
-        "border-top:2px solid rgba(0,0,0,.45)",
-        "border-bottom:2px solid rgba(0,0,0,.45)",
         "pointer-events:none",
         "z-index:2147483646",
         "transform:translateY(-14px)",
       ].join(";");
+      applyColor(currentColor);
       document.documentElement.appendChild(el);
       window.addEventListener("mousemove", move);
     },
@@ -79,6 +117,11 @@ export function makeRuler(): { on(): void; off(): void } {
       window.removeEventListener("mousemove", move);
       el?.remove();
       el = null;
+    },
+
+    setColor(c: string) {
+      currentColor = c;
+      applyColor(c); // no-op if el is null (ruler off)
     },
   };
 }
@@ -350,6 +393,85 @@ export function makeMute(): { enable(): void; disable(): void } {
       document.removeEventListener("play", onPlay, true);
       // Restore all current media elements
       for (const el of allMedia()) el.muted = false;
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// makeHoverHighlight
+// ---------------------------------------------------------------------------
+
+/**
+ * Hover-highlight controller.
+ *
+ * Outlines the element currently under the mouse pointer with a fixed-position
+ * overlay div, helping focus/low-vision users see what they are pointing at
+ * (accessiBe-style pointer-awareness feature).
+ *
+ * enable()  — appends one overlay div to document.documentElement and attaches
+ *             a `mousemove` listener.  On each move the overlay is repositioned
+ *             over the target element's bounding rect (viewport-relative, via
+ *             getBoundingClientRect — no scrollX/Y needed for position:fixed).
+ *             Skips the widget host element (#makoya-widget-root).
+ * disable() — removes the listener + overlay, leaving zero residue.
+ *
+ * Safety contract: aria-hidden, pointer-events:none, never throws, z-index
+ * strictly below the widget host (2147483647).
+ */
+export function makeHoverHighlight(): { enable(): void; disable(): void } {
+  let el: HTMLDivElement | null = null;
+  let enabled = false;
+
+  const onMove = (e: MouseEvent) => {
+    try {
+      const target = e.target as HTMLElement | null;
+      if (!target || !el) return;
+      // Skip the widget's own host so interacting with the panel doesn't
+      // cause a jarring outline to appear over the widget UI itself.
+      if (target.closest?.("#makoya-widget-root")) {
+        el.style.opacity = "0";
+        return;
+      }
+      const rect = target.getBoundingClientRect();
+      el.style.left   = `${rect.left}px`;
+      el.style.top    = `${rect.top}px`;
+      el.style.width  = `${rect.width}px`;
+      el.style.height = `${rect.height}px`;
+      el.style.opacity = "1";
+    } catch {
+      // Never throw from a mousemove handler
+    }
+  };
+
+  return {
+    enable() {
+      if (enabled) return;
+      enabled = true;
+      el = document.createElement("div");
+      el.setAttribute("aria-hidden", "true");
+      el.style.cssText = [
+        "position:fixed",
+        "left:0",
+        "top:0",
+        "width:0",
+        "height:0",
+        "border:2px solid #1e63ff",
+        "border-radius:3px",
+        "pointer-events:none",
+        "z-index:2147483646",
+        "opacity:0",
+        "transition:top .06s ease,left .06s ease,width .06s ease,height .06s ease",
+      ].join(";");
+      document.documentElement.appendChild(el);
+      window.addEventListener("mousemove", onMove);
+    },
+
+    disable() {
+      if (!enabled) return;
+      enabled = false;
+      window.removeEventListener("mousemove", onMove);
+      el?.remove();
+      el = null;
     },
   };
 }

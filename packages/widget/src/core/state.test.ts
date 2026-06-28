@@ -85,6 +85,10 @@ test("DEFAULT_PREFS.titles === false", () => assert.equal(DEFAULT_PREFS.titles, 
 test("DEFAULT_PREFS.align === false", () => assert.equal(DEFAULT_PREFS.align, false));
 test("DEFAULT_PREFS.mute === false", () => assert.equal(DEFAULT_PREFS.mute, false));
 test("DEFAULT_PREFS.readAloud === false", () => assert.equal(DEFAULT_PREFS.readAloud, false));
+// Task 6: ruler color default
+test('DEFAULT_PREFS.rulerColor === "#ffd400"', () => assert.equal(DEFAULT_PREFS.rulerColor, "#ffd400"));
+// Task 5: hover highlight default
+test("DEFAULT_PREFS.hoverHighlight === false", () => assert.equal(DEFAULT_PREFS.hoverHighlight, false));
 
 // -- loadPrefs(): merges stored JSON over defaults ----------------------------
 test("loadPrefs() returns defaults when nothing stored", () => {
@@ -191,6 +195,8 @@ test("savePrefs + loadPrefs round-trips all new fields", () => {
     align: true,
     mute: true,
     readAloud: true,
+    rulerColor: "#22c55e",
+    hoverHighlight: true,
   };
   savePrefs(saved);
   const loaded = loadPrefs();
@@ -201,6 +207,8 @@ test("savePrefs + loadPrefs round-trips all new fields", () => {
   assert.equal(loaded.align, true);
   assert.equal(loaded.mute, true);
   assert.equal(loaded.readAloud, true);
+  assert.equal(loaded.rulerColor, "#22c55e");
+  assert.equal(loaded.hoverHighlight, true);
   delete _store["makoya_prefs"];
 });
 
