@@ -144,6 +144,34 @@ export const PROFILES: Profile[] = [
       p.titles = true;
     },
   },
+
+  // ── 9. Motor / tremor friendly (NEW) ────────────────────────────────────
+  // Big cursor + bigger tap targets + stop motion — three quick wins for
+  // users with reduced fine motor control or hand tremor.
+  {
+    key: "motorTremor",
+    labelKey: "profile_motorTremor",
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>`,
+    apply: (p) => {
+      p.cursor = "black";
+      p.biggerTargets = true;
+      p.stopMotion = true;
+    },
+  },
+
+  // ── 10. ESL / Easy reading (NEW) ────────────────────────────────────────
+  // Readable font + line spacing + reading ruler — common needs for users
+  // reading in a second language or those with mild literacy difficulties.
+  {
+    key: "eslReading",
+    labelKey: "profile_eslReading",
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>`,
+    apply: (p) => {
+      p.font = true;
+      p.spacing = true;
+      p.ruler = true;
+    },
+  },
 ];
 
 // ---------------------------------------------------------------------------

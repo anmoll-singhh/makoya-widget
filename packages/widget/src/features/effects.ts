@@ -97,6 +97,37 @@ html[data-mky-titles="on"] h5, html[data-mky-titles="on"] h6 {
 
 /* Left-align — normalises centred/justified layouts for readability. */
 html[data-mky-align="on"] body, html[data-mky-align="on"] body * { text-align: left !important; }
+
+/* Bigger targets — increase minimum tap/click area on interactive elements.
+   Adds symmetric padding so links/buttons are ≥44px tall and easier to hit
+   for users with motor impairment or tremor. !important overrides site resets. */
+html[data-mky-targets="on"] a,
+html[data-mky-targets="on"] button,
+html[data-mky-targets="on"] [role="button"],
+html[data-mky-targets="on"] input[type="submit"],
+html[data-mky-targets="on"] input[type="button"],
+html[data-mky-targets="on"] input[type="reset"],
+html[data-mky-targets="on"] select,
+html[data-mky-targets="on"] label {
+  min-height: 44px !important;
+  min-width: 44px !important;
+  padding-top: max(0.35em, 8px) !important;
+  padding-bottom: max(0.35em, 8px) !important;
+  padding-left: max(0.6em, 8px) !important;
+  padding-right: max(0.6em, 8px) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+/* Focus indicator — enhanced visible focus ring for keyboard navigation.
+   A bold amber outline with a white halo so it shows on any background.
+   Only fires on :focus-visible so mouse-clicks never show the ring. */
+html[data-mky-focus="on"] *:focus-visible {
+  outline: 3px solid #f59e0b !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 0 6px rgba(245,158,11,.25) !important;
+  border-radius: 2px;
+}
 `;
 
 /** Inject the effect stylesheet once. Safe to call repeatedly. */

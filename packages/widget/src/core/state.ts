@@ -9,6 +9,9 @@
  * is a BREAKING change from boolean → "off"|"black"|"white". mask/mute/readAloud
  * are LIVE preferences controlled by ui/live.ts controllers — applyPrefs does
  * not set HTML attributes for them (no CSS-attr equivalent; they need JS).
+ *
+ * Block 27: Added biggerTargets (CSS tap-target enlargement) and focusIndicator
+ * (enhanced keyboard focus rings) as pure attribute-driven CSS effects.
  */
 
 import { ensureEffectStyles, setHtmlAttr } from "../features/effects";
@@ -54,6 +57,18 @@ export interface Prefs {
    * LIVE: controlled by ui/live.ts makeReadAloud() — not a CSS attribute.
    */
   readAloud: boolean;
+  /**
+   * Enlarge tap/click targets on links, buttons, and other interactive elements
+   * by adding extra padding. Helps users with motor impairment or tremor.
+   * CSS-attribute driven: html[data-mky-targets="on"].
+   */
+  biggerTargets: boolean;
+  /**
+   * Enhance the visible focus indicator on all keyboard-focusable elements —
+   * useful for keyboard-only navigation. CSS-attribute driven:
+   * html[data-mky-focus="on"].
+   */
+  focusIndicator: boolean;
 }
 
 export const STORAGE_KEY = "makoya_prefs";
@@ -74,6 +89,8 @@ export const DEFAULT_PREFS: Prefs = {
   align: false,
   mute: false,
   readAloud: false,
+  biggerTargets: false,
+  focusIndicator: false,
 };
 
 export function loadPrefs(): Prefs {
@@ -110,6 +127,8 @@ export function savePrefs(prefs: Prefs): void {
  *   data-mky-sat       → "grayscale"/"low"/"high" or absent  (WS1 new)
  *   data-mky-titles    → "on" or absent  (WS1 new)
  *   data-mky-align     → "on" or absent  (WS1 new)
+ *   data-mky-targets   → "on" or absent  (Block 27: biggerTargets)
+ *   data-mky-focus     → "on" or absent  (Block 27: focusIndicator)
  *
  * NOT set here (LIVE controllers in ui/live.ts manage these):
  *   mask, mute, readAloud — these require JS, not just CSS attributes.
@@ -130,5 +149,8 @@ export function applyPrefs(prefs: Prefs): void {
   setHtmlAttr("data-mky-sat", prefs.saturation === "off" ? null : prefs.saturation);
   setHtmlAttr("data-mky-titles", prefs.titles ? "on" : null);
   setHtmlAttr("data-mky-align", prefs.align ? "on" : null);
+  // Block 27: new feature attrs
+  setHtmlAttr("data-mky-targets", prefs.biggerTargets ? "on" : null);
+  setHtmlAttr("data-mky-focus", prefs.focusIndicator ? "on" : null);
   // mask, mute, readAloud → LIVE (ui/live.ts), no CSS attribute needed here.
 }

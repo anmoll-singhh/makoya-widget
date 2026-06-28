@@ -72,6 +72,12 @@ export const ICON: Partial<Record<FeatureKey, string>> = {
 
   /** Read aloud: speech bubble with waveform */
   readAloud: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 10h.01M12 10h.01M16 10h.01"/></svg>`,
+
+  /** Bigger tap targets: hand pointer hitting a large target */
+  biggerTargets: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="12" cy="12" r="3" fill="currentColor" fill-opacity=".25"/><path d="M12 9v6M9 12h6" stroke-width="1.5"/></svg>`,
+
+  /** Focus indicator: crosshair / target rings */
+  focusIndicator: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg>`,
 };
 
 // ---------------------------------------------------------------------------
@@ -251,6 +257,18 @@ export function buildFeature(
       const label = t(lang, "f_readAloud");
       return row(icon, label,
         makeSwitch(label, prefs.readAloud, (v) => { prefs.readAloud = v; }, onChange));
+    }
+
+    case "biggerTargets": {
+      const label = t(lang, "f_biggerTargets");
+      return row(icon, label,
+        makeSwitch(label, prefs.biggerTargets, (v) => { prefs.biggerTargets = v; }, onChange));
+    }
+
+    case "focusIndicator": {
+      const label = t(lang, "f_focusIndicator");
+      return row(icon, label,
+        makeSwitch(label, prefs.focusIndicator, (v) => { prefs.focusIndicator = v; }, onChange));
     }
 
     default:

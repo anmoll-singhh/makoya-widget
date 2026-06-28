@@ -21,6 +21,7 @@ const FEATURE_KEYS = [
   "textSize", "lineSpacing", "contrast", "stopMotion", "readingRuler",
   "highlightLinks", "bigCursor", "readableFont", "hideImages", "saturation",
   "readingMask", "highlightTitles", "textAlign", "muteSounds", "readAloud",
+  "biggerTargets", "focusIndicator",
 ] as const;
 
 const WIDGET_POSITIONS = ["bottom-right", "bottom-left", "top-right", "top-left"] as const;
@@ -30,6 +31,7 @@ const WIDGET_LANGUAGES = ["en", "es", "fr", "de"] as const;
 const PROFILE_KEYS = [
   "none", "vision", "lowVision", "dyslexia",
   "adhd", "seizure", "senior", "cognitive", "colorBlind",
+  "motorTremor", "eslReading",
 ] as const;
 
 export const configPatchSchema = z.object({
@@ -47,6 +49,9 @@ export const configPatchSchema = z.object({
   domObserverEnabled:        z.boolean().optional(),
   inheritFonts:              z.boolean().optional(),
   mobileEnabled:             z.boolean().optional(),
+  launcherShape:             z.enum(["circle", "rounded", "square"]).optional(),
+  offsetX:                   z.number().int().min(-200).max(200).optional(),
+  offsetY:                   z.number().int().min(-200).max(200).optional(),
 });
 
 export type ConfigPatchBody = z.infer<typeof configPatchSchema>;

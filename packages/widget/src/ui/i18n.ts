@@ -41,7 +41,7 @@ export type StringKey =
   // Quick profiles section heading
   | "quickProfiles"
 
-  // Profile chip labels (8 profiles)
+  // Profile chip labels (10 profiles)
   | "profile_vision"
   | "profile_lowVision"
   | "profile_dyslexia"
@@ -50,6 +50,8 @@ export type StringKey =
   | "profile_senior"
   | "profile_cognitive"
   | "profile_colorBlind"
+  | "profile_motorTremor"
+  | "profile_eslReading"
 
   // Section headers (5)
   | "sec_content"
@@ -58,7 +60,7 @@ export type StringKey =
   | "sec_audio"
   | "sec_about"
 
-  // Feature labels (15 — one per FeatureKey)
+  // Feature labels (17 — one per FeatureKey)
   | "f_textSize"
   | "f_lineSpacing"
   | "f_contrast"
@@ -74,6 +76,8 @@ export type StringKey =
   | "f_textAlign"
   | "f_muteSounds"
   | "f_readAloud"
+  | "f_biggerTargets"
+  | "f_focusIndicator"
 
   // Segmented-control option labels (10)
   | "opt_off"
@@ -124,6 +128,8 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     profile_senior: "Senior",
     profile_cognitive: "Cognitive",
     profile_colorBlind: "Color blind",
+    profile_motorTremor: "Motor / tremor",
+    profile_eslReading: "Easy reading",
 
     sec_content: "Content",
     sec_color: "Color",
@@ -146,6 +152,8 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     f_textAlign: "Left-align text",
     f_muteSounds: "Mute sounds",
     f_readAloud: "Read aloud",
+    f_biggerTargets: "Bigger tap targets",
+    f_focusIndicator: "Enhanced focus",
 
     opt_off: "Off",
     opt_on: "On",
@@ -187,6 +195,8 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     profile_senior: "Adulto mayor",
     profile_cognitive: "Cognitivo",
     profile_colorBlind: "Daltonismo",
+    profile_motorTremor: "Motor / temblor",
+    profile_eslReading: "Lectura fácil",
 
     sec_content: "Contenido",
     sec_color: "Color",
@@ -209,6 +219,8 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     f_textAlign: "Alinear texto a la izquierda",
     f_muteSounds: "Silenciar sonidos",
     f_readAloud: "Leer en voz alta",
+    f_biggerTargets: "Áreas táctiles más grandes",
+    f_focusIndicator: "Foco mejorado",
 
     opt_off: "Apagado",
     opt_on: "Encendido",
@@ -250,6 +262,8 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     profile_senior: "Senior",
     profile_cognitive: "Cognitif",
     profile_colorBlind: "Daltonisme",
+    profile_motorTremor: "Moteur / tremblements",
+    profile_eslReading: "Lecture facile",
 
     sec_content: "Contenu",
     sec_color: "Couleur",
@@ -272,6 +286,8 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     f_textAlign: "Aligner le texte à gauche",
     f_muteSounds: "Couper les sons",
     f_readAloud: "Lecture à voix haute",
+    f_biggerTargets: "Zones tactiles agrandies",
+    f_focusIndicator: "Focus amélioré",
 
     opt_off: "Désactivé",
     opt_on: "Activé",
@@ -313,6 +329,8 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     profile_senior: "Senioren",
     profile_cognitive: "Kognitiv",
     profile_colorBlind: "Farbenblindheit",
+    profile_motorTremor: "Motorik / Zittern",
+    profile_eslReading: "Einfaches Lesen",
 
     sec_content: "Inhalt",
     sec_color: "Farbe",
@@ -335,6 +353,8 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     f_textAlign: "Text linksbündig",
     f_muteSounds: "Töne stummschalten",
     f_readAloud: "Vorlesen",
+    f_biggerTargets: "Größere Tippziele",
+    f_focusIndicator: "Verbesserter Fokus",
 
     opt_off: "Aus",
     opt_on: "An",

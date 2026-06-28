@@ -24,7 +24,7 @@ export interface FeatureMeta {
 }
 
 /**
- * All 15 widget feature entries in canonical default order.
+ * All 17 widget feature entries in canonical default order.
  * Matches the order of DEFAULT_CONFIG.featuresEnabled exactly.
  */
 export const FEATURE_META: FeatureMeta[] = [
@@ -117,5 +117,17 @@ export const FEATURE_META: FeatureMeta[] = [
     label: "Read aloud",
     description: "Click text to have it read out loud.",
     group: "audio",
+  },
+  {
+    key: "biggerTargets",
+    label: "Bigger tap targets",
+    description: "Enlarge clickable areas for easier motor access.",
+    group: "navigation",
+  },
+  {
+    key: "focusIndicator",
+    label: "Enhanced focus",
+    description: "Bold, high-contrast keyboard focus ring.",
+    group: "navigation",
   },
 ];

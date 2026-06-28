@@ -1,4 +1,4 @@
-import type { WidgetPosition, FeatureKey, LauncherIconKey, WidgetLauncherSize, WidgetLanguage, WidgetProfileKey } from "@makoya/shared";
+import type { WidgetPosition, FeatureKey, LauncherIconKey, WidgetLauncherSize, WidgetLanguage, WidgetProfileKey, LauncherShape } from "@makoya/shared";
 
 export interface SiteConfig {
   siteId: string;
@@ -17,6 +17,10 @@ export interface SiteConfig {
   domObserverEnabled: boolean;
   inheritFonts: boolean;
   mobileEnabled: boolean;
+  // Task 1 + Task 3: launcher shape + position offsets.
+  launcherShape: LauncherShape;
+  offsetX: number;
+  offsetY: number;
 }
 
 export function rowToConfig(row: any): SiteConfig {
@@ -36,6 +40,9 @@ export function rowToConfig(row: any): SiteConfig {
     domObserverEnabled: row.dom_observer_enabled ?? true,
     inheritFonts: row.inherit_fonts ?? false,
     mobileEnabled: row.mobile_enabled ?? true,
+    launcherShape: row.launcher_shape ?? "circle",
+    offsetX: row.offset_x ?? 0,
+    offsetY: row.offset_y ?? 0,
   };
 }
 
@@ -55,5 +62,8 @@ export function configToRow(patch: Partial<SiteConfig>): Record<string, unknown>
   if (patch.domObserverEnabled !== undefined) out.dom_observer_enabled = patch.domObserverEnabled;
   if (patch.inheritFonts !== undefined) out.inherit_fonts = patch.inheritFonts;
   if (patch.mobileEnabled !== undefined) out.mobile_enabled = patch.mobileEnabled;
+  if (patch.launcherShape !== undefined) out.launcher_shape = patch.launcherShape;
+  if (patch.offsetX !== undefined) out.offset_x = patch.offsetX;
+  if (patch.offsetY !== undefined) out.offset_y = patch.offsetY;
   return out;
 }
