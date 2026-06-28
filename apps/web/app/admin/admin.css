@@ -170,7 +170,7 @@
 .admin-dom-av {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius: 8px; /* v9 flat+sharp: was 10px */
   background: var(--primary);
   color: #fff;
   font-size: 14px;

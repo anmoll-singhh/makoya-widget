@@ -11,6 +11,12 @@
  * - revealVariant: opacity + translate reveal used in whileInView marketing sections.
  * - staggerParent: returns variants that manage staggerChildren timing for child animations.
  * - inkStroke: pathLength + opacity draw effect for SVG annotation marks (no loop).
+ * - revealItem: card-grid child variant (opacity + translate + scale settle).
+ * - hoverLift: spring hover + tap for motion.div wrappers that want the card-lift feel.
+ * - buttonSpring: spring hover + tap for framer-motion-powered call-to-action buttons.
+ *
+ * Task 8a additions (block 27 — design+motion lane): hoverLift, buttonSpring, revealItem.
+ * Consumers MUST short-circuit with useReducedMotion() and pass their resting state.
  */
 
 import type { Variants } from "framer-motion";
@@ -112,5 +118,72 @@ export const popSpring = {
     scale: 1,
     y: 0,
     transition: { type: "spring", stiffness: 420, damping: 24 },
+  },
+} satisfies Variants;
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Task 8a — Stop-and-stare interactive variants (block 27 — design+motion lane).
+ *
+ * Use with `initial="initial" whileHover="hover" whileTap="tap"` on motion.div
+ * or motion.button elements that already pull from this file.
+ * Consumers MUST check useReducedMotion() and bail out to a static render:
+ *
+ *   const reduced = useReducedMotion();
+ *   if (reduced) return <div>{children}</div>;
+ *   return <motion.div variants={hoverLift} initial="initial" whileHover="hover" whileTap="tap">{children}</motion.div>;
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * hoverLift — spring-lift hover + scale for motion.div card wrappers.
+ * Mirrors the CSS .kpi:hover / .mcard:hover but usable on any framer-motion div.
+ * Use: `<motion.div variants={hoverLift} initial="initial" whileHover="hover" whileTap="tap">`
+ */
+export const hoverLift = {
+  initial: {},
+  hover: {
+    y: -3,
+    scale: 1.006,
+    transition: { type: "spring", stiffness: 380, damping: 26 },
+  },
+  tap: {
+    y: 0,
+    scale: 0.975,
+    transition: { duration: 0.07, ease: "easeOut" },
+  },
+} satisfies Variants;
+
+/**
+ * buttonSpring — spring hover-lift + tactile press for framer-motion CTA buttons.
+ * Complements the CSS .btn rules; use on landing / marketing buttons that already
+ * use framer-motion (e.g. the Hero CTA) for a richer spring feel.
+ * Use: `<motion.button variants={buttonSpring} initial="initial" whileHover="hover" whileTap="tap">`
+ */
+export const buttonSpring = {
+  initial: {},
+  hover: {
+    y: -1,
+    scale: 1.013,
+    transition: { type: "spring", stiffness: 420, damping: 22 },
+  },
+  tap: {
+    y: 0,
+    scale: 0.975,
+    transition: { duration: 0.07, ease: "easeOut" },
+  },
+} satisfies Variants;
+
+/**
+ * revealItem — single child in a stagger-grid (cards, KPI tiles, etc.).
+ * More travel + a hair of scale so card grids settle with a tactile "pop".
+ * Use as child of staggerParent():
+ *   `<motion.div variants={revealItem}>`
+ */
+export const revealItem = {
+  hidden: { opacity: 0, y: 20, scale: 0.97 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { duration: 0.48, ease: EASE_INK },
   },
 } satisfies Variants;
