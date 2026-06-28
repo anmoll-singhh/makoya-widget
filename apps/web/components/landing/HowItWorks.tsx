@@ -38,7 +38,7 @@
 "use client";
 
 import { howItWorks } from "@/lib/landing-copy";
-import { Reveal } from "@/components/landing/Reveal";
+import { Reveal, RevealStagger, RevealItem } from "@/components/landing/Reveal";
 import { cn } from "@/lib/utils";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -73,8 +73,11 @@ function StepCard({ index, title, body }: StepCardProps) {
     <div
       className={cn(
         "relative pl-5",
-        "border-l",
+        "border-l-2",
         "border-[var(--border)]",
+        // Animate the gutter rule to the brand accent on hover — turns a flat
+        // checklist into something that responds to the reader.
+        "transition-colors duration-300 hover:border-[var(--color-vellum-500)]"
       )}
     >
       {/*
@@ -91,14 +94,10 @@ function StepCard({ index, title, body }: StepCardProps) {
       </span>
 
       {/* Step headline — Newsreader (font-display), large enough to anchor the card */}
-      <h3 className="mt-4 font-display text-xl leading-snug text-[var(--ink-900)]">
-        {title}
-      </h3>
+      <h3 className="mt-4 font-display text-xl leading-snug text-[var(--ink-900)]">{title}</h3>
 
       {/* Body copy — readable grey, line-height generous for scan-reading */}
-      <p className="mt-2 text-base leading-relaxed text-[var(--ink-600)]">
-        {body}
-      </p>
+      <p className="mt-2 text-base leading-relaxed text-[var(--ink-600)]">{body}</p>
     </div>
   );
 }
@@ -122,7 +121,7 @@ export function HowItWorks() {
   return (
     <section
       id="how"
-      className="mx-auto w-full max-w-6xl px-6 py-24 md:py-32"
+      className="mx-auto w-full max-w-6xl px-6 py-16 sm:py-20 md:py-32"
       aria-labelledby="how-heading"
       // Ceramic green wash — 6% tint on section bg for warmth; text/buttons unaffected.
       style={{ backgroundImage: "linear-gradient(to bottom, rgba(138,179,155,.06) 0%, transparent 65%)" }}
@@ -147,16 +146,13 @@ export function HowItWorks() {
        * Three columns on md+; single-column stack on mobile.
        * gap-10 gives each card enough breathing room to read as a distinct step.
        */}
-      <Reveal className="mt-14 grid gap-10 md:grid-cols-3">
+      <RevealStagger className="mt-10 sm:mt-14 grid gap-8 sm:gap-10 md:grid-cols-3">
         {howItWorks.steps.map((step, i) => (
-          <StepCard
-            key={step.title}
-            index={i}
-            title={step.title}
-            body={step.body}
-          />
+          <RevealItem key={step.title}>
+            <StepCard index={i} title={step.title} body={step.body} />
+          </RevealItem>
         ))}
-      </Reveal>
+      </RevealStagger>
     </section>
   );
 }

@@ -53,7 +53,7 @@ import { finalCta } from "@/lib/landing-copy";
 export function FinalCta() {
   return (
     <section
-      className="px-6 py-24 md:py-32"
+      className="px-4 sm:px-6 py-16 sm:py-20 md:py-32"
       aria-labelledby="final-cta-heading"
       // Ceramic green wash — faint tint on the outer padding area (not the dark
       // inner band, which uses var(--ink-900)). The dark band dominates; this
@@ -65,7 +65,7 @@ export function FinalCta() {
         Background: var(--ink-900) = #1A1815, a near-black warm brown-black.
         All text on this band is --paper (#FBFAF8) or lighter, meeting AA.
       */}
-      <div className="mx-auto max-w-5xl rounded-2xl bg-[var(--ink-900)] px-8 py-16 md:px-16 md:py-20 text-center">
+      <div className="mx-auto max-w-5xl rounded-2xl bg-[var(--ink-900)] px-6 py-12 sm:px-8 sm:py-16 md:px-16 md:py-20 text-center">
         <Reveal>
           {/* ── Heading ─────────────────────────────────────────── */}
           {/*
@@ -74,7 +74,7 @@ export function FinalCta() {
           */}
           <h2
             id="final-cta-heading"
-            className="font-display text-4xl tracking-tight text-[var(--paper)] md:text-5xl"
+            className="font-display text-3xl sm:text-4xl tracking-tight text-balance text-[var(--paper)] md:text-5xl"
           >
             {finalCta.heading}
           </h2>
@@ -84,9 +84,7 @@ export function FinalCta() {
             text-[var(--paper)]/80 at 80% opacity on ink-900 → effective
             blend ≈ #CEC9C1, giving ~8:1 contrast. AA is 4.5:1. ✓
           */}
-          <p className="mt-4 text-lg text-[var(--paper)]/80">
-            {finalCta.body}
-          </p>
+          <p className="mt-4 text-lg text-[var(--paper)]/80">{finalCta.body}</p>
 
           {/* ── Scan input ──────────────────────────────────────── */}
           {/*
@@ -97,10 +95,7 @@ export function FinalCta() {
             legible regardless of surrounding background.
           */}
           <div className="mx-auto mt-8 max-w-xl rounded-[var(--radius)] bg-white/10 p-1 ring-1 ring-white/20">
-            <HeroScanInput
-              cta={finalCta.primary}
-              placeholder="yourwebsite.com"
-            />
+            <HeroScanInput cta={finalCta.primary} placeholder="yourwebsite.com" />
           </div>
 
           {/* ── Secondary action — "Sign in" ──────────────────── */}

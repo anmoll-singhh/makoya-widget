@@ -52,7 +52,7 @@
 "use client";
 
 import { hero } from "@/lib/landing-copy";
-import { Reveal } from "@/components/landing/Reveal";
+import { Reveal, RevealStagger, RevealItem } from "@/components/landing/Reveal";
 import { HeroScanInput } from "@/components/landing/HeroScanInput";
 import { AnnotatedPreview } from "@/components/makoya/AnnotatedPreview";
 import { ScoreMark } from "@/components/makoya/ScoreMark";
@@ -114,7 +114,7 @@ export function Hero() {
       // aria-labelledby connects the section landmark to its headline so
       // screen-reader users who browse by landmarks hear the section name.
       aria-labelledby="hero-heading"
-      className="relative mx-auto w-full max-w-6xl px-6 py-14 md:py-28"
+      className="relative mx-auto w-full max-w-6xl px-6 py-12 sm:py-16 md:py-28"
       // Ceramic green — very faint lower-section tint (~6%) that warms the page
       // base without altering text colour, primary/button colours, or contrast.
       style={{ backgroundImage: "linear-gradient(to bottom, transparent 40%, rgba(138,179,155,.06) 100%)" }}
@@ -126,10 +126,7 @@ export function Hero() {
        * Opacity is intentionally low (≤ 0.06) to avoid interfering with text
        * contrast (AA compliance on our own product page is non-negotiable).
        */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 overflow-hidden"
-      >
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
         <div
           className="absolute left-1/2 top-0 h-[600px] w-[900px] -translate-x-1/2 -translate-y-1/4 rounded-full"
           style={{
@@ -142,20 +139,27 @@ export function Hero() {
 
       {/* ── Two-column grid ─────────────────────────────────────────────── */}
       <div className="relative grid lg:grid-cols-2 lg:gap-12 items-center">
-
         {/* ── LEFT: Copy + scan input ───────────────────────────────────── */}
-        <Reveal className="flex flex-col">
-
+        {/*
+         * RevealStagger cascades the eyebrow → headline → subhead → input →
+         * microcopy in sequence, so the hero builds rather than appearing as one
+         * flat block. Each child is a <RevealItem> (a real motion element) — that
+         * is what makes the stagger actually fire. Reduced-motion users get the
+         * resting state via the wrappers' own useReducedMotion() short-circuit.
+         */}
+        <RevealStagger className="flex flex-col" stagger={0.09}>
           {/* Eyebrow — category signal above the headline. Uses signal-600
               directly (4.6:1+ on Paper) without the full-weight blue fill, so
               it reads as a label not a status badge. */}
-          <p
-            className="text-xs font-medium uppercase tracking-[0.08em] text-signal-600"
-            // Not a heading — intentionally a <p> so the document outline
-            // has exactly one <h1> (this section) with no competing structure.
-          >
-            Honest accessibility
-          </p>
+          <RevealItem>
+            <p
+              className="text-xs font-medium uppercase tracking-[0.08em] text-signal-600"
+              // Not a heading — intentionally a <p> so the document outline
+              // has exactly one <h1> (this section) with no competing structure.
+            >
+              Honest accessibility
+            </p>
+          </RevealItem>
 
           {/* ── H1 headline ────────────────────────────────────────────── */}
           {/*
@@ -173,63 +177,71 @@ export function Hero() {
            * aesthetics at large sizes; this is safe because the headline is
            * not body copy and the letter spacing / font metrics compensate.
            */}
-          <h1
-            id="hero-heading"
-            className={cn(
-              "mt-4 font-display",
-              "text-4xl sm:text-5xl md:text-6xl",
-              "tracking-tight leading-[1.05]",
-              "text-[var(--ink-900)]",
-            )}
-          >
-            {hero.headlineLead}{" "}
-            {/* Accent phrase — Vellum amber underline bar */}
-            <span className="relative inline-block whitespace-nowrap">
-              {hero.headlineAccent}
-              {/*
-               * Underline bar: absolutely positioned, inset-x-0 spans the full
-               * phrase width, -bottom-1 tucks just below the descenders.
-               * h-[3px] matches the weight of the annotation bracket strokes in
-               * <AnnotatedPreview> — a subtle but intentional brand echo.
-               * aria-hidden — purely decorative, does not convey meaning.
-               */}
-              <span
-                aria-hidden="true"
-                className="absolute inset-x-0 -bottom-2 h-[4px] rounded-sm"
-                style={{ background: "var(--color-vellum-500)" }}
-              />
-            </span>
-          </h1>
+          <RevealItem>
+            <h1
+              id="hero-heading"
+              className={cn(
+                "mt-4 font-display",
+                "text-[2.5rem] leading-[1.08] sm:text-5xl sm:leading-[1.05] md:text-6xl",
+                "tracking-tight",
+                "text-balance",
+                "text-[var(--ink-900)]"
+              )}
+            >
+              {hero.headlineLead} {/* Accent phrase — Vellum amber underline bar */}
+              <span className="relative inline-block whitespace-nowrap">
+                {hero.headlineAccent}
+                {/*
+                 * Underline bar: absolutely positioned, inset-x-0 spans the full
+                 * phrase width, -bottom-1 tucks just below the descenders.
+                 * h-[3px] matches the weight of the annotation bracket strokes in
+                 * <AnnotatedPreview> — a subtle but intentional brand echo.
+                 * aria-hidden — purely decorative, does not convey meaning.
+                 */}
+                <span
+                  aria-hidden="true"
+                  className="absolute inset-x-0 -bottom-2 h-[4px] rounded-sm"
+                  style={{ background: "var(--color-vellum-500)" }}
+                />
+              </span>
+            </h1>
+          </RevealItem>
 
           {/* Subhead — explains the "what" and "how" in one sentence.
               max-w-xl prevents the line from stretching to full column width
               on large screens, keeping the comfortable ~65-70 char measure. */}
-          <p className="mt-6 text-lg text-[var(--ink-600)] max-w-xl">
-            {hero.subhead}
-          </p>
+          <RevealItem>
+            <p className="mt-5 sm:mt-6 text-base sm:text-lg text-[var(--ink-600)] max-w-xl text-pretty">
+              {hero.subhead}
+            </p>
+          </RevealItem>
 
           {/* Scan input — the page's primary conversion element. The HeroScanInput
               client island takes a URL, pushes to /scan?url=…, and the scan page
               auto-runs. CTA and placeholder come from landing-copy so the honesty
               guardrail test covers them. */}
-          <HeroScanInput cta={hero.cta} placeholder={hero.inputPlaceholder} />
+          <RevealItem>
+            <HeroScanInput cta={hero.cta} placeholder={hero.inputPlaceholder} />
+          </RevealItem>
 
           {/* Microcopy — the trust line directly below the CTA. Confirms: no card,
               no compliance badge, no deception. Small + muted so it supports the
               CTA without drawing attention away from the input. */}
-          <p className="mt-3 text-sm text-[var(--ink-400)]">
-            {hero.microcopy}
-          </p>
+          <RevealItem>
+            <p className="mt-3 text-sm text-[var(--ink-400)]">{hero.microcopy}</p>
+          </RevealItem>
 
           {/* Mobile-only product proof — shows a ScoreMark on small screens where
               the right-column product preview is hidden. Gives mobile visitors
               a tangible glimpse of the scanner output before they scroll. */}
-          <div className="mt-8 lg:hidden">
-            <div className="inline-flex items-center rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-md)]">
-              <ScoreMark score={68} size="app" verdict="3 real issues found" />
+          <RevealItem>
+            <div className="mt-8 lg:hidden">
+              <div className="lift-card inline-flex items-center rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-md)]">
+                <ScoreMark score={68} size="app" verdict="3 real issues found" />
+              </div>
             </div>
-          </div>
-        </Reveal>
+          </RevealItem>
+        </RevealStagger>
 
         {/* ── RIGHT: Product dramatization ──────────────────────────────── */}
         {/*
@@ -245,7 +257,6 @@ export function Hero() {
          */}
         <Reveal className="hidden lg:block">
           <div className="relative">
-
             {/* ── Annotated mock-browser ─────────────────────────────────── */}
             {/*
              * No `src` prop → AnnotatedPreview renders its neutral placeholder
@@ -256,11 +267,7 @@ export function Hero() {
              *   • mode="reveal" draws the bracket strokes once on scroll-in;
              *     reduced-motion safe via useReducedMotion() inside the component.
              */}
-            <AnnotatedPreview
-              mode="reveal"
-              annotations={HERO_ANNOTATIONS}
-              className="w-full"
-            />
+            <AnnotatedPreview mode="reveal" annotations={HERO_ANNOTATIONS} className="w-full" />
 
             {/* ── Floating score card ────────────────────────────────────── */}
             {/*
@@ -290,7 +297,7 @@ export function Hero() {
                 // Elevation
                 "shadow-[var(--shadow-md)]",
                 // Subtle animation: fade + rise in sync with the preview column
-                "transition-all duration-300",
+                "transition-all duration-300"
               )}
               style={{
                 // Belt-and-suspenders: also via CSS var so it degrades cleanly
@@ -298,11 +305,7 @@ export function Hero() {
                 boxShadow: "var(--shadow-md)",
               }}
             >
-              <ScoreMark
-                score={68}
-                size="app"
-                verdict="3 real issues found"
-              />
+              <ScoreMark score={68} size="app" verdict="3 real issues found" />
             </div>
           </div>
         </Reveal>

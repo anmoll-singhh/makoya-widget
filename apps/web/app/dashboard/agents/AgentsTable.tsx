@@ -116,16 +116,13 @@ export function AgentsTable({ agents, kpis }: AgentsTableProps) {
             aria-hidden="true"
             style={{ fontSize: 32, display: "block", marginBottom: 10, color: "var(--t3)" }}
           />
-          <p style={{ fontWeight: 700, color: "var(--deep)", marginBottom: 6 }}>
-            No agents yet
-          </p>
+          <p style={{ fontWeight: 700, color: "var(--deep)", marginBottom: 6 }}>No agents yet</p>
           <p style={{ fontSize: 13, maxWidth: 360, margin: "0 auto" }}>
-            Add your first agent to scan a website and deploy the accessibility
-            widget.
+            Add your first agent to scan a website and deploy the accessibility widget.
           </p>
         </div>
       ) : (
-        <div className="tcard">
+        <div className="tcard tbl-scroll">
           <div
             className="thead"
             style={{
@@ -147,17 +144,11 @@ export function AgentsTable({ agents, kpis }: AgentsTableProps) {
             >
               {/* Agent name + domain */}
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div
-                  className="fav"
-                  style={{ background: "var(--primary)" }}
-                  aria-hidden="true"
-                >
+                <div className="fav" style={{ background: "var(--primary)" }} aria-hidden="true">
                   <i className="ti ti-globe" />
                 </div>
                 <div>
-                  <div style={{ fontWeight: 700, color: "var(--deep)" }}>
-                    {agent.domain}
-                  </div>
+                  <div style={{ fontWeight: 700, color: "var(--deep)" }}>{agent.domain}</div>
                   <div className="tiny muted">{agent.plan}</div>
                 </div>
               </div>
@@ -172,21 +163,17 @@ export function AgentsTable({ agents, kpis }: AgentsTableProps) {
                 {agent.plan === "pro"
                   ? "Growth"
                   : agent.plan === "managed"
-                  ? "Scale"
-                  : agent.plan === "free"
-                  ? "Free"
-                  : agent.plan}
+                    ? "Scale"
+                    : agent.plan === "free"
+                      ? "Free"
+                      : agent.plan}
               </div>
 
               {/* Score bar */}
               <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
                 {agent.score !== null ? (
                   <>
-                    <div
-                      className="bar"
-                      role="img"
-                      aria-label={`Score ${agent.score} of 100`}
-                    >
+                    <div className="bar" role="img" aria-label={`Score ${agent.score} of 100`}>
                       <span
                         style={{
                           width: `${agent.score}%`,
@@ -214,10 +201,7 @@ export function AgentsTable({ agents, kpis }: AgentsTableProps) {
 
               {/* Manage link */}
               <div>
-                <Link
-                  href={`/dashboard/${agent.id}`}
-                  className="viewall"
-                >
+                <Link href={`/dashboard/${agent.id}`} className="viewall">
                   Manage
                 </Link>
               </div>

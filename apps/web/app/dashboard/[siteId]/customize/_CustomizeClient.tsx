@@ -319,7 +319,7 @@ export function CustomizeClient({ siteId }: Props) {
       </div>
 
       {/* Sub-header: description + actions */}
-      <div className="between" style={{ margin: "-8px 0 18px" }}>
+      <div className="between cu-head" style={{ margin: "-8px 0 18px" }}>
         <p className="muted" style={{ fontSize: 13.5 }}>
           What your visitors see and can turn on.
         </p>
@@ -368,10 +368,10 @@ export function CustomizeClient({ siteId }: Props) {
         </div>
       )}
 
-      {/* Two-column layout: config + live preview */}
-      <div
-        style={{ display: "grid", gridTemplateColumns: "1fr 330px", gap: 24, alignItems: "start" }}
-      >
+      {/* Two-column layout on desktop; single column (controls → preview) on mobile.
+          Layout lives in the .cu-grid class (dashboard.css) so it can respond to
+          viewport width — an inline grid-template-columns could not. */}
+      <div className="cu-grid">
         {/* Left: tabs + controls */}
         <div>
           {/* Segment tabs */}

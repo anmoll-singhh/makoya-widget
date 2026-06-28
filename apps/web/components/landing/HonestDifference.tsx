@@ -42,7 +42,7 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Reveal } from "@/components/landing/Reveal";
+import { Reveal, RevealStagger, RevealItem } from "@/components/landing/Reveal";
 import { contrast } from "@/lib/landing-copy";
 import { cn } from "@/lib/utils";
 
@@ -51,29 +51,19 @@ import { cn } from "@/lib/utils";
 // Kept as a simple presentational sub-component (no motion wrapper) so the
 // safe single-Reveal approach on the grid works cleanly.
 // ---------------------------------------------------------------------------
-function StatCard({
-  figure,
-  label,
-  source,
-}: {
-  figure: string;
-  label: string;
-  source: string;
-}) {
+function StatCard({ figure, label, source }: { figure: string; label: string; source: string }) {
   return (
     <div
       className={cn(
-        "rounded-[var(--radius)] border border-[var(--border)]",
-        "bg-[var(--surface)] p-6 shadow-[var(--shadow-xs)]",
+        "lift-card h-full rounded-[var(--radius)] border border-[var(--border)]",
+        "bg-[var(--surface)] p-6 shadow-[var(--shadow-xs)]"
       )}
     >
       {/*
        * Figure — the headline number. font-mono + tnums keeps multi-character
        * stats like "67% / 72%" from shifting width as they load or resize.
        */}
-      <p className="font-mono tnums text-4xl font-semibold text-[var(--ink-900)]">
-        {figure}
-      </p>
+      <p className="font-mono tnums text-4xl font-semibold text-[var(--ink-900)]">{figure}</p>
 
       {/*
        * Label — one or two sentences explaining what the figure means in
@@ -85,9 +75,7 @@ function StatCard({
        * Source — the citation attribution. Small caps treatment keeps it
        * visually subordinate while remaining legible and truthful.
        */}
-      <p className="mt-4 text-xs uppercase tracking-wide text-[var(--ink-400)]">
-        {source}
-      </p>
+      <p className="mt-4 text-xs uppercase tracking-wide text-[var(--ink-400)]">{source}</p>
     </div>
   );
 }
@@ -100,7 +88,7 @@ export function HonestDifference() {
     <section
       id="honest"
       aria-labelledby="honest-heading"
-      className="mx-auto w-full max-w-6xl px-6 py-24 md:py-32"
+      className="mx-auto w-full max-w-6xl px-6 py-16 sm:py-20 md:py-32"
       // Ceramic green wash — faint bilateral fade that warms the section without
       // touching text or accent tokens. Alpha kept at ≤8% to preserve AA contrast.
       style={{ backgroundImage: "linear-gradient(to bottom, rgba(138,179,155,.08) 0%, transparent 60%)" }}
@@ -134,9 +122,7 @@ export function HonestDifference() {
          * carry weight. max-w-2xl keeps it from spanning all 6 columns on
          * wide viewports.
          */}
-        <p className="mt-5 text-lg text-[var(--ink-600)] max-w-2xl">
-          {contrast.intro}
-        </p>
+        <p className="mt-5 text-lg text-[var(--ink-600)] max-w-2xl">{contrast.intro}</p>
       </Reveal>
 
       {/* ── Stats grid ────────────────────────────────────────────────────── */}
@@ -148,16 +134,13 @@ export function HonestDifference() {
        * reads down. No explicit delay is set — the natural scroll pacing is
        * enough.
        */}
-      <Reveal className="mt-12 grid gap-6 md:grid-cols-3">
+      <RevealStagger className="mt-10 sm:mt-12 grid gap-5 sm:gap-6 md:grid-cols-3">
         {contrast.stats.map((stat) => (
-          <StatCard
-            key={stat.figure}
-            figure={stat.figure}
-            label={stat.label}
-            source={stat.source}
-          />
+          <RevealItem key={stat.figure}>
+            <StatCard figure={stat.figure} label={stat.label} source={stat.source} />
+          </RevealItem>
         ))}
-      </Reveal>
+      </RevealStagger>
 
       {/* ── Takeaway + CTA ────────────────────────────────────────────────── */}
       <Reveal>

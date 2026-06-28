@@ -129,7 +129,7 @@ nav ul{list-style:none}
 .feat{display:flex;align-items:center;gap:12px;padding:13px 15px;border:1px solid var(--border);border-radius:12px;background:#fff;box-shadow:var(--sh)}
 .feat .ic{width:34px;height:34px;border-radius:9px;background:var(--bg);display:grid;place-items:center;color:var(--t2);font-size:18px;flex:none}
 .feat .nm{font-weight:700;font-size:13.5px}.feat .de{font-size:12px;color:var(--t2);margin-top:1px}
-.wpv{width:300px;border:1px solid var(--border);border-radius:16px;overflow:hidden;background:#fff;box-shadow:var(--sh-card);flex:none}
+.wpv{width:300px;max-width:100%;border:1px solid var(--border);border-radius:16px;overflow:hidden;background:#fff;box-shadow:var(--sh-card);flex:none}
 .wpv .hd{background:var(--primary);color:#fff;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;font-weight:700;font-size:13px}
 .wpv .t2{display:flex;border-bottom:1px solid var(--border);font-size:12px}
 .wpv .t2 span{flex:1;text-align:center;padding:9px;color:var(--t2);font-weight:700}.wpv .t2 span.on{color:var(--primary-hover);border-bottom:2px solid var(--primary)}
@@ -514,9 +514,12 @@ body{ font-size:14.5px; line-height:1.5; }
 
   /* tighter chrome paddings on small screens */
   .topbar{margin:10px 12px 0;padding:10px 12px;gap:10px}
-  .search{font-size:13.5px;padding:9px 12px}
+  .search{font-size:13.5px;padding:9px 12px;min-width:0}
+  .tcluster{min-width:0}
   .wrap{padding:14px 14px 30px}
-  .user .nm,.user .rl{max-width:96px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* nm/rl are inline spans — max-width is ignored on inline boxes, so the long
+     email used to overflow the topbar. display:block makes the clamp real. */
+  .user .nm,.user .rl{display:block;max-width:112px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
   /* hero stacks; gauge centers; copy stays readable */
   .hero{padding:20px 16px;border-radius:18px}
@@ -540,4 +543,54 @@ body{ font-size:14.5px; line-height:1.5; }
   .user .nm,.user .rl{display:none}
   .user{padding:5px}
   .pagehead b{font-size:20px}
+}
+
+/* ── Customize screen: controls + live-preview two-column → single column ──────
+   The customize page previously hard-coded `grid-template-columns:1fr 330px`
+   inline, which can't respond to viewport width and overflowed on phones (the
+   330px preview crushed the control column). This class is the mobile-first
+   baseline: one column (controls first, preview below); the two-column desktop
+   layout is the progressive enhancement at ≥980px. */
+.cu-grid{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:20px;
+  align-items:start;
+}
+@media (min-width:980px){
+  .cu-grid{grid-template-columns:1fr 330px;gap:24px}
+  /* keep the live preview in view while scrolling the controls on desktop */
+  .cu-grid > :last-child{position:sticky;top:84px}
+}
+/* On phones the customize action header (description + Reset/Publish) wraps
+   instead of crushing the buttons against the copy. */
+@media (max-width:600px){
+  .cu-head{flex-wrap:wrap;align-items:flex-start;gap:10px}
+  .cu-head > div:last-child{margin-left:auto}
+}
+
+/* ── Wide dashboard tables → horizontal scroll on phones ──────────────────────
+   Tables built on .tcard/.thead/.trow with fixed-px column templates (reports,
+   remediation log) are wider than a phone and were being clipped by the card's
+   overflow:hidden. Tagging the card .tbl-scroll lets it scroll sideways instead
+   of hiding the last column, while each row keeps a min-width so the columns
+   don't crush. Desktop is unaffected. */
+@media (max-width:768px){
+  .tcard.tbl-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .tcard.tbl-scroll .thead,
+  .tcard.tbl-scroll .trow{min-width:580px}
+}
+
+/* ── Generic form + side-panel split (statement, etc.) ────────────────────────
+   Same problem as .cu-grid: an inline `1fr 340px` grid can't respond to width
+   and pushed the side panel off-screen on phones. Mobile-first single column;
+   two columns only once there's room (≥900px). */
+.dash-split{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:18px;
+  align-items:start;
+}
+@media (min-width:900px){
+  .dash-split{grid-template-columns:1fr 340px;gap:22px}
 }

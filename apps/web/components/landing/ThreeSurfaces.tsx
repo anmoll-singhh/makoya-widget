@@ -29,7 +29,7 @@
 
 import { ScanLine, SlidersHorizontal, LayoutDashboard } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { Reveal } from "@/components/landing/Reveal";
+import { Reveal, RevealStagger, RevealItem } from "@/components/landing/Reveal";
 import { surfaces } from "@/lib/landing-copy";
 
 // Map each surface index to its lucide icon. Defined outside the component so
@@ -44,7 +44,7 @@ export function ThreeSurfaces() {
   return (
     <section
       id="surfaces"
-      className="mx-auto w-full max-w-6xl px-6 py-24 md:py-32"
+      className="mx-auto w-full max-w-6xl px-6 py-16 sm:py-20 md:py-32"
       aria-labelledby="surfaces-heading"
       // Ceramic green wash — ~7% top-to-transparent, section-level only.
       // Text/button colours are unchanged; the tint lives only on the background.
@@ -53,9 +53,7 @@ export function ThreeSurfaces() {
       {/* ── Section header ─────────────────────────────────────── */}
       <Reveal>
         {/* Eyebrow — uppercase signal label above the main heading */}
-        <p
-          className="text-sm font-semibold uppercase tracking-widest text-signal-600"
-        >
+        <p className="text-sm font-semibold uppercase tracking-widest text-signal-600">
           What you get
         </p>
 
@@ -74,20 +72,17 @@ export function ThreeSurfaces() {
         single cohesive unit. With only 3 items, a stagger adds little value and
         RevealStagger only staggers direct <Reveal> children — not plain divs.
       */}
-      <Reveal className="mt-14 grid gap-6 md:grid-cols-3">
+      <RevealStagger className="mt-10 sm:mt-14 grid gap-5 sm:gap-6 md:grid-cols-3">
         {surfaces.items.map((item, index) => {
           const Icon = SURFACE_ICONS[index];
 
           return (
-            <SurfaceCard
-              key={item.name}
-              name={item.name}
-              body={item.body}
-              Icon={Icon}
-            />
+            <RevealItem key={item.name}>
+              <SurfaceCard name={item.name} body={item.body} Icon={Icon} />
+            </RevealItem>
           );
         })}
-      </Reveal>
+      </RevealStagger>
     </section>
   );
 }
@@ -104,26 +99,21 @@ interface SurfaceCardProps {
 
 function SurfaceCard({ name, body, Icon }: SurfaceCardProps) {
   return (
-    <div
-      className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow-xs)]"
-    >
-      {/* Icon square — signal-tinted, sized for visual balance */}
+    <div className="lift-card group h-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow-xs)]">
+      {/* Icon square — signal-tinted, sized for visual balance. Deepens its
+          tint + lifts slightly when the card is hovered (group-hover). */}
       <div
-        className="flex h-11 w-11 items-center justify-center rounded-[10px] bg-signal-600/10 text-signal-600"
+        className="flex h-11 w-11 items-center justify-center rounded-[10px] bg-signal-600/10 text-signal-600 transition-all duration-300 group-hover:bg-signal-600/15 group-hover:-translate-y-0.5"
         aria-hidden="true"
       >
         <Icon size={22} strokeWidth={1.75} />
       </div>
 
       {/* Surface name — h3 within the section, Newsreader serif */}
-      <h3 className="mt-5 font-display text-xl text-[var(--ink-900)]">
-        {name}
-      </h3>
+      <h3 className="mt-5 font-display text-xl text-[var(--ink-900)]">{name}</h3>
 
       {/* Description — body copy, warmer muted ink */}
-      <p className="mt-2 text-[var(--ink-600)]">
-        {body}
-      </p>
+      <p className="mt-2 text-[var(--ink-600)]">{body}</p>
     </div>
   );
 }

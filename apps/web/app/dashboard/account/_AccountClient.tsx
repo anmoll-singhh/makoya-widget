@@ -476,15 +476,7 @@ function TeamTab({ role }: { role: OrgRole | null }) {
   }
 
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 360px",
-        gap: 22,
-        alignItems: "start",
-        maxWidth: 980,
-      }}
-    >
+    <div className="dash-split" style={{ maxWidth: 980 }}>
       <section className="card">
         <div className="ch">
           <h3>Team members</h3>
@@ -858,7 +850,7 @@ function ApiTab({ role }: { role: OrgRole | null }) {
           </div>
         )}
         {data && data.keys.length > 0 && (
-          <div className="tcard" style={{ marginTop: 12 }}>
+          <div className="tcard tbl-scroll" style={{ marginTop: 12 }}>
             <div className="thead" style={{ gridTemplateColumns: "1fr 150px 140px 120px" }}>
               <div>Name</div>
               <div>Prefix</div>

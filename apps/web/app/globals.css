@@ -339,8 +339,28 @@ img, svg, video, canvas { max-width: 100%; height: auto; }
 @keyframes mk-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 .mk-rise { animation: mk-rise 0.5s cubic-bezier(0.22,1,0.36,1) both; }
 
+/* ── Card hover-lift — gives the landing cards a tactile, premium response ─────
+   Only on real hover-capable pointers so touch devices never get a stuck
+   :hover state. Reduced-motion users get the colour change but no transform. */
+.lift-card {
+  transition:
+    transform 0.28s var(--ease-ink),
+    box-shadow 0.28s var(--ease-ink),
+    border-color 0.28s var(--ease-ink);
+  will-change: transform;
+}
+@media (hover: hover) and (pointer: fine) {
+  .lift-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--border-strong);
+  }
+}
+
 /* All of the above stop dead under reduced-motion. */
 @media (prefers-reduced-motion: reduce) {
   .mk-skeleton { animation: none; }
   .mk-rise { animation: none; }
+  .lift-card { transition: none; }
+  .lift-card:hover { transform: none; }
 }

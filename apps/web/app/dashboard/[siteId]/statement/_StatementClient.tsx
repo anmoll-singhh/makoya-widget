@@ -258,15 +258,7 @@ export function StatementClient({ siteId, domain, accountEmail }: Props) {
         State your commitment and conformance target. We recommend displaying it in your footer.
       </p>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 340px",
-          gap: 22,
-          alignItems: "start",
-          maxWidth: 980,
-        }}
-      >
+      <div className="dash-split" style={{ maxWidth: 980 }}>
         {/* Left: form */}
         <section className="card cpad">
           {/* Brand name */}

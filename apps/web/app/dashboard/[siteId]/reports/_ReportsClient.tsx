@@ -335,7 +335,7 @@ export function ReportsClient({ siteId }: Props) {
                       {reports!.length} {reports!.length === 1 ? "report" : "reports"}
                     </span>
                   </div>
-                  <div className="tcard" style={{ border: "none", borderRadius: 0 }}>
+                  <div className="tcard tbl-scroll" style={{ border: "none", borderRadius: 0 }}>
                     <div
                       className="thead"
                       style={{ gridTemplateColumns: "1.4fr 90px 130px 120px 130px" }}
@@ -466,7 +466,7 @@ export function ReportsClient({ siteId }: Props) {
                       {remediation.length} {remediation.length === 1 ? "fix" : "fixes"}
                     </span>
                   </div>
-                  <div className="tcard" style={{ border: "none", borderRadius: 0 }}>
+                  <div className="tcard tbl-scroll" style={{ border: "none", borderRadius: 0 }}>
                     <div className="thead" style={{ gridTemplateColumns: "1fr 130px 130px 120px" }}>
                       <div>Action</div>
                       <div>WCAG criterion</div>

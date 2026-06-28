@@ -17,7 +17,7 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import type { ReactNode } from "react";
-import { revealVariant, staggerParent } from "@/lib/design/motion";
+import { revealVariant, revealItem, staggerParent } from "@/lib/design/motion";
 import { cn } from "@/lib/utils";
 
 const VIEWPORT = { once: true, margin: "-80px" } as const;
@@ -57,7 +57,7 @@ export function Reveal({
 export function RevealStagger({
   children,
   className,
-  stagger = 0.08,
+  stagger = 0.1,
 }: {
   children: ReactNode;
   className?: string;
@@ -79,5 +79,38 @@ export function RevealStagger({
     >
       {children}
     </motion.div>
+  );
+}
+
+/**
+ * RevealItem — a single staggered child. MUST be a direct child of
+ * <RevealStagger> so the parent's `staggerChildren` cascade reaches it (the
+ * previous landing grids wrapped plain <div>s, which never received the cascade —
+ * so nothing actually staggered). This is a real `motion` element carrying the
+ * `revealItem` variant, so each card rises + settles in sequence.
+ *
+ * Reduced motion: short-circuits to a plain element at the resting state.
+ */
+export function RevealItem({
+  children,
+  className,
+  as = "div",
+}: {
+  children: ReactNode;
+  className?: string;
+  as?: "div" | "li";
+}) {
+  const reduce = useReducedMotion();
+
+  if (reduce) {
+    const Plain = as;
+    return <Plain className={className}>{children}</Plain>;
+  }
+
+  const Comp = motion[as];
+  return (
+    <Comp className={className} variants={revealItem}>
+      {children}
+    </Comp>
   );
 }
