@@ -1,15 +1,17 @@
 "use client";
 /**
- * app/dashboard/[siteId]/install/_InstallClient.tsx — v7 Install widget screen (CLIENT).
+ * app/dashboard/[siteId]/install/_InstallClient.tsx — v8 Install widget screen (CLIENT).
  *
- * Wired to:
- *   GET /api/sites/[siteId]/install-status → { status, lastSeenAt, firstSeenAt, pingCount }
+ * Wired to two API routes:
+ *   GET /api/sites/[siteId]/install-status     → { status, lastSeenAt, firstSeenAt, pingCount }
+ *   GET /api/sites/[siteId]/verify-install     → { installed, reason, checkedUrl, details? }
  *
  * Real data replaces mockup values:
  *   - Snippet URL              → real siteId + server-minted token (prop from RSC)
  *   - Agent label              → real domain (prop from RSC)
- *   - Install status pill      → data.status from API
- *   - "Verify" description     → data.lastSeenAt, data.pingCount from API
+ *   - Install status pill      → data.status from install-status API
+ *   - "Verify installation"    → live HTML fetch via verify-install; shows green/amber
+ *                                result with the URL that was checked + retry on failure
  *   - "Send to developer"      → mailto link (honest, not fake "sent")
  *
  * Warning note verbatim from mockup:
@@ -17,8 +19,14 @@
  *    compliance. Real conformance comes from Mike's audit plus human remediation.
  *    We track and estimate; we never auto-certify your site."
  *
- * Platform tiles are UI-only (no per-platform guides yet). Verify re-fetches
- * install-status on demand and reflects the real state.
+ * Platform tiles are UI-only (no per-platform guides yet). The "Verify installation"
+ * button in Step 3 now calls the real verify-install route (server fetches the
+ * registered domain, inspects the HTML for the loader script, returns a structured
+ * result). The install-status heartbeat pill is fetched separately on mount.
+ *
+ * Accessibility: the verify result section uses aria-live="polite" so screen readers
+ * announce the result without stealing focus. The Verify button uses aria-busy while
+ * the check is running. Both buttons are real <button> elements.
  *
  * Token note: the token string is passed as a prop from the RSC page, which calls
  * mintSiteToken() server-side. It is never re-derived or stored client-side.
@@ -26,12 +34,24 @@
 
 import { useState, useEffect, useCallback } from "react";
 
-/* ── API shape ───────────────────────────────────────────────────────────────── */
+/* ── API shapes ──────────────────────────────────────────────────────────────── */
 interface InstallStatusData {
   status: string;
   lastSeenAt: string | null;
   firstSeenAt: string | null;
   pingCount: number;
+}
+
+/** Shape returned by GET /api/sites/[id]/verify-install */
+interface VerifyResult {
+  installed: boolean;
+  reason: string;
+  checkedUrl: string;
+  details?: {
+    loaderFound: boolean;
+    siteIdMatch: boolean;
+    widgetRootFound: boolean;
+  };
 }
 
 /* ── Helpers ─────────────────────────────────────────────────────────────────── */
@@ -78,13 +98,14 @@ export function InstallClient({ siteId, domain, token }: Props) {
   const [installStatus, setInstallStatus] = useState<InstallStatusData | null>(null);
   const [statusLoading, setStatusLoading] = useState(true);
   const [verifying, setVerifying] = useState(false);
+  const [verifyResult, setVerifyResult] = useState<VerifyResult | null>(null);
   const [copied, setCopied] = useState(false);
   const [activePlatform, setActivePlatform] = useState<string>("Direct HTML");
 
   // The snippet carries siteId + token — matches how /v3/page.tsx builds it.
   const snippet = `<script src="https://makoya-gamma.vercel.app/widget/loader.js" data-site="${siteId}" data-token="${token}" defer></script>`;
 
-  /* Fetch install status on mount */
+  /* ── Fetch heartbeat install-status on mount (pill + last-seen) ─────────── */
   const fetchStatus = useCallback(async () => {
     try {
       const r = await fetch(`/api/sites/${siteId}/install-status`, {
@@ -105,7 +126,7 @@ export function InstallClient({ siteId, domain, token }: Props) {
     fetchStatus();
   }, [fetchStatus]);
 
-  /* Copy snippet to clipboard */
+  /* ── Copy snippet to clipboard ─────────────────────────────────────────── */
   function handleCopy() {
     navigator.clipboard?.writeText(snippet).then(() => {
       setCopied(true);
@@ -113,12 +134,39 @@ export function InstallClient({ siteId, domain, token }: Props) {
     });
   }
 
-  /* Verify: re-fetch install status */
+  /* ── Verify installation: calls the real HTML-inspection route ─────────── */
+  // The server fetches the REGISTERED DOMAIN (not a client-supplied URL) over
+  // https and inspects the HTML for the loader script + data-site attribute.
+  // This gives the owner immediate feedback without waiting for a heartbeat ping.
   async function handleVerify() {
     setVerifying(true);
-    setStatusLoading(true);
-    await fetchStatus();
-    setVerifying(false);
+    setVerifyResult(null); // clear previous result while checking
+    try {
+      const r = await fetch(`/api/sites/${siteId}/verify-install`, {
+        credentials: "same-origin",
+      });
+      if (r.ok) {
+        const data = (await r.json()) as VerifyResult;
+        setVerifyResult(data);
+        // Also refresh the heartbeat pill in the background — non-blocking.
+        fetchStatus();
+      } else {
+        // Route-level error (401, 404, 500) — show a generic failure.
+        setVerifyResult({
+          installed: false,
+          reason: r.status === 401 ? "session expired — please refresh" : "check failed — try again",
+          checkedUrl: "",
+        });
+      }
+    } catch {
+      setVerifyResult({
+        installed: false,
+        reason: "network error — try again",
+        checkedUrl: "",
+      });
+    } finally {
+      setVerifying(false);
+    }
   }
 
   const pill =
@@ -241,7 +289,7 @@ export function InstallClient({ siteId, domain, token }: Props) {
                 <li>Find the closing <code style={{ background: "var(--border)", padding: "1px 4px", borderRadius: 4 }}>&lt;/body&gt;</code> tag.</li>
                 <li>Paste the snippet above just before it.</li>
                 <li>Save and publish your changes.</li>
-                <li>Click &ldquo;Verify&rdquo; below to confirm.</li>
+                <li>Click &ldquo;Verify installation&rdquo; below to confirm.</li>
               </ol>
             )}
             {activePlatform === "WordPress" && (
@@ -267,19 +315,20 @@ export function InstallClient({ siteId, domain, token }: Props) {
                 <li>In your {activePlatform} dashboard, look for <b>Settings → Custom Code</b> or <b>Site Integrations</b>.</li>
                 <li>Add the snippet to the &ldquo;Body — end&rdquo; or &ldquo;Before &lt;/body&gt;&rdquo; section.</li>
                 <li>Publish your site.</li>
-                <li>Click &ldquo;Verify&rdquo; below to confirm it loaded.</li>
+                <li>Click &ldquo;Verify installation&rdquo; below to confirm it loaded.</li>
               </ol>
             )}
           </div>
         </div>
       </section>
 
-      {/* Step 3: Verify */}
+      {/* Step 3: Verify installation */}
       <section className="card" style={{ maxWidth: 900 }}>
         <div className="ch">
           <h3>3 · Verify installation</h3>
         </div>
         <div className="cpad">
+          {/* Header row: description + pill + verify button */}
           <div className="between">
             <div style={{ maxWidth: 440 }}>
               <div style={{ fontWeight: 700, color: "var(--deep)" }}>
@@ -287,14 +336,14 @@ export function InstallClient({ siteId, domain, token }: Props) {
               </div>
               <div className="tiny muted" style={{ marginTop: 2 }}>
                 {statusLoading
-                  ? "Checking install status…"
+                  ? "Checking heartbeat status…"
                   : isInstalled
-                  ? `Live on ${domain} — last seen ${shortDate(installStatus?.lastSeenAt ?? null)}${
+                  ? `Heartbeat live on ${domain} — last seen ${shortDate(installStatus?.lastSeenAt ?? null)}${
                       installStatus && installStatus.pingCount > 0
                         ? ` · ${num(installStatus.pingCount)} ping${installStatus.pingCount === 1 ? "" : "s"}`
                         : ""
                     }`
-                  : `We'll check that the loader is responding on ${domain}. Once verified, Mike starts the first monitoring scan automatically.`}
+                  : `Click "Verify installation" and we'll fetch ${domain} and check for your snippet in real time.`}
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -314,34 +363,116 @@ export function InstallClient({ siteId, domain, token }: Props) {
                 type="button"
                 onClick={handleVerify}
                 disabled={verifying}
-                aria-busy={verifying}
+                aria-busy={verifying ? "true" : "false"}
               >
-                <i className="ti ti-circle-check" aria-hidden="true" />
-                {verifying ? "Checking…" : "Verify"}
+                <i
+                  className={`ti ${verifying ? "ti-loader-2" : "ti-circle-check"}`}
+                  aria-hidden="true"
+                  style={verifying ? { animation: "spin 1s linear infinite" } : undefined}
+                />
+                {verifying ? "Checking…" : "Verify installation"}
               </button>
             </div>
           </div>
 
-          {/* Already installed: show first-seen date */}
-          {isInstalled && installStatus?.firstSeenAt && (
-            <div className="note good" style={{ marginTop: 14 }}>
-              <i className="ti ti-check" aria-hidden="true" />
-              <div>
-                Widget confirmed on {domain} since{" "}
-                <b>{shortDate(installStatus.firstSeenAt)}</b>. Mike is actively
-                monitoring.
+          {/* Live-check result — announced to screen readers via aria-live */}
+          <div aria-live="polite" aria-atomic="true">
+            {verifying && (
+              <div className="note info" style={{ marginTop: 14 }}>
+                <i className="ti ti-loader-2" aria-hidden="true" style={{ animation: "spin 1s linear infinite" }} />
+                <div>
+                  Fetching <b>{domain}</b> and inspecting the page source…
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Not installed hint */}
-          {!statusLoading && !isInstalled && (
-            <div className="note info" style={{ marginTop: 14 }}>
-              <i className="ti ti-info-circle" aria-hidden="true" />
-              <div>
-                Copy the snippet above, paste it before <code style={{ background: "rgba(30,99,255,.08)", padding: "1px 4px", borderRadius: 4 }}>&lt;/body&gt;</code> on your site, then click Verify. It usually takes a few seconds after publishing.
+            {!verifying && verifyResult && verifyResult.installed && (
+              <div className="note good" style={{ marginTop: 14 }}>
+                <i className="ti ti-circle-check" aria-hidden="true" />
+                <div>
+                  <div style={{ fontWeight: 700 }}>Widget snippet detected</div>
+                  <div className="tiny muted" style={{ marginTop: 2 }}>
+                    Found the Makoya loader on{" "}
+                    <a
+                      href={verifyResult.checkedUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: "inherit", textDecoration: "underline" }}
+                    >
+                      {verifyResult.checkedUrl}
+                    </a>
+                    {verifyResult.details?.widgetRootFound && (
+                      <> · widget root also rendered</>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
+
+            {!verifying && verifyResult && !verifyResult.installed && (
+              <div className="note warn" style={{ marginTop: 14 }}>
+                <i className="ti ti-alert-triangle" aria-hidden="true" />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700 }}>Not detected yet</div>
+                  <div className="tiny muted" style={{ marginTop: 2 }}>
+                    {verifyResult.reason}
+                    {verifyResult.checkedUrl && (
+                      <>
+                        {" "}· checked{" "}
+                        <a
+                          href={verifyResult.checkedUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: "inherit", textDecoration: "underline" }}
+                        >
+                          {verifyResult.checkedUrl}
+                        </a>
+                      </>
+                    )}
+                  </div>
+                  <button
+                    className="btn ghost"
+                    type="button"
+                    onClick={handleVerify}
+                    disabled={verifying}
+                    style={{ marginTop: 8, fontSize: 12 }}
+                  >
+                    <i className="ti ti-refresh" aria-hidden="true" />
+                    Retry
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* No verify result yet: contextual hints */}
+          {!verifyResult && (
+            <>
+              {/* Already confirmed via heartbeat: show first-seen date */}
+              {isInstalled && installStatus?.firstSeenAt && (
+                <div className="note good" style={{ marginTop: 14 }}>
+                  <i className="ti ti-check" aria-hidden="true" />
+                  <div>
+                    Widget confirmed on {domain} since{" "}
+                    <b>{shortDate(installStatus.firstSeenAt)}</b>. Mike is actively
+                    monitoring.
+                  </div>
+                </div>
+              )}
+
+              {/* Not yet installed: paste-and-verify hint */}
+              {!statusLoading && !isInstalled && (
+                <div className="note info" style={{ marginTop: 14 }}>
+                  <i className="ti ti-info-circle" aria-hidden="true" />
+                  <div>
+                    Copy the snippet above, paste it before{" "}
+                    <code style={{ background: "rgba(30,99,255,.08)", padding: "1px 4px", borderRadius: 4 }}>&lt;/body&gt;</code>{" "}
+                    on your site, then click &ldquo;Verify installation&rdquo;. It usually takes a few
+                    seconds after publishing.
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </section>
