@@ -48,6 +48,7 @@ import { getServerSupabase } from "@/lib/supabase/server";
 import { getSite } from "@/lib/sites";
 import { validateScanUrl } from "@/lib/utils/url";
 import { captureError } from "@/lib/observability";
+import { detectMakoyaLoader, type DetectResult } from "@/lib/verify-install-detect";
 
 // Node-only runtime: the edge runtime's fetch doesn't honour all redirect
 // modes and the AbortController timing differs. Keep consistent with the
@@ -59,70 +60,6 @@ const MAX_BYTES = 512 * 1024; // 512 KB
 
 /** Fetch timeout — gives slow sites a fair chance without blocking the UI. */
 const FETCH_TIMEOUT_MS = 10_000;
-
-// ---------------------------------------------------------------------------
-// Pure detection helper (exported for unit tests)
-// ---------------------------------------------------------------------------
-
-/** Result of inspecting a page's raw HTML for the Makoya loader. */
-export interface DetectResult {
-  installed: boolean;
-  reason: string;
-  details: {
-    loaderFound: boolean;
-    siteIdMatch: boolean;
-    widgetRootFound: boolean;
-  };
-}
-
-/**
- * Inspects raw HTML text to determine whether the Makoya loader snippet is
- * present for `siteId`. This is the pure, testable core of the route — it has
- * no I/O and no side effects.
- *
- * Both (loaderFound && siteIdMatch) must be true for installed:true.
- * Detecting the loader without the right data-site gives an actionable
- * "data-site mismatch" reason rather than a generic "not found".
- *
- * siteId is regex-escaped before use so IDs containing regex metacharacters
- * (dots, plusses, etc.) are matched literally.
- */
-export function detectMakoyaLoader(html: string, siteId: string): DetectResult {
-  // Check 1: loader script tag — src contains "/widget/loader.js"
-  const loaderFound = /\bsrc=["'][^"']*\/widget\/loader\.js["']/i.test(html);
-
-  // Check 2: data-site attribute matching this site's ID exactly.
-  // Escape the siteId so any regex metacharacters in the ID are literal.
-  const escapedId = siteId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const siteIdMatch = new RegExp(`data-site=["']${escapedId}["']`, "i").test(html);
-
-  // Check 3: widget root marker — bonus signal, present once the widget has
-  // rendered on the page at least once (less reliable in static snapshots but
-  // useful to surface in details so owners can diagnose caching issues).
-  const widgetRootFound = /id=["']makoya-widget-root["']/i.test(html);
-
-  if (loaderFound && siteIdMatch) {
-    return {
-      installed: true,
-      reason: "installed ✓",
-      details: { loaderFound, siteIdMatch, widgetRootFound },
-    };
-  }
-
-  if (loaderFound && !siteIdMatch) {
-    return {
-      installed: false,
-      reason: "found loader but data-site mismatch — check your snippet",
-      details: { loaderFound, siteIdMatch, widgetRootFound },
-    };
-  }
-
-  return {
-    installed: false,
-    reason: "loader script not found in page HTML",
-    details: { loaderFound, siteIdMatch, widgetRootFound },
-  };
-}
 
 // ---------------------------------------------------------------------------
 // Route response shape

@@ -1,11 +1,11 @@
 /**
- * Unit tests for the detectMakoyaLoader helper in verify-install/route.ts.
+ * Unit tests for the detectMakoyaLoader helper in lib/verify-install-detect.ts.
  *
  * These tests exercise the pure HTML-inspection logic without any I/O.
  * The route's auth/fetch behaviour is covered by integration tests.
  */
 import { describe, it, expect } from "vitest";
-import { detectMakoyaLoader } from "./route";
+import { detectMakoyaLoader } from "@/lib/verify-install-detect";
 
 const SITE_ID = "site-abc-123";
 
