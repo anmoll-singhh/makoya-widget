@@ -117,7 +117,9 @@ export function Hero() {
       className="relative mx-auto w-full max-w-6xl px-6 py-12 sm:py-16 md:py-28"
       // Ceramic green — very faint lower-section tint (~6%) that warms the page
       // base without altering text colour, primary/button colours, or contrast.
-      style={{ backgroundImage: "linear-gradient(to bottom, transparent 40%, rgba(138,179,155,.06) 100%)" }}
+      style={{
+        backgroundImage: "linear-gradient(to bottom, transparent 40%, rgba(138,179,155,.06) 100%)",
+      }}
     >
       {/* ── Subtle radial glow behind the grid ──────────────────────────── */}
       {/*
