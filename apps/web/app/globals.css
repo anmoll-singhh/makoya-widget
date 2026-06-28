@@ -64,10 +64,11 @@
   --ease-ink: cubic-bezier(0.22, 1, 0.36, 1);
 
   /* ── Elevation / shadow ───────────────────────────────── */
+  /* Task 4 (flat+sharp): borders carry definition now, shadows only whisper. */
   --shadow-xs: 0 1px 2px rgba(26, 24, 21, 0.04);
-  --shadow-sm: 0 1px 3px rgba(26, 24, 21, 0.06), 0 1px 2px rgba(26, 24, 21, 0.04);
-  --shadow-md: 0 4px 12px rgba(26, 24, 21, 0.08), 0 2px 4px rgba(26, 24, 21, 0.04);
-  --shadow-lg: 0 12px 32px rgba(26, 24, 21, 0.10), 0 4px 8px rgba(26, 24, 21, 0.05);
+  --shadow-sm: 0 1px 2px rgba(26, 24, 21, 0.05);
+  --shadow-md: 0 2px 6px rgba(26, 24, 21, 0.05), 0 1px 2px rgba(26, 24, 21, 0.04);
+  --shadow-lg: 0 4px 14px rgba(26, 24, 21, 0.07), 0 2px 4px rgba(26, 24, 21, 0.04);
 
   /* ── shadcn semantic vars — remapped to Redline palette ─ */
   /* Background/surfaces: warm document paper (never pure white) */
@@ -96,8 +97,8 @@
   --input: #ECE9E3;
   /* Ring: Signal-500 for focus rings */
   --ring: #4A4FE8;
-  /* Radius */
-  --radius: 0.625rem;
+  /* Radius — Task 4 (flat+sharp): sharper corners, 8 px base */
+  --radius: 0.5rem;
   /* Chart colors: warm severity spectrum */
   --chart-1: #C5403B;
   --chart-2: #C8821E;
@@ -357,10 +358,57 @@ img, svg, video, canvas { max-width: 100%; height: auto; }
   }
 }
 
-/* All of the above stop dead under reduced-motion. */
+/* All of the above (incl. skeleton/rise) stop dead under reduced-motion. */
 @media (prefers-reduced-motion: reduce) {
   .mk-skeleton { animation: none; }
   .mk-rise { animation: none; }
   .lift-card { transition: none; }
   .lift-card:hover { transform: none; }
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * TASK 8a — STOP-AND-STARE MICRO-INTERACTION KEYFRAMES
+ * Defined here (globals) so the names are available to dashboard.css rules.
+ * All consuming classes are in dashboard.css (the cascade owner for components).
+ * Every animation respects the `prefers-reduced-motion: reduce` guard already
+ * at line 279 of this file: `animation-duration: 0.001ms !important`.
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+/* Shine sweep — a translucent band crossing primary buttons once on hover */
+@keyframes mk-btn-shine {
+  0%   { transform: translateX(-130%) skewX(-18deg); }
+  100% { transform: translateX(340%)  skewX(-18deg); }
+}
+
+/* Focus ring bloom — outline-offset springs out then settles */
+@keyframes mk-focus-bloom {
+  0%   { outline-offset: 1px; }
+  50%  { outline-offset: 5px; }
+  100% { outline-offset: 2px; }
+}
+
+/* Card entrance — used by .lift-card and v9 kpi/mcard lift */
+@keyframes mk-card-enter {
+  from { opacity: 0; transform: translateY(10px) scale(0.988); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ── Lift-card: universal hover-lift for any card that opts in ───────────── */
+.lift-card {
+  transition:
+    transform  0.26s var(--ease-ink),
+    box-shadow 0.26s var(--ease-ink),
+    border-color 0.26s var(--ease-ink);
+  will-change: transform;
+}
+@media (hover: hover) and (pointer: fine) {
+  .lift-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--border-strong);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lift-card { transition: none; will-change: auto; }
+  .lift-card:hover { transform: none; box-shadow: none; }
 }

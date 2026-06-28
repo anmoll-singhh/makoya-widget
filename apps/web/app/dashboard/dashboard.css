@@ -40,26 +40,6 @@ h1,h2,h3{font-family:'Satoshi';color:var(--deep);letter-spacing:-.01em}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
 .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
 
-/* ── Ceramic green background wash ──────────────────────────────────────────
- * The --green-fill token (#8AB39B) is the ceramic sage already in the palette.
- * These rules apply ONLY as faint tints (≤6%) to sections/cards — text colours,
- * buttons, and accent borders are untouched so AA contrast is preserved. */
-.main {
-  background-image: linear-gradient(
-    170deg,
-    rgba(138, 179, 155, 0.04) 0%,
-    transparent 60%
-  );
-}
-/* Card surfaces get a hairline ceramic-wash gradient on their upper edge */
-.card, .mcard, .tcard {
-  background-image: linear-gradient(
-    180deg,
-    rgba(138, 179, 155, 0.05) 0%,
-    transparent 45%
-  );
-}
-
 /* glass */
 .mk-glass{position:relative;background:linear-gradient(180deg,rgba(30,99,255,.08),rgba(30,99,255,0)),var(--glass-fill);-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat));backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat));border-radius:var(--r-lg);box-shadow:0 10px 30px rgba(13,27,77,.16),inset 0 1px 0 rgba(255,255,255,.65),inset 1px 0 0 rgba(255,255,255,.35)}
 .mk-glass::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;background:linear-gradient(135deg,rgba(255,255,255,.9),rgba(255,255,255,.25) 42%,rgba(13,27,77,.14));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none}
@@ -129,7 +109,7 @@ nav ul{list-style:none}
 .feat{display:flex;align-items:center;gap:12px;padding:13px 15px;border:1px solid var(--border);border-radius:12px;background:#fff;box-shadow:var(--sh)}
 .feat .ic{width:34px;height:34px;border-radius:9px;background:var(--bg);display:grid;place-items:center;color:var(--t2);font-size:18px;flex:none}
 .feat .nm{font-weight:700;font-size:13.5px}.feat .de{font-size:12px;color:var(--t2);margin-top:1px}
-.wpv{width:300px;max-width:100%;border:1px solid var(--border);border-radius:16px;overflow:hidden;background:#fff;box-shadow:var(--sh-card);flex:none}
+.wpv{width:300px;border:1px solid var(--border);border-radius:16px;overflow:hidden;background:#fff;box-shadow:var(--sh-card);flex:none}
 .wpv .hd{background:var(--primary);color:#fff;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;font-weight:700;font-size:13px}
 .wpv .t2{display:flex;border-bottom:1px solid var(--border);font-size:12px}
 .wpv .t2 span{flex:1;text-align:center;padding:9px;color:var(--t2);font-weight:700}.wpv .t2 span.on{color:var(--primary-hover);border-bottom:2px solid var(--primary)}
@@ -514,12 +494,9 @@ body{ font-size:14.5px; line-height:1.5; }
 
   /* tighter chrome paddings on small screens */
   .topbar{margin:10px 12px 0;padding:10px 12px;gap:10px}
-  .search{font-size:13.5px;padding:9px 12px;min-width:0}
-  .tcluster{min-width:0}
+  .search{font-size:13.5px;padding:9px 12px}
   .wrap{padding:14px 14px 30px}
-  /* nm/rl are inline spans — max-width is ignored on inline boxes, so the long
-     email used to overflow the topbar. display:block makes the clamp real. */
-  .user .nm,.user .rl{display:block;max-width:112px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .user .nm,.user .rl{max-width:96px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
   /* hero stacks; gauge centers; copy stays readable */
   .hero{padding:20px 16px;border-radius:18px}
@@ -545,52 +522,214 @@ body{ font-size:14.5px; line-height:1.5; }
   .pagehead b{font-size:20px}
 }
 
-/* ── Customize screen: controls + live-preview two-column → single column ──────
-   The customize page previously hard-coded `grid-template-columns:1fr 330px`
-   inline, which can't respond to viewport width and overflowed on phones (the
-   330px preview crushed the control column). This class is the mobile-first
-   baseline: one column (controls first, preview below); the two-column desktop
-   layout is the progressive enhancement at ≥980px. */
-.cu-grid{
-  display:grid;
-  grid-template-columns:1fr;
-  gap:20px;
-  align-items:start;
-}
-@media (min-width:980px){
-  .cu-grid{grid-template-columns:1fr 330px;gap:24px}
-  /* keep the live preview in view while scrolling the controls on desktop */
-  .cu-grid > :last-child{position:sticky;top:84px}
-}
-/* On phones the customize action header (description + Reset/Publish) wraps
-   instead of crushing the buttons against the copy. */
-@media (max-width:600px){
-  .cu-head{flex-wrap:wrap;align-items:flex-start;gap:10px}
-  .cu-head > div:last-child{margin-left:auto}
+/* =====================================================================
+   v9 — FLAT + SHARP + STOP-AND-STARE (design+motion lane, block 27)
+
+   TASK 4 — Flatter, sharper cards:
+     • Radius tokens cut from 14/18 px → 8/10 px (editorial crispness).
+     • Box-shadows near-eliminated: borders carry definition instead.
+     • Border-width 1 px → 2 px on cards; 1.5 px on buttons/inputs.
+     • Border colours lifted from near-white → visible-but-soft navy tint.
+
+   TASK 8a — Stop-and-stare micro-interactions:
+     • .btn: spring hover-lift + scale, active press-down, primary shine sweep.
+     • .kpi / .mcard: spring lift on hover, border brightens.
+     • .trow: background slide on hover.
+     • .inp: smooth border + ring on focus.
+     • .toggle: spring-feel ::after slide.
+     • Interactive elements: animated focus-ring bloom (keyboard nav).
+     • Shine keyframe defined in globals.css (mk-btn-shine / mk-focus-bloom).
+     • ALL motion respects the global prefers-reduced-motion guard above
+       (`animation:none!important; transition:none!important` at line 47 + 273).
+   ===================================================================== */
+
+/* ---- v9 shadow + radius tokens ---- */
+:root {
+  --r:    8px;   /* was 14 px — editorial sharpness */
+  --r-lg: 10px;  /* was 18 px — editorial sharpness */
+  /* Near-flat shadows: borders do the heavy lifting for definition */
+  --sh-card:    0 1px 2px rgba(13,27,77,.04);
+  --sh-pop:     0 4px 12px rgba(13,27,77,.08), 0 1px 3px rgba(13,27,77,.04);
+  --sh-tile:    0 2px 5px rgba(13,27,77,.10);
+  --sh-soft:    0 1px 1px rgba(13,27,77,.03);
+  --sh-primary: 0 2px 8px rgba(30,99,255,.16);
 }
 
-/* ── Wide dashboard tables → horizontal scroll on phones ──────────────────────
-   Tables built on .tcard/.thead/.trow with fixed-px column templates (reports,
-   remediation log) are wider than a phone and were being clipped by the card's
-   overflow:hidden. Tagging the card .tbl-scroll lets it scroll sideways instead
-   of hiding the last column, while each row keeps a min-width so the columns
-   don't crush. Desktop is unaffected. */
-@media (max-width:768px){
-  .tcard.tbl-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
-  .tcard.tbl-scroll .thead,
-  .tcard.tbl-scroll .trow{min-width:580px}
+/* ---- TASK 4: cards — 2 px border for sharp definition, near-flat shadow ---- */
+.card,.tcard,.mcard,.kpi {
+  border: 2px solid #D4D9E6;
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-card);
+}
+/* green-tinted metric card keeps its semantic border colour, just thicker */
+.mcard.grn { border-color: #B8D8C4; }
+
+/* ---- TASK 4: buttons — sharper radius + 1.5 px border ---- */
+.btn      { border-radius: var(--r); border-width: 1.5px; }
+.btn.pri  { border-width: 1.5px; }
+.btn.ghost{ border-width: 0; }
+
+/* ---- TASK 4: inputs + form chrome ---- */
+.inp { border: 1.5px solid #A8B2C4; border-radius: var(--r); }
+
+/* ---- TASK 4: feature/misc tiles — consistent sharp radius ---- */
+.feat    { border-radius: var(--r); border-width: 1.5px; }
+.fcard   { border-radius: var(--r); border-width: 1.5px; }
+.ptile   { border-radius: var(--r); }
+.note    { border-radius: var(--r); }
+.codebox { border-radius: var(--r); }
+.iconbtn { border-radius: var(--r); }
+.user    { border-radius: var(--r); }
+.switch  { border-radius: var(--r); }
+.seg     { border-radius: var(--r); }
+.seg button.on { border-radius: calc(var(--r) - 2px); }
+.nbtn    { border-radius: var(--r) !important; }
+.kicon   { border-radius: var(--r); }
+.fav     { border-radius: var(--r); }
+.skip    { border-radius: var(--r); }
+/* pill/pp/cnt stay fully rounded by design (999px) */
+
+/* ════════════ TASK 8a: MICRO-INTERACTIONS ════════════════════════════
+   Technique: transform + opacity only (no layout-thrashing properties).
+   Spring feel via cubic-bezier(0.34, 1.56, 0.64, 1) — tight overshoot.
+   Shine via .btn.pri::after + mk-btn-shine keyframe (globals.css).
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── Buttons: spring lift + shine sweep ──────────────────────────────── */
+.btn {
+  position: relative;
+  overflow: hidden; /* clips the shine pseudo-element */
+  transition:
+    background-color 0.15s var(--ease-ink),
+    border-color     0.15s var(--ease-ink),
+    box-shadow       0.15s var(--ease-ink),
+    color            0.15s var(--ease-ink),
+    transform        0.14s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* ── Generic form + side-panel split (statement, etc.) ────────────────────────
-   Same problem as .cu-grid: an inline `1fr 340px` grid can't respond to width
-   and pushed the side panel off-screen on phones. Mobile-first single column;
-   two columns only once there's room (≥900px). */
-.dash-split{
-  display:grid;
-  grid-template-columns:1fr;
-  gap:18px;
-  align-items:start;
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover {
+    transform: translateY(-1px) scale(1.013);
+    box-shadow: 0 3px 8px rgba(13,27,77,.10);
+  }
+  .btn.pri:hover {
+    box-shadow: var(--sh-primary), 0 3px 8px rgba(13,27,77,.08);
+  }
+  .btn.ghost:hover { box-shadow: none; }
 }
-@media (min-width:900px){
-  .dash-split{grid-template-columns:1fr 340px;gap:22px}
+
+/* Tactile press-down */
+.btn:active {
+  transform: translateY(0) scale(0.975);
+  transition-duration: 0.07s;
+}
+
+/* Shine sweep: a translucent band crossing primary buttons once per hover */
+.btn.pri::after {
+  content: "";
+  position: absolute;
+  inset: -4px 0;
+  width: 35%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,.18) 40%,
+    rgba(255,255,255,.30) 50%,
+    rgba(255,255,255,.18) 60%,
+    transparent 100%
+  );
+  transform: translateX(-130%) skewX(-18deg);
+  pointer-events: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .btn.pri:hover::after {
+    animation: mk-btn-shine 0.52s var(--ease-ink) both;
+  }
+}
+
+/* ── KPI + metric cards: spring lift on hover ─────────────────────────── */
+.kpi, .mcard {
+  transition:
+    box-shadow   0.24s var(--ease-ink),
+    transform    0.24s cubic-bezier(0.34, 1.3, 0.64, 1),
+    border-color 0.24s var(--ease-ink);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .kpi:hover, .mcard:hover {
+    transform:    translateY(-3px) scale(1.006);
+    box-shadow:   var(--sh-pop);
+    border-color: #B8BDD4;
+  }
+  .mcard.grn:hover { border-color: #8EC8A8; }
+}
+
+/* ── Table rows: smooth background slide ─────────────────────────────── */
+.trow {
+  transition: background-color 0.13s var(--ease-ink);
+}
+.trow:hover { background: #F5F7FC; }
+
+/* ── Input focus: promoted border + soft ring ────────────────────────── */
+.inp {
+  transition: border-color 0.16s var(--ease-ink), box-shadow 0.16s var(--ease-ink);
+}
+.inp:focus {
+  border-color: var(--primary);
+  box-shadow:   0 0 0 3px rgba(30,99,255,.13);
+  outline: none;
+}
+
+/* ── Toggle: spring-feel knob slide ──────────────────────────────────── */
+.toggle { transition: background-color 0.18s var(--ease-ink); }
+.toggle::after {
+  transition: left 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ── Animated focus rings for keyboard navigation ───────────────────────
+   Ring is always visible (2.5 px outline). The bloom animation adds a
+   cosmetic spring-expand of outline-offset that settles at 2 px.
+   Defined in globals.css: @keyframes mk-focus-bloom.              */
+.btn:focus-visible,
+.iconbtn:focus-visible,
+.navtoggle:focus-visible,
+.navclose:focus-visible {
+  outline: 2.5px solid var(--primary);
+  outline-offset: 2px;
+  animation: mk-focus-bloom 0.3s var(--ease-ink) forwards;
+}
+.inp:focus-visible, select:focus-visible {
+  outline: 2.5px solid var(--primary);
+  outline-offset: 2px;
+  animation: mk-focus-bloom 0.3s var(--ease-ink) forwards;
+}
+
+/* ── Icon buttons: hover brightens ──────────────────────────────────── */
+.iconbtn {
+  transition:
+    background-color 0.14s var(--ease-ink),
+    border-color     0.14s var(--ease-ink),
+    transform        0.14s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@media (hover: hover) and (pointer: fine) {
+  .iconbtn:hover {
+    background: #fff;
+    border-color: #B8BDD4;
+    transform: translateY(-1px);
+  }
+}
+
+/* ── Nav links: smooth colour transition ─────────────────────────────── */
+.nav a, .grp>button {
+  transition: background-color 0.14s var(--ease-ink), color 0.14s var(--ease-ink);
+}
+
+/* ── Forced-colors: strip purely-decorative motion elements ─────────── */
+@media (forced-colors: active) {
+  .btn.pri::after { display: none; }
+  .kpi, .mcard { transition: none; }
+  .trow { transition: none; }
+  .toggle, .toggle::after { transition: none; }
+  .iconbtn { transition: none; }
 }
