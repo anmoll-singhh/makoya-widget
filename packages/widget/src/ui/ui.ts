@@ -34,7 +34,7 @@ import { PANEL_CSS } from "./styles";
 import { type Lang, LANG_LABELS, t } from "./i18n";
 import { buildFeature } from "./features";
 import { PROFILES, applyProfileByKey } from "./profiles";
-import { makeRuler, makeMask, makeReadAloud, makeMute, makeHoverHighlight } from "./live";
+import { makeRuler, makeMask, makeReadAloud, makeMute, makeHoverHighlight, makeKeyboardNav } from "./live";
 import { trackEvent } from "../core/telemetry";
 
 /**
@@ -61,6 +61,9 @@ function activeFeatureKeys(p: Prefs): Set<string> {
   if (p.mute) s.add("muteSounds");
   if (p.readAloud) s.add("readAloud");
   if (p.hoverHighlight) s.add("highlightHover");
+  if (p.keyboardNav) s.add("keyboardNav");
+  if (p.focusMode) s.add("focusMode");
+  if (p.colorFilter !== "off") s.add("colorBlindFilter");
   return s;
 }
 
@@ -96,10 +99,13 @@ const FEATURE_SECTION: Record<string, "sec_content" | "sec_color" | "sec_nav" | 
   stopMotion:      "sec_content",
   contrast:        "sec_color",
   saturation:      "sec_color",
+  colorBlindFilter:"sec_color",
   readingRuler:    "sec_nav",
   readingMask:     "sec_nav",
   bigCursor:       "sec_nav",
   highlightHover:  "sec_nav",
+  keyboardNav:     "sec_nav",
+  focusMode:       "sec_nav",
   muteSounds:      "sec_audio",
   readAloud:       "sec_audio",
 };
@@ -186,6 +192,7 @@ function _mount(config: WidgetConfig): void {
   const readAloud = makeReadAloud(lang);
   const mute      = makeMute();
   const hover     = makeHoverHighlight();
+  const keyboard  = makeKeyboardNav(lang);
 
   // ─── Corner positioning ──────────────────────────────────────────────────
   const corner = POSITIONS[config.position] ?? POSITIONS["bottom-right"];
@@ -231,10 +238,17 @@ function _mount(config: WidgetConfig): void {
       ruler.setColor(prefs.rulerColor);
       prefs.ruler     ? ruler.on()          : ruler.off();
       mask.set(prefs.mask);
+      // Read-aloud: push transport settings BEFORE (dis)enabling so a freshly
+      // enabled controller already has the right rate / continuous mode.
+      readAloud.setRate(prefs.readAloudRate);
+      readAloud.setContinuous(prefs.readAloudContinuous);
       prefs.readAloud ? readAloud.enable()  : readAloud.disable();
       readAloud.setLang(lang);
       prefs.mute      ? mute.enable()       : mute.disable();
       prefs.hoverHighlight ? hover.enable() : hover.disable();
+      // Keyboard navigation (skip link + shortcut jumps + legend).
+      keyboard.setLang(lang);
+      prefs.keyboardNav ? keyboard.enable() : keyboard.disable();
       savePrefs(prefs);
       // Telemetry (fire-and-forget, never affects the UI): emit feature_activated
       // for each feature that just transitioned off→on. The first apply only

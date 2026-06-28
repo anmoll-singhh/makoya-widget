@@ -75,6 +75,17 @@ export const ICON: Partial<Record<FeatureKey, string>> = {
 
   /** Highlight on hover: crosshair / target icon */
   highlightHover: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>`,
+
+  // ── 3 new keys (A11y feature wave) ───────────────────────────────────────
+
+  /** Keyboard navigation: keyboard outline */
+  keyboardNav: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>`,
+
+  /** Focus highlight: dashed focus ring around a dot */
+  focusMode: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="3" stroke-dasharray="3 3"/><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/></svg>`,
+
+  /** Color-blind filter: split eye / spectrum */
+  colorBlindFilter: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><path d="M12 5v14" stroke-width="1.5"/><path d="M12 9a3 3 0 0 0 0 6z" fill="currentColor" stroke="none"/></svg>`,
 };
 
 // ---------------------------------------------------------------------------
@@ -268,14 +279,72 @@ export function buildFeature(
 
     case "readAloud": {
       const label = t(lang, "f_readAloud");
-      return row(icon, label,
+      // Primary on/off switch.
+      const switchRow = row(icon, label,
         makeSwitch(label, prefs.readAloud, (v) => { prefs.readAloud = v; }, onChange));
+      // Speed segmented control (0.75 / 1 / 1.25 / 1.5).
+      const rateLabel = t(lang, "f_readAloudRate");
+      const rateSeg = makeSeg(
+        rateLabel,
+        [
+          { value: "0.75", label: "0.75×" },
+          { value: "1",    label: "1×"    },
+          { value: "1.25", label: "1.25×" },
+          { value: "1.5",  label: "1.5×"  },
+        ],
+        String(prefs.readAloudRate),
+        (v) => { const n = parseFloat(v); if (n > 0) prefs.readAloudRate = n; },
+        onChange
+      );
+      // Auto-advance (continuous) switch.
+      const contLabel = t(lang, "f_readAloudContinuous");
+      const contSwitch = makeSwitch(
+        contLabel, prefs.readAloudContinuous,
+        (v) => { prefs.readAloudContinuous = v; }, onChange
+      );
+      const wrapper = document.createElement("div");
+      wrapper.append(
+        switchRow,
+        row("", rateLabel, rateSeg),
+        row("", contLabel, contSwitch),
+      );
+      return wrapper;
     }
 
     case "highlightHover": {
       const label = t(lang, "f_highlightHover");
       return row(icon, label,
         makeSwitch(label, prefs.hoverHighlight, (v) => { prefs.hoverHighlight = v; }, onChange));
+    }
+
+    // ── 3 new keys (A11y feature wave) ───────────────────────────────────────
+    case "keyboardNav": {
+      const label = t(lang, "f_keyboardNav");
+      return row(icon, label,
+        makeSwitch(label, prefs.keyboardNav, (v) => { prefs.keyboardNav = v; }, onChange));
+    }
+
+    case "focusMode": {
+      const label = t(lang, "f_focusMode");
+      return row(icon, label,
+        makeSwitch(label, prefs.focusMode, (v) => { prefs.focusMode = v; }, onChange));
+    }
+
+    case "colorBlindFilter": {
+      const label = t(lang, "f_colorBlindFilter");
+      const seg = makeSeg(
+        label,
+        [
+          { value: "off",          label: t(lang, "opt_off")          },
+          { value: "protanopia",   label: t(lang, "opt_protanopia")   },
+          { value: "deuteranopia", label: t(lang, "opt_deuteranopia") },
+          { value: "tritanopia",   label: t(lang, "opt_tritanopia")   },
+        ],
+        prefs.colorFilter,
+        (v) => { prefs.colorFilter = v as Prefs["colorFilter"]; },
+        onChange
+      );
+      return row(icon, label, seg);
     }
 
     default:

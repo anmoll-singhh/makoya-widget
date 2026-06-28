@@ -75,9 +75,14 @@ export type StringKey =
   | "f_muteSounds"
   | "f_readAloud"
   | "f_highlightHover"
+  | "f_keyboardNav"
+  | "f_focusMode"
+  | "f_colorBlindFilter"
+  | "f_readAloudRate"
+  | "f_readAloudContinuous"
   | "rulerColor"
 
-  // Segmented-control option labels (10)
+  // Segmented-control option labels
   | "opt_off"
   | "opt_on"
   | "opt_dark"
@@ -88,10 +93,21 @@ export type StringKey =
   | "opt_tint"
   | "opt_black"
   | "opt_white"
+  | "opt_protanopia"
+  | "opt_deuteranopia"
+  | "opt_tritanopia"
 
   // Stepper button aria-labels
   | "decrease"
   | "increase"
+
+  // Keyboard-navigation skip link + shortcut legend
+  | "kbd_skip"
+  | "kbd_legend_title"
+  | "kbd_heading"
+  | "kbd_landmark"
+  | "kbd_link"
+  | "kbd_top"
 
   // Footer / misc
   | "reset"
@@ -149,6 +165,11 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     f_muteSounds: "Mute sounds",
     f_readAloud: "Read aloud",
     f_highlightHover: "Highlight on hover",
+    f_keyboardNav: "Keyboard navigation",
+    f_focusMode: "Focus highlight",
+    f_colorBlindFilter: "Color-blind filter",
+    f_readAloudRate: "Speed",
+    f_readAloudContinuous: "Auto-advance",
     rulerColor: "Ruler color",
 
     opt_off: "Off",
@@ -161,9 +182,19 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     opt_tint: "Tint",
     opt_black: "Black",
     opt_white: "White",
+    opt_protanopia: "Protanopia",
+    opt_deuteranopia: "Deuteranopia",
+    opt_tritanopia: "Tritanopia",
 
     decrease: "Decrease",
     increase: "Increase",
+
+    kbd_skip: "Skip to main content",
+    kbd_legend_title: "Keyboard shortcuts",
+    kbd_heading: "Next heading (Shift+H: previous)",
+    kbd_landmark: "Next region",
+    kbd_link: "Next link",
+    kbd_top: "Back to top",
 
     reset: "Reset all",
     note: "Changes affect your view only — they don't alter the website.",
@@ -214,6 +245,11 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     f_muteSounds: "Silenciar sonidos",
     f_readAloud: "Leer en voz alta",
     f_highlightHover: "Resaltar al pasar el cursor",
+    f_keyboardNav: "Navegación por teclado",
+    f_focusMode: "Resaltar el foco",
+    f_colorBlindFilter: "Filtro para daltonismo",
+    f_readAloudRate: "Velocidad",
+    f_readAloudContinuous: "Avance automático",
     rulerColor: "Color de la regla",
 
     opt_off: "Apagado",
@@ -226,9 +262,19 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     opt_tint: "Tinte",
     opt_black: "Negro",
     opt_white: "Blanco",
+    opt_protanopia: "Protanopía",
+    opt_deuteranopia: "Deuteranopía",
+    opt_tritanopia: "Tritanopía",
 
     decrease: "Disminuir",
     increase: "Aumentar",
+
+    kbd_skip: "Saltar al contenido principal",
+    kbd_legend_title: "Atajos de teclado",
+    kbd_heading: "Siguiente título (Mayús+H: anterior)",
+    kbd_landmark: "Siguiente región",
+    kbd_link: "Siguiente enlace",
+    kbd_top: "Volver arriba",
 
     reset: "Restablecer todo",
     note: "Los cambios solo afectan tu vista — no modifican el sitio web.",
@@ -279,6 +325,11 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     f_muteSounds: "Couper les sons",
     f_readAloud: "Lecture à voix haute",
     f_highlightHover: "Surligner au survol",
+    f_keyboardNav: "Navigation au clavier",
+    f_focusMode: "Surligner le focus",
+    f_colorBlindFilter: "Filtre daltonien",
+    f_readAloudRate: "Vitesse",
+    f_readAloudContinuous: "Avance automatique",
     rulerColor: "Couleur de la règle",
 
     opt_off: "Désactivé",
@@ -291,9 +342,19 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     opt_tint: "Teinte",
     opt_black: "Noir",
     opt_white: "Blanc",
+    opt_protanopia: "Protanopie",
+    opt_deuteranopia: "Deutéranopie",
+    opt_tritanopia: "Tritanopie",
 
     decrease: "Diminuer",
     increase: "Augmenter",
+
+    kbd_skip: "Aller au contenu principal",
+    kbd_legend_title: "Raccourcis clavier",
+    kbd_heading: "Titre suivant (Maj+H : précédent)",
+    kbd_landmark: "Région suivante",
+    kbd_link: "Lien suivant",
+    kbd_top: "Retour en haut",
 
     reset: "Tout réinitialiser",
     note: "Les modifications n'affectent que votre affichage — elles ne modifient pas le site.",
@@ -344,6 +405,11 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     f_muteSounds: "Töne stummschalten",
     f_readAloud: "Vorlesen",
     f_highlightHover: "Beim Überfahren hervorheben",
+    f_keyboardNav: "Tastaturnavigation",
+    f_focusMode: "Fokus hervorheben",
+    f_colorBlindFilter: "Farbsehschwäche-Filter",
+    f_readAloudRate: "Geschwindigkeit",
+    f_readAloudContinuous: "Automatisch weiter",
     rulerColor: "Linealfarbe",
 
     opt_off: "Aus",
@@ -356,9 +422,19 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     opt_tint: "Tönung",
     opt_black: "Schwarz",
     opt_white: "Weiß",
+    opt_protanopia: "Protanopie",
+    opt_deuteranopia: "Deuteranopie",
+    opt_tritanopia: "Tritanopie",
 
     decrease: "Verringern",
     increase: "Erhöhen",
+
+    kbd_skip: "Zum Hauptinhalt springen",
+    kbd_legend_title: "Tastenkürzel",
+    kbd_heading: "Nächste Überschrift (Umschalt+H: vorherige)",
+    kbd_landmark: "Nächster Bereich",
+    kbd_link: "Nächster Link",
+    kbd_top: "Nach oben",
 
     reset: "Alles zurücksetzen",
     note: "Änderungen wirken sich nur auf Ihre Ansicht aus — die Website wird nicht verändert.",

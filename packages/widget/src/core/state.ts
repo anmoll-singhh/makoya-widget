@@ -55,6 +55,17 @@ export interface Prefs {
    */
   readAloud: boolean;
   /**
+   * Read-aloud speech rate multiplier (0.75 | 1 | 1.25 | 1.5). Pushed to the
+   * makeReadAloud() controller in apply(); affects future utterances only.
+   */
+  readAloudRate: number;
+  /**
+   * Read-aloud continuous mode. When on, clicking a block reads it and then
+   * auto-advances to the next readable block until stopped.
+   * LIVE: controlled by ui/live.ts makeReadAloud().
+   */
+  readAloudContinuous: boolean;
+  /**
    * Reading-ruler band color (any CSS hex color). Default yellow.
    * LIVE: applied by makeRuler().setColor() in ui/live.ts whenever the ruler
    * is active or when the color changes.
@@ -104,6 +115,8 @@ export const DEFAULT_PREFS: Prefs = {
   align: false,
   mute: false,
   readAloud: false,
+  readAloudRate: 1,
+  readAloudContinuous: false,
   rulerColor: "#ffd400",
   hoverHighlight: false,
   keyboardNav: false,

@@ -177,6 +177,50 @@ test("applyPrefs removes data-mky-align when align=false", () => {
   assert.equal(_attrs["data-mky-align"], null);
 });
 
+// -- applyPrefs(): focus mode + colour-blind filter (A11y feature wave) --------
+test("applyPrefs sets data-mky-focus='on' when focusMode=true", () => {
+  applyPrefs({ ...DEFAULT_PREFS, focusMode: true });
+  assert.equal(_attrs["data-mky-focus"], "on");
+});
+
+test("applyPrefs removes data-mky-focus when focusMode=false", () => {
+  applyPrefs({ ...DEFAULT_PREFS, focusMode: false });
+  assert.equal(_attrs["data-mky-focus"], null);
+});
+
+test("applyPrefs sets data-mky-cf='deuteranopia' when colorFilter='deuteranopia'", () => {
+  applyPrefs({ ...DEFAULT_PREFS, colorFilter: "deuteranopia" });
+  assert.equal(_attrs["data-mky-cf"], "deuteranopia");
+});
+
+test("applyPrefs sets data-mky-cf='protanopia' when colorFilter='protanopia'", () => {
+  applyPrefs({ ...DEFAULT_PREFS, colorFilter: "protanopia" });
+  assert.equal(_attrs["data-mky-cf"], "protanopia");
+});
+
+test("applyPrefs sets data-mky-cf='tritanopia' when colorFilter='tritanopia'", () => {
+  applyPrefs({ ...DEFAULT_PREFS, colorFilter: "tritanopia" });
+  assert.equal(_attrs["data-mky-cf"], "tritanopia");
+});
+
+test("applyPrefs removes data-mky-cf when colorFilter='off'", () => {
+  applyPrefs({ ...DEFAULT_PREFS, colorFilter: "off" });
+  assert.equal(_attrs["data-mky-cf"], null);
+});
+
+// keyboardNav is LIVE (not a CSS attr) — applyPrefs does NOT set an attr for it
+test("applyPrefs does NOT set a data-mky attr for keyboardNav (live controller)", () => {
+  const before = _attrs["data-mky-keyboard"];
+  applyPrefs({ ...DEFAULT_PREFS, keyboardNav: true });
+  assert.equal(_attrs["data-mky-keyboard"], before); // unchanged/undefined
+});
+
+// New default-prefs assertions for the read-aloud transport fields
+test("DEFAULT_PREFS.readAloudRate === 1", () => assert.equal(DEFAULT_PREFS.readAloudRate, 1));
+test("DEFAULT_PREFS.readAloudContinuous === false", () => assert.equal(DEFAULT_PREFS.readAloudContinuous, false));
+test("DEFAULT_PREFS.focusMode === false", () => assert.equal(DEFAULT_PREFS.focusMode, false));
+test('DEFAULT_PREFS.colorFilter === "off"', () => assert.equal(DEFAULT_PREFS.colorFilter, "off"));
+
 // mask/mute/readAloud are LIVE (not CSS attrs) — applyPrefs does NOT set attrs for them
 test("applyPrefs does NOT set data-mky-mask attr (live controller)", () => {
   const before = _attrs["data-mky-mask"];

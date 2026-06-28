@@ -140,7 +140,10 @@ export const PROFILES: Profile[] = [
     labelKey: "profile_colorBlind",
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v9M12 12l7.5 4.5" stroke-width="1.5"/><circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/></svg>`,
     apply: (p) => {
-      p.saturation = "high";
+      // Real daltonization assist (deuteranopia is the most common type) instead
+      // of the old `saturation:high`, which does nothing for colour blindness.
+      // Pair it with highlighted titles to aid page scanning.
+      p.colorFilter = "deuteranopia";
       p.titles = true;
     },
   },

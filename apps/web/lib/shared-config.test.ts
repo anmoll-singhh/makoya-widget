@@ -18,7 +18,7 @@ describe("shared launcher icons", () => {
 });
 
 describe("expanded widget config", () => {
-  it("DEFAULT_CONFIG exposes all 16 feature keys", () => {
+  it("DEFAULT_CONFIG exposes all 19 feature keys", () => {
     expect(DEFAULT_CONFIG.featuresEnabled).toEqual([
       "textSize",
       "lineSpacing",
@@ -36,6 +36,9 @@ describe("expanded widget config", () => {
       "muteSounds",
       "readAloud",
       "highlightHover",
+      "keyboardNav",
+      "focusMode",
+      "colorBlindFilter",
     ]);
   });
   it("DEFAULT_CONFIG has the new scalar fields with safe defaults", () => {

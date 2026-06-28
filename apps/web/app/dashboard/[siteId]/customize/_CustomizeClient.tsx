@@ -106,6 +106,21 @@ const FEATURE_META: Record<FeatureKey, { label: string; icon: string; desc: stri
   textAlign: { label: "Text align", icon: "ti-align-left", desc: "Left / centre / justify" },
   muteSounds: { label: "Mute sounds", icon: "ti-volume-off", desc: "Silence autoplay audio" },
   readAloud: { label: "Read page aloud", icon: "ti-volume", desc: "Text-to-speech" },
+  keyboardNav: {
+    label: "Keyboard navigation",
+    icon: "ti-keyboard",
+    desc: "Skip link + jump between headings, regions & links",
+  },
+  focusMode: {
+    label: "Focus highlight",
+    icon: "ti-viewfinder",
+    desc: "Strong outline on the focused element",
+  },
+  colorBlindFilter: {
+    label: "Color-blind filter",
+    icon: "ti-color-filter",
+    desc: "Daltonization for protanopia, deuteranopia & tritanopia",
+  },
 };
 const FEATURE_KEYS = Object.keys(FEATURE_META) as FeatureKey[];
 

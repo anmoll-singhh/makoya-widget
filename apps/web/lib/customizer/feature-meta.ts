@@ -24,7 +24,7 @@ export interface FeatureMeta {
 }
 
 /**
- * All 15 widget feature entries in canonical default order.
+ * All 19 widget feature entries in canonical default order.
  * Matches the order of DEFAULT_CONFIG.featuresEnabled exactly.
  */
 export const FEATURE_META: FeatureMeta[] = [
@@ -123,5 +123,23 @@ export const FEATURE_META: FeatureMeta[] = [
     label: "Highlight on hover",
     description: "Outline the element under the cursor.",
     group: "navigation",
+  },
+  {
+    key: "keyboardNav",
+    label: "Keyboard navigation",
+    description: "Skip link plus shortcuts to jump between headings, regions, and links.",
+    group: "navigation",
+  },
+  {
+    key: "focusMode",
+    label: "Focus highlight",
+    description: "Add a strong, high-contrast outline to whatever is focused.",
+    group: "navigation",
+  },
+  {
+    key: "colorBlindFilter",
+    label: "Color-blind filter",
+    description: "Daltonization filters for protanopia, deuteranopia, and tritanopia.",
+    group: "color",
   },
 ];

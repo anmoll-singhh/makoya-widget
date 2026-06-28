@@ -44,6 +44,7 @@ import { launchBrowser, openPage } from "@/lib/browser/launcher";
 import { AppError } from "@/lib/utils/error";
 import { extractSameDomainLinks } from "@/lib/scanner/link-extractor";
 import { buildA11ySkeleton, computeContentHash } from "./content-hash";
+import { scanCustomChecks, type CustomCheckResult } from "./custom-checks";
 import { runSecondEngine } from "./second-engine";
 import { crossValidate } from "./cross-validate";
 import { SCORING_MODEL_VERSION } from "@/lib/utils/score";
@@ -62,7 +63,7 @@ const ENGINE_VERSION = 2 as const;
  * Version of the custom-check suite. Bump when adding/removing/altering a
  * custom check so the `rulesetHash` changes and the shift is attributable.
  */
-const CUSTOM_CHECKS_VERSION = 1 as const;
+const CUSTOM_CHECKS_VERSION = 2 as const;
 
 /** Stable list of custom-check ids (folded into the ruleset hash). */
 const CUSTOM_CHECK_IDS = [
@@ -72,6 +73,12 @@ const CUSTOM_CHECK_IDS = [
   "media-autoplay",
   "focus-ring-hidden",
   "icon-button-no-label",
+  // ── v2 additions ──
+  "placeholder-as-label",
+  "table-missing-headers",
+  "heading-order-skip",
+  "positive-tabindex",
+  "text-over-image-no-contrast",
 ] as const;
 
 /** Max DOM nodes displayed per issue (true count lives in `totalInstances`). */
@@ -82,202 +89,35 @@ const MAX_DISPLAY_NODES = 10;
 // ---------------------------------------------------------------------------
 
 /**
- * Runs 6 custom DOM checks inside the live page that axe-core misses:
- *  1. generic-link-text      — "click here", "here", "read more", etc.
- *  2. new-window-no-warning  — target="_blank" without new-window notice
- *  3. document-link-no-type  — links to .pdf/.doc/.xls without file-type text
- *  4. media-autoplay         — <video>/<audio> with autoplay attribute
- *  5. focus-ring-hidden      — inline style="outline:none" on focusable elements
- *  6. icon-button-no-label   — buttons containing only SVG/img with no aria-label
+ * Runs 11 custom DOM checks inside the live page that axe-core misses:
+ *  1. generic-link-text            — "click here", "here", "read more", etc.
+ *  2. new-window-no-warning        — target="_blank" without new-window notice
+ *  3. document-link-no-type        — links to .pdf/.doc/.xls without file-type text
+ *  4. media-autoplay               — <video>/<audio> with autoplay attribute
+ *  5. focus-ring-hidden            — inline style="outline:none" on focusable elements
+ *  6. icon-button-no-label         — buttons containing only SVG/img with no aria-label
+ *  7. placeholder-as-label         — inputs labelled only by a placeholder (v2)
+ *  8. table-missing-headers        — data tables with no <th>/scope/headers (v2)
+ *  9. heading-order-skip           — heading levels that jump, e.g. h2 → h4 (v2)
+ * 10. positive-tabindex            — elements with tabindex > 0 (v2)
+ * 11. text-over-image-no-contrast  — text over a background image axe can't judge (v2)
  *
- * All checks run in a single page.evaluate() call (one browser round-trip).
- * The function is non-fatal — any failure returns an empty array.
+ * The check logic lives in the SELF-CONTAINED `scanCustomChecks` (see
+ * custom-checks.ts) so Playwright can serialize it into a single
+ * page.evaluate() round-trip while the identical code path is unit-tested
+ * under jsdom. The function is non-fatal — any failure returns an empty array.
  */
 async function runCustomChecks(page: Page): Promise<RawAxeViolation[]> {
-  type CheckNode  = { selector: string; html: string; failureSummary: string };
-  type CheckResult = {
-    id: string; description: string; help: string; impact: string;
-    /** TRUE number of matched elements (before display capping). */
-    totalInstances: number;
-    nodes: CheckNode[];
-  };
-
-  let raw: CheckResult[];
+  let raw: CustomCheckResult[];
   try {
-    raw = await page.evaluate((): CheckResult[] => {
-      const out: CheckResult[] = [];
-
-      // ── helpers ────────────────────────────────────────────────────────────
-      function sel(el: Element): string {
-        if (el.id) return `#${CSS.escape(el.id)}`;
-        const parts: string[] = [];
-        let cur: Element | null = el;
-        while (cur && cur.tagName && parts.length < 4) {
-          let s = cur.tagName.toLowerCase();
-          if (cur.id) { s = `#${CSS.escape(cur.id)}`; parts.unshift(s); break; }
-          const sibs = Array.from(cur.parentElement?.children ?? []).filter(c => c.tagName === cur!.tagName);
-          if (sibs.length > 1) s += `:nth-of-type(${sibs.indexOf(cur) + 1})`;
-          parts.unshift(s);
-          cur = cur.parentElement;
-        }
-        return parts.join(" > ");
-      }
-      function html(el: Element): string {
-        const h = el.outerHTML ?? "";
-        return h.length > 300 ? h.slice(0, 300) + "…" : h;
-      }
-      function txt(el: Element): string {
-        return (el.textContent ?? "").trim().toLowerCase();
-      }
-      function attr(el: Element, name: string): string {
-        return (el.getAttribute(name) ?? "").toLowerCase();
-      }
-
-      // ── 1. Generic / ambiguous link text ───────────────────────────────────
-      const GENERIC = ["click here", "here", "read more", "more", "learn more",
-                       "click", "this link", "continue", "details", "info", "link"];
-      const genericLinks = Array.from(document.querySelectorAll("a[href]")).filter(el => {
-        const t = txt(el);
-        const al = attr(el, "aria-label");
-        const check = al || t;
-        return GENERIC.some(g => check === g);
-      });
-      if (genericLinks.length) {
-        out.push({
-          id: "generic-link-text",
-          description: "Links use non-descriptive text that loses meaning out of context",
-          help: 'Replace generic text like "click here" or "read more" with a description of the destination',
-          impact: "serious",
-          totalInstances: genericLinks.length,
-          nodes: genericLinks.slice(0, 6).map(el => ({
-            selector: sel(el),
-            html: html(el),
-            failureSummary: `Link text "${txt(el) || attr(el, "aria-label")}" is non-descriptive`,
-          })),
-        });
-      }
-
-      // ── 2. New-window links without warning ────────────────────────────────
-      const newWin = Array.from(document.querySelectorAll("a[target='_blank']")).filter(el => {
-        const combined = txt(el) + attr(el, "aria-label") + attr(el, "title");
-        return !/(new (window|tab)|opens in)/i.test(combined);
-      });
-      if (newWin.length) {
-        out.push({
-          id: "new-window-no-warning",
-          description: "Links that open in a new window or tab do not warn the user",
-          help: 'Add "(opens in new window)" to link text or aria-label for target="_blank" links',
-          impact: "minor",
-          totalInstances: newWin.length,
-          nodes: newWin.slice(0, 6).map(el => ({
-            selector: sel(el),
-            html: html(el),
-            failureSummary: "Link opens in new window/tab without notifying the user",
-          })),
-        });
-      }
-
-      // ── 3. Document links without file-type indicator ──────────────────────
-      const DOC_PATTERN = /\.(pdf|doc|docx|xls|xlsx|ppt|pptx|csv|zip)(\?|$)/i;
-      const docLinks = Array.from(document.querySelectorAll("a[href]")).filter(el => {
-        const href = attr(el, "href");
-        if (!DOC_PATTERN.test(href)) return false;
-        const combined = txt(el) + attr(el, "aria-label");
-        return !/(pdf|word|excel|spreadsheet|document|doc|xls|ppt|csv|download)/i.test(combined);
-      });
-      if (docLinks.length) {
-        out.push({
-          id: "document-link-no-type",
-          description: "Links to downloadable documents do not identify the file format",
-          help: 'Include the file type in the link text, e.g. "Annual Report (PDF)"',
-          impact: "moderate",
-          totalInstances: docLinks.length,
-          nodes: docLinks.slice(0, 5).map(el => ({
-            selector: sel(el),
-            html: html(el),
-            failureSummary: `Document link to "${attr(el, "href").split("/").pop()}" has no file-type indicator`,
-          })),
-        });
-      }
-
-      // ── 4. Autoplay media (WCAG 1.4.2) ────────────────────────────────────
-      const autoplay = Array.from(
-        document.querySelectorAll("video[autoplay], audio[autoplay]")
-      ).filter(el => !el.hasAttribute("muted") || el.tagName === "AUDIO");
-      if (autoplay.length) {
-        out.push({
-          id: "media-autoplay",
-          description: "Media elements start playing without user interaction",
-          help: "Remove autoplay, or ensure the media has no audio and provide a pause mechanism",
-          impact: "serious",
-          totalInstances: autoplay.length,
-          nodes: autoplay.slice(0, 4).map(el => ({
-            selector: sel(el),
-            html: html(el),
-            failureSummary: `${el.tagName.toLowerCase()} autoplays — users cannot control audio playback`,
-          })),
-        });
-      }
-
-      // ── 5. Focus ring hidden via inline style ──────────────────────────────
-      const FOCUSABLE = "a[href], button, input, select, textarea, [tabindex]";
-      const noFocus = Array.from(document.querySelectorAll(FOCUSABLE)).filter(el => {
-        const s = el.getAttribute("style") ?? "";
-        return /outline\s*:\s*0|outline\s*:\s*none/i.test(s);
-      });
-      if (noFocus.length) {
-        out.push({
-          id: "focus-ring-hidden",
-          description: "Focusable elements have their focus indicator removed via inline style",
-          help: "Never set outline:none on focusable elements without providing a custom focus style",
-          impact: "serious",
-          totalInstances: noFocus.length,
-          nodes: noFocus.slice(0, 6).map(el => ({
-            selector: sel(el),
-            html: html(el),
-            failureSummary: 'Inline style removes focus ring (outline:none / outline:0)',
-          })),
-        });
-      }
-
-      // ── 6. Icon-only buttons without accessible label ──────────────────────
-      const iconBtns = Array.from(
-        document.querySelectorAll("button, [role='button']")
-      ).filter(el => {
-        const t = (el.textContent ?? "").replace(/\s+/g, "");
-        const al = attr(el, "aria-label");
-        const alby = attr(el, "aria-labelledby");
-        const title = attr(el, "title");
-        if (al || alby || title) return false;
-        const hasSvg = el.querySelector("svg");
-        const hasImg = el.querySelector("img");
-        const hasText = t.length > 0;
-        return (hasSvg || hasImg) && !hasText;
-      });
-      if (iconBtns.length) {
-        out.push({
-          id: "icon-button-no-label",
-          description: "Icon-only buttons have no accessible name for screen readers",
-          help: "Add aria-label or aria-labelledby to every button that contains only an icon",
-          impact: "critical",
-          totalInstances: iconBtns.length,
-          nodes: iconBtns.slice(0, 6).map(el => ({
-            selector: sel(el),
-            html: html(el),
-            failureSummary: "Button contains only SVG/img with no accessible label",
-          })),
-        });
-      }
-
-      return out;
-    });
+    raw = await page.evaluate(scanCustomChecks);
   } catch {
     return [];
   }
 
   return raw
-    .filter(r => r.nodes.length > 0)
-    .map(r => ({
+    .filter((r) => r.nodes.length > 0)
+    .map((r) => ({
       id: r.id,
       description: r.description,
       help: r.help,
@@ -285,7 +125,7 @@ async function runCustomChecks(page: Page): Promise<RawAxeViolation[]> {
       tags: CUSTOM_CHECK_TAGS[r.id] ?? ["custom", "best-practice"],
       helpUrl: "https://www.w3.org/WAI/WCAG21/quickref/",
       totalInstances: r.totalInstances,
-      nodes: r.nodes.map(n => ({
+      nodes: r.nodes.map((n) => ({
         target: [n.selector],
         html: truncateHtml(n.html),
         failureSummary: n.failureSummary,
@@ -299,12 +139,18 @@ async function runCustomChecks(page: Page): Promise<RawAxeViolation[]> {
  * impacted standard". (Previously all custom checks shared a generic tag set.)
  */
 const CUSTOM_CHECK_TAGS: Record<string, string[]> = {
-  "generic-link-text":     ["custom", "wcag2a",  "wcag244"], // 2.4.4 Link Purpose (In Context)
-  "new-window-no-warning": ["custom", "best-practice"],      // no specific SC at A/AA
-  "document-link-no-type": ["custom", "wcag2a",  "wcag244"], // 2.4.4 Link Purpose (In Context)
-  "media-autoplay":        ["custom", "wcag2a",  "wcag142"], // 1.4.2 Audio Control
-  "focus-ring-hidden":     ["custom", "wcag2aa", "wcag247"], // 2.4.7 Focus Visible
-  "icon-button-no-label":  ["custom", "wcag2a",  "wcag412"], // 4.1.2 Name, Role, Value
+  "generic-link-text": ["custom", "wcag2a", "wcag244"], // 2.4.4 Link Purpose (In Context)
+  "new-window-no-warning": ["custom", "best-practice"], // no specific SC at A/AA
+  "document-link-no-type": ["custom", "wcag2a", "wcag244"], // 2.4.4 Link Purpose (In Context)
+  "media-autoplay": ["custom", "wcag2a", "wcag142"], // 1.4.2 Audio Control
+  "focus-ring-hidden": ["custom", "wcag2aa", "wcag247"], // 2.4.7 Focus Visible
+  "icon-button-no-label": ["custom", "wcag2a", "wcag412"], // 4.1.2 Name, Role, Value
+  // ── v2 additions ──
+  "placeholder-as-label": ["custom", "wcag2a", "wcag131"], // 1.3.1 Info and Relationships
+  "table-missing-headers": ["custom", "wcag2a", "wcag131"], // 1.3.1 Info and Relationships
+  "heading-order-skip": ["custom", "best-practice", "wcag131"], // best practice + 1.3.1
+  "positive-tabindex": ["custom", "best-practice", "wcag243"], // best practice + 2.4.3 Focus Order
+  "text-over-image-no-contrast": ["custom", "best-practice", "wcag143"], // best practice + 1.4.3 Contrast (Minimum)
 };
 
 /**
@@ -322,11 +168,14 @@ const CUSTOM_CHECK_TAGS: Record<string, string[]> = {
 async function stabilisePage(page: Page): Promise<void> {
   try {
     await page.addStyleTag({
-      content: `*,*::before,*::after{animation:none!important;transition:none!important;` +
+      content:
+        `*,*::before,*::after{animation:none!important;transition:none!important;` +
         `animation-duration:0s!important;transition-duration:0s!important;` +
         `scroll-behavior:auto!important;caret-color:transparent!important}`,
     });
-  } catch { /* non-fatal */ }
+  } catch {
+    /* non-fatal */
+  }
 
   try {
     // Force eager loading so lazy images/iframes resolve deterministically.
@@ -346,7 +195,9 @@ async function stabilisePage(page: Page): Promise<void> {
       }
       window.scrollTo(0, 0);
     });
-  } catch { /* non-fatal */ }
+  } catch {
+    /* non-fatal */
+  }
 }
 
 /** Computes the structural/a11y content hash from the live page (best-effort). */
@@ -510,10 +361,7 @@ function normaliseImpact(raw: string | null | undefined): SeverityLevel | null {
  * @param selectors Array of CSS selector paths (one per violating node).
  * @returns         Set of indices whose corresponding element still exists.
  */
-async function verifyNodesExist(
-  page: Page,
-  selectors: string[]
-): Promise<Set<number>> {
+async function verifyNodesExist(page: Page, selectors: string[]): Promise<Set<number>> {
   if (selectors.length === 0) return new Set();
 
   try {
@@ -598,8 +446,7 @@ async function normaliseViolations(
       byId.get(v.id)!.nodes.push({
         target,
         html: truncateHtml(typeof node.html === "string" ? node.html : ""),
-        failureSummary:
-          typeof node.failureSummary === "string" ? node.failureSummary : null,
+        failureSummary: typeof node.failureSummary === "string" ? node.failureSummary : null,
       });
     }
   }
@@ -636,9 +483,7 @@ async function normaliseViolations(
   const verified: RawAxeViolation[] = [];
   for (const [ruleId, violation] of byId) {
     const staleIndices = toRemove.get(ruleId) ?? new Set<number>();
-    const liveNodes: RawAxeNode[] = violation.nodes.filter(
-      (_, idx) => !staleIndices.has(idx)
-    );
+    const liveNodes: RawAxeNode[] = violation.nodes.filter((_, idx) => !staleIndices.has(idx));
     if (liveNodes.length > 0) {
       verified.push({
         ...violation,
@@ -665,9 +510,7 @@ async function normaliseViolations(
  *                     "SCAN_TIMEOUT" | "SCAN_ENGINE_ERROR" |
  *                     "INTERNAL_SERVER_ERROR"
  */
-export async function runScan(
-  options: ResolvedScanOptions
-): Promise<RawScanResult> {
+export async function runScan(options: ResolvedScanOptions): Promise<RawScanResult> {
   const { url, wcagLevel, timeoutMs } = options;
 
   const startTime = Date.now();
@@ -693,11 +536,7 @@ export async function runScan(
           504
         );
       }
-      throw new AppError(
-        "PAGE_LOAD_FAILED",
-        `Navigation failed for "${url}": ${msg}`,
-        502
-      );
+      throw new AppError("PAGE_LOAD_FAILED", `Navigation failed for "${url}": ${msg}`, 502);
     }
 
     // ── Wait for network idle ────────────────────────────────────────────────
@@ -719,7 +558,9 @@ export async function runScan(
     const settleMs = options.scanInternalLinks ? 3_000 : 5_000;
     try {
       await page.waitForLoadState("load", { timeout: 4_000 });
-    } catch { /* non-fatal — fires quickly after networkidle */ }
+    } catch {
+      /* non-fatal — fires quickly after networkidle */
+    }
     await stabilisePage(page);
     await page.waitForTimeout(settleMs);
 
@@ -827,18 +668,11 @@ export async function runScan(
       }
 
       // Non-timeout engine error — surface immediately.
-      throw new AppError(
-        "SCAN_ENGINE_ERROR",
-        `axe-core analysis failed: ${msg}`,
-        500
-      );
+      throw new AppError("SCAN_ENGINE_ERROR", `axe-core analysis failed: ${msg}`, 500);
     }
 
     // ── Normalise violations + second-pass verification ──────────────────────
-    const axeViolations = await normaliseViolations(
-      page,
-      axeResults.violations ?? []
-    );
+    const axeViolations = await normaliseViolations(page, axeResults.violations ?? []);
 
     // ── Custom DOM checks (supplement axe-core) ───────────────────────────────
     // Run in parallel with link extraction — both need the live page DOM.
@@ -850,10 +684,10 @@ export async function runScan(
     } catch {
       // Non-fatal — custom checks are purely supplementary.
     }
-    const axeIds = new Set(axeViolations.map(v => v.id));
+    const axeIds = new Set(axeViolations.map((v) => v.id));
     let violations: RawAxeViolation[] = [
       ...axeViolations,
-      ...customViolations.filter(v => !axeIds.has(v.id)),
+      ...customViolations.filter((v) => !axeIds.has(v.id)),
     ];
 
     // ── Second engine (optional, OFF by default) ──────────────────────────────
@@ -890,8 +724,7 @@ export async function runScan(
 
     // ── Provenance (engine_meta) ──────────────────────────────────────────────
     // axe reports the exact engine version in its results; fall back gracefully.
-    const axeVersion: string =
-      (axeResults?.testEngine?.version as string | undefined) ?? "unknown";
+    const axeVersion: string = (axeResults?.testEngine?.version as string | undefined) ?? "unknown";
     const contentHash = await computePageContentHash(page);
     const engineMeta: EngineMeta = {
       axeVersion,
