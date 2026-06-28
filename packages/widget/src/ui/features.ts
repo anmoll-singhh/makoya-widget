@@ -22,7 +22,7 @@ import type { FeatureKey } from "@makoya/shared";
 import type { Prefs } from "../core/state";
 import type { Lang } from "./i18n";
 import { t } from "./i18n";
-import { makeSwitch, makeSeg, makeDiscreteStepper, row } from "./controls";
+import { makeSwitch, makeSeg, makeDiscreteStepper, makeColorPalette, row } from "./controls";
 
 // ---------------------------------------------------------------------------
 // ICON map — decorative inline SVGs for all 15 FeatureKeys.
@@ -72,6 +72,9 @@ export const ICON: Partial<Record<FeatureKey, string>> = {
 
   /** Read aloud: speech bubble with waveform */
   readAloud: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 10h.01M12 10h.01M16 10h.01"/></svg>`,
+
+  /** Highlight on hover: crosshair / target icon */
+  highlightHover: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>`,
 };
 
 // ---------------------------------------------------------------------------
@@ -225,8 +228,24 @@ export function buildFeature(
 
     case "readingRuler": {
       const label = t(lang, "f_readingRuler");
-      return row(icon, label,
+      const switchRow = row(icon, label,
         makeSwitch(label, prefs.ruler, (v) => { prefs.ruler = v; }, onChange));
+      const palette = makeColorPalette(
+        t(lang, "rulerColor"),
+        prefs.rulerColor,
+        [
+          { value: "#ffd400", name: "Yellow" },
+          { value: "#22c55e", name: "Green" },
+          { value: "#3b82f6", name: "Blue" },
+          { value: "#ec4899", name: "Pink" },
+          { value: "#111827", name: "Black" },
+        ],
+        (c) => { prefs.rulerColor = c; },
+        onChange
+      );
+      const wrapper = document.createElement("div");
+      wrapper.append(switchRow, palette);
+      return wrapper;
     }
 
     case "highlightTitles": {
@@ -251,6 +270,12 @@ export function buildFeature(
       const label = t(lang, "f_readAloud");
       return row(icon, label,
         makeSwitch(label, prefs.readAloud, (v) => { prefs.readAloud = v; }, onChange));
+    }
+
+    case "highlightHover": {
+      const label = t(lang, "f_highlightHover");
+      return row(icon, label,
+        makeSwitch(label, prefs.hoverHighlight, (v) => { prefs.hoverHighlight = v; }, onChange));
     }
 
     default:

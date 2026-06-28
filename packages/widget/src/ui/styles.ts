@@ -374,6 +374,54 @@ export function PANEL_CSS(color: string, size: "sm" | "md" | "lg"): string {
   flex: none;
   pointer-events: none;
 }
+/* Active / selected profile chip — colored border + inset ring */
+.mky-chip[aria-pressed="true"] {
+  border-color: ${color};
+  box-shadow: inset 0 0 0 2px ${color};
+  background: rgba(255,255,255,.95);
+}
+.mky-chip[aria-pressed="true"] svg {
+  color: ${color};
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   COLOR PALETTE (ruler color picker)
+   ───────────────────────────────────────────────────────────────────────── */
+.mky-palette {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 8px 10px;
+}
+.mky-palette-label {
+  font-size: 12px;
+  color: #475569;
+  font-weight: 600;
+  flex: 0 0 100%;
+}
+.mky-swatch {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border-radius: 50%;
+  border: 2px solid rgba(15,23,42,.15);
+  cursor: pointer;
+  padding: 0;
+  transition: transform .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.mky-swatch:hover {
+  transform: scale(1.1);
+}
+.mky-swatch[aria-pressed="true"] {
+  border-color: #0f172a;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px ${color};
+}
+.mky-swatch:focus-visible {
+  outline: 2px solid ${color};
+  outline-offset: 2px;
+}
 
 /* ─────────────────────────────────────────────────────────────────────────
    DIVIDER

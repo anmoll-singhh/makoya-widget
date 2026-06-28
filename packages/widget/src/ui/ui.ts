@@ -28,13 +28,13 @@
  *      trap.
  */
 
-import { LAUNCHER_ICONS, type WidgetConfig } from "@makoya/shared";
+import { LAUNCHER_ICONS, type WidgetConfig, type WidgetProfileKey } from "@makoya/shared";
 import { type Prefs, DEFAULT_PREFS, loadPrefs, savePrefs, applyPrefs, STORAGE_KEY } from "../core/state";
 import { PANEL_CSS } from "./styles";
 import { type Lang, LANG_LABELS, t } from "./i18n";
 import { buildFeature } from "./features";
 import { PROFILES, applyProfileByKey } from "./profiles";
-import { makeRuler, makeMask, makeReadAloud, makeMute } from "./live";
+import { makeRuler, makeMask, makeReadAloud, makeMute, makeHoverHighlight } from "./live";
 import { trackEvent } from "../core/telemetry";
 
 /**
@@ -60,6 +60,7 @@ function activeFeatureKeys(p: Prefs): Set<string> {
   if (p.align) s.add("textAlign");
   if (p.mute) s.add("muteSounds");
   if (p.readAloud) s.add("readAloud");
+  if (p.hoverHighlight) s.add("highlightHover");
   return s;
 }
 
@@ -98,6 +99,7 @@ const FEATURE_SECTION: Record<string, "sec_content" | "sec_color" | "sec_nav" | 
   readingRuler:    "sec_nav",
   readingMask:     "sec_nav",
   bigCursor:       "sec_nav",
+  highlightHover:  "sec_nav",
   muteSounds:      "sec_audio",
   readAloud:       "sec_audio",
 };
@@ -173,11 +175,17 @@ function _mount(config: WidgetConfig): void {
   })();
   const prefs: Prefs = loadPrefs();
 
+  // ─── Active profile tracker (Task 4: chip toggle-off) ───────────────────
+  // Tracks which profile chip is currently active so clicking it again resets
+  // prefs to defaults (deselect). "none" means no profile is active.
+  let activeProfile: WidgetProfileKey = "none";
+
   // ─── Live controllers (constructed once) ────────────────────────────────
   const ruler     = makeRuler();
   const mask      = makeMask();
   const readAloud = makeReadAloud(lang);
   const mute      = makeMute();
+  const hover     = makeHoverHighlight();
 
   // ─── Corner positioning ──────────────────────────────────────────────────
   const corner = POSITIONS[config.position] ?? POSITIONS["bottom-right"];
@@ -220,11 +228,13 @@ function _mount(config: WidgetConfig): void {
   function apply(): void {
     try {
       applyPrefs(prefs);
+      ruler.setColor(prefs.rulerColor);
       prefs.ruler     ? ruler.on()          : ruler.off();
       mask.set(prefs.mask);
       prefs.readAloud ? readAloud.enable()  : readAloud.disable();
       readAloud.setLang(lang);
       prefs.mute      ? mute.enable()       : mute.disable();
+      prefs.hoverHighlight ? hover.enable() : hover.disable();
       savePrefs(prefs);
       // Telemetry (fire-and-forget, never affects the UI): emit feature_activated
       // for each feature that just transitioned off→on. The first apply only
@@ -299,6 +309,7 @@ function _mount(config: WidgetConfig): void {
   resetBtn.type = "button";
   resetBtn.addEventListener("click", () => {
     Object.assign(prefs, DEFAULT_PREFS);
+    activeProfile = "none"; // deselect any active profile chip
     apply();
     renderBody();
   });
@@ -377,10 +388,18 @@ function _mount(config: WidgetConfig): void {
       const chip = document.createElement("button");
       chip.type = "button";
       chip.className = "mky-chip";
+      chip.setAttribute("aria-pressed", String(activeProfile === profile.key));
       const chipLabel = t(lang, profile.labelKey);
       chip.innerHTML = `${profile.icon}<span>${chipLabel}</span>`;
       chip.addEventListener("click", () => {
-        applyProfileByKey(prefs, profile.key);
+        if (activeProfile === profile.key) {
+          // Clicking the already-active profile deselects it → reset to defaults
+          applyProfileByKey(prefs, "none");
+          activeProfile = "none";
+        } else {
+          applyProfileByKey(prefs, profile.key);
+          activeProfile = profile.key;
+        }
         apply();
         renderBody();
       });
@@ -497,6 +516,7 @@ function _mount(config: WidgetConfig): void {
   // 3. Default profile on first visit (no stored prefs + config opt-in).
   if (!hasStoredPrefs && config.defaultProfile !== "none") {
     applyProfileByKey(prefs, config.defaultProfile);
+    activeProfile = config.defaultProfile; // mark chip as active for the toggle-off feature
     renderBody(); // re-render with profile-applied prefs values
   }
   // 4. Apply prefs to the page (attributes + live controllers).

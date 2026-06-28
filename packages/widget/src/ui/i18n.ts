@@ -58,7 +58,7 @@ export type StringKey =
   | "sec_audio"
   | "sec_about"
 
-  // Feature labels (15 — one per FeatureKey)
+  // Feature labels (17 — one per FeatureKey including new ones)
   | "f_textSize"
   | "f_lineSpacing"
   | "f_contrast"
@@ -74,6 +74,8 @@ export type StringKey =
   | "f_textAlign"
   | "f_muteSounds"
   | "f_readAloud"
+  | "f_highlightHover"
+  | "rulerColor"
 
   // Segmented-control option labels (10)
   | "opt_off"
@@ -146,6 +148,8 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     f_textAlign: "Left-align text",
     f_muteSounds: "Mute sounds",
     f_readAloud: "Read aloud",
+    f_highlightHover: "Highlight on hover",
+    rulerColor: "Ruler color",
 
     opt_off: "Off",
     opt_on: "On",
@@ -209,6 +213,8 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     f_textAlign: "Alinear texto a la izquierda",
     f_muteSounds: "Silenciar sonidos",
     f_readAloud: "Leer en voz alta",
+    f_highlightHover: "Resaltar al pasar el cursor",
+    rulerColor: "Color de la regla",
 
     opt_off: "Apagado",
     opt_on: "Encendido",
@@ -272,6 +278,8 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     f_textAlign: "Aligner le texte à gauche",
     f_muteSounds: "Couper les sons",
     f_readAloud: "Lecture à voix haute",
+    f_highlightHover: "Surligner au survol",
+    rulerColor: "Couleur de la règle",
 
     opt_off: "Désactivé",
     opt_on: "Activé",
@@ -335,6 +343,8 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     f_textAlign: "Text linksbündig",
     f_muteSounds: "Töne stummschalten",
     f_readAloud: "Vorlesen",
+    f_highlightHover: "Beim Überfahren hervorheben",
+    rulerColor: "Linealfarbe",
 
     opt_off: "Aus",
     opt_on: "An",

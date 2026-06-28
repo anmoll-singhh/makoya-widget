@@ -54,6 +54,18 @@ export interface Prefs {
    * LIVE: controlled by ui/live.ts makeReadAloud() — not a CSS attribute.
    */
   readAloud: boolean;
+  /**
+   * Reading-ruler band color (any CSS hex color). Default yellow.
+   * LIVE: applied by makeRuler().setColor() in ui/live.ts whenever the ruler
+   * is active or when the color changes.
+   */
+  rulerColor: string;
+  /**
+   * Outline the element currently under the mouse pointer.
+   * Helps focus/low-vision users see what they are pointing at.
+   * LIVE: controlled by ui/live.ts makeHoverHighlight() — not a CSS attribute.
+   */
+  hoverHighlight: boolean;
 }
 
 export const STORAGE_KEY = "makoya_prefs";
@@ -74,6 +86,8 @@ export const DEFAULT_PREFS: Prefs = {
   align: false,
   mute: false,
   readAloud: false,
+  rulerColor: "#ffd400",
+  hoverHighlight: false,
 };
 
 export function loadPrefs(): Prefs {

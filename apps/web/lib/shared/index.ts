@@ -44,7 +44,8 @@ export type FeatureKey =
   | "highlightTitles"
   | "textAlign"
   | "muteSounds"
-  | "readAloud";
+  | "readAloud"
+  | "highlightHover";
 
 export type WidgetLauncherSize = "sm" | "md" | "lg";
 export type WidgetLanguage = "en" | "es" | "fr" | "de";
@@ -108,6 +109,7 @@ export const DEFAULT_CONFIG: WidgetConfig = {
     "textSize","lineSpacing","contrast","stopMotion","readingRuler",
     "highlightLinks","bigCursor","readableFont","hideImages",
     "saturation","readingMask","highlightTitles","textAlign","muteSounds","readAloud",
+    "highlightHover",
   ],
   hideBranding: false,
   brandingUrl: "https://makoya.example/scan",
