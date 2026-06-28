@@ -8,18 +8,27 @@
  *     redirected to /login?next=/dashboard before any data is fetched.
  *  2. Load the user's sites via listSites (RLS-scoped by owner).
  *  3. Derive user display info (name, email, initials) from the session.
- *  4. Render the client <Shell> with sites + user, wrapping {children}.
+ *  4. Read the `makoya_lang` cookie and pass `initialLang` to the i18n
+ *     provider so SSR and first hydration agree on the active language
+ *     (no hydration mismatch).
+ *  5. Render the client <Shell> with sites + user, wrapping {children} inside
+ *     <DashboardI18nProvider>.
  *
  * The shell's active siteId / active route highlighting is derived
  * client-side from usePathname() inside Shell.tsx.
  */
 
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { listSites } from "@/lib/sites";
 import { Shell } from "./Shell";
+import { DashboardI18nProvider } from "@/lib/i18n/DashboardI18nProvider";
+import type { Lang } from "@/lib/i18n/dashboard";
 import "./dashboard.css";
+
+const VALID_LANGS = new Set(["en", "es", "fr", "de"]);
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const supabase = await getServerSupabase();
@@ -54,9 +63,18 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       ? `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
       : name.slice(0, 2).toUpperCase();
 
+  // Read the language preference cookie written by DashboardI18nProvider's
+  // setLang(). Passing it as initialLang means the server-rendered HTML and
+  // the first client render use the same language — no hydration mismatch.
+  const cookieStore = await cookies();
+  const rawLang = cookieStore.get("makoya_lang")?.value ?? "en";
+  const initialLang: Lang = VALID_LANGS.has(rawLang) ? (rawLang as Lang) : "en";
+
   return (
-    <Shell sites={sites} user={{ name, email, initials }}>
-      {children}
-    </Shell>
+    <DashboardI18nProvider initialLang={initialLang}>
+      <Shell sites={sites} user={{ name, email, initials }}>
+        {children}
+      </Shell>
+    </DashboardI18nProvider>
   );
 }

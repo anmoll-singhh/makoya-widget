@@ -20,6 +20,8 @@ import { usePathname, useRouter } from "next/navigation";
 import type { Site } from "@/lib/sites";
 import { Tour } from "./_components/Tour";
 import { PageTransition } from "./_components/motion";
+import { useT } from "@/lib/i18n/DashboardI18nProvider";
+import { LANG_LABELS, type Lang, type DashboardStringKey } from "@/lib/i18n/dashboard";
 
 interface ShellUser {
   name: string;
@@ -33,30 +35,36 @@ interface ShellProps {
   children: ReactNode;
 }
 
-// Nav item descriptors for the per-agent section
-const PER_AGENT_NAV = [
-  { href: "", icon: "ti ti-layout-grid", label: "Overview" },
-  { href: "/mike", icon: "ti ti-robot", label: "Mike — audit" },
+// Nav item descriptors for the per-agent section.
+// `labelKey` maps to the dashboard i18n dictionary — translated at render time
+// via t(item.labelKey) so the module-level constant stays pure data.
+const PER_AGENT_NAV: Array<{ href: string; icon: string; labelKey: DashboardStringKey }> = [
+  { href: "", icon: "ti ti-layout-grid", labelKey: "nav_overview" },
+  { href: "/mike", icon: "ti ti-robot", labelKey: "nav_mike" },
 ];
 
-const WIDGET_ITEMS = [
-  { href: "/install", label: "Install" },
-  { href: "/customize", label: "Customize" },
+const WIDGET_ITEMS: Array<{ href: string; labelKey: DashboardStringKey }> = [
+  { href: "/install", labelKey: "nav_install" },
+  { href: "/customize", labelKey: "nav_customize" },
 ];
 
-const COMPLIANCE_ITEMS = [
-  { href: "/statement", label: "Accessibility statement" },
-  { href: "/proof", label: "Proof of effort" },
+const COMPLIANCE_ITEMS: Array<{ href: string; labelKey: DashboardStringKey }> = [
+  { href: "/statement", labelKey: "nav_statement" },
+  { href: "/proof", labelKey: "nav_proof" },
 ];
 
-const INSIGHTS_ITEMS = [
-  { href: "/reports", label: "Reports" },
-  { href: "/analytics", label: "Analytics" },
+const INSIGHTS_ITEMS: Array<{ href: string; labelKey: DashboardStringKey }> = [
+  { href: "/reports", labelKey: "nav_reports" },
+  { href: "/analytics", labelKey: "nav_analytics" },
 ];
 
 export function Shell({ sites, user, children }: ShellProps) {
   const pathname = usePathname();
   const router = useRouter();
+
+  // Dashboard i18n — `t` translates a key for the active language.
+  // `lang` / `setLang` drive the language switcher in the topbar.
+  const { t, lang, setLang } = useT();
 
   // Parse siteId from /dashboard/[siteId]/... — but NOT the reserved top-level
   // routes (which are also wrapped by this shell). Treating "account"/"partners"/
@@ -163,7 +171,7 @@ export function Shell({ sites, user, children }: ShellProps) {
 
       {/* Skip link */}
       <a href="#main" className="skip">
-        Skip to main content
+        {t("skip_to_content")}
       </a>
 
       {/* Mobile drawer scrim — tap to dismiss. Hidden on desktop via CSS. */}
@@ -182,7 +190,7 @@ export function Shell({ sites, user, children }: ShellProps) {
           type="button"
           className="navclose"
           onClick={closeNav}
-          aria-label="Close navigation menu"
+          aria-label={t("sidebar_close")}
         >
           <i className="ti ti-x" aria-hidden="true" />
         </button>
@@ -221,7 +229,7 @@ export function Shell({ sites, user, children }: ShellProps) {
             onClick={() => setSwitcherOpen((o) => !o)}
             aria-expanded={switcherOpen}
             aria-haspopup="listbox"
-            aria-label={`Switch agent. Current: ${currentSite ? siteLabel(currentSite) : "None"}`}
+            aria-label={`${t("nav_select_agent")}. ${t("nav_agents")}: ${currentSite ? siteLabel(currentSite) : t("nav_no_agents")}`}
           >
             <i
               className="ti ti-world"
@@ -239,8 +247,8 @@ export function Shell({ sites, user, children }: ShellProps) {
               {currentSite
                 ? siteLabel(currentSite)
                 : sites.length > 0
-                  ? "Select agent"
-                  : "No agents"}
+                  ? t("nav_select_agent")
+                  : t("nav_no_agents")}
             </span>
             <i
               className="ti ti-selector"
@@ -325,7 +333,7 @@ export function Shell({ sites, user, children }: ShellProps) {
                 }}
               >
                 <i className="ti ti-plus" aria-hidden="true" style={{ fontSize: 15 }} />
-                Manage agents
+                {t("nav_manage_agents")}
               </Link>
             </div>
           )}
@@ -337,13 +345,13 @@ export function Shell({ sites, user, children }: ShellProps) {
             <li>
               <Link href="/dashboard" className={pathname === "/dashboard" ? "on" : ""}>
                 <i className="ti ti-layout-dashboard" aria-hidden="true" />
-                Dashboard
+                {t("nav_dashboard")}
               </Link>
             </li>
             <li>
               <Link href="/dashboard/agents" className={isActive("/dashboard/agents") ? "on" : ""}>
                 <i className="ti ti-stack-2" aria-hidden="true" />
-                Agents
+                {t("nav_agents")}
               </Link>
             </li>
           </ul>
@@ -361,7 +369,7 @@ export function Shell({ sites, user, children }: ShellProps) {
                     <li key={item.href}>
                       <Link href={href} className={pathname === href ? "on" : ""}>
                         <i className={item.icon} aria-hidden="true" />
-                        {item.label}
+                        {t(item.labelKey)}
                       </Link>
                     </li>
                   );
@@ -375,7 +383,7 @@ export function Shell({ sites, user, children }: ShellProps) {
                     onClick={() => setWidgetOpen((o) => !o)}
                   >
                     <i className="ti ti-browser" aria-hidden="true" />
-                    Widget
+                    {t("nav_widget")}
                     <i
                       className="ti ti-chevron-right ca"
                       aria-hidden="true"
@@ -392,7 +400,7 @@ export function Shell({ sites, user, children }: ShellProps) {
                             className={pathname === href ? "on" : ""}
                             style={{ paddingLeft: 44 }}
                           >
-                            {item.label}
+                            {t(item.labelKey)}
                           </Link>
                         </li>
                       );
@@ -408,7 +416,7 @@ export function Shell({ sites, user, children }: ShellProps) {
                     onClick={() => setComplianceOpen((o) => !o)}
                   >
                     <i className="ti ti-shield-check" aria-hidden="true" />
-                    Compliance
+                    {t("nav_compliance")}
                     <i
                       className="ti ti-chevron-right ca"
                       aria-hidden="true"
@@ -425,7 +433,7 @@ export function Shell({ sites, user, children }: ShellProps) {
                             className={pathname === href ? "on" : ""}
                             style={{ paddingLeft: 44 }}
                           >
-                            {item.label}
+                            {t(item.labelKey)}
                           </Link>
                         </li>
                       );
@@ -441,7 +449,7 @@ export function Shell({ sites, user, children }: ShellProps) {
                     onClick={() => setInsightsOpen((o) => !o)}
                   >
                     <i className="ti ti-chart-dots" aria-hidden="true" />
-                    Insights
+                    {t("nav_insights")}
                     <i
                       className="ti ti-chevron-right ca"
                       aria-hidden="true"
@@ -458,7 +466,7 @@ export function Shell({ sites, user, children }: ShellProps) {
                             className={pathname === href ? "on" : ""}
                             style={{ paddingLeft: 44 }}
                           >
-                            {item.label}
+                            {t(item.labelKey)}
                           </Link>
                         </li>
                       );
@@ -472,7 +480,7 @@ export function Shell({ sites, user, children }: ShellProps) {
                     className={pathname.endsWith("/settings") ? "on" : ""}
                   >
                     <i className="ti ti-settings" aria-hidden="true" />
-                    Agent settings
+                    {t("nav_agent_settings")}
                   </Link>
                 </li>
               </ul>
@@ -489,7 +497,7 @@ export function Shell({ sites, user, children }: ShellProps) {
                 className={isActive("/dashboard/account") ? "on" : ""}
               >
                 <i className="ti ti-user" aria-hidden="true" />
-                Account
+                {t("nav_account")}
               </Link>
             </li>
             <li>
@@ -498,7 +506,7 @@ export function Shell({ sites, user, children }: ShellProps) {
                 className={pathname.endsWith("/billing") ? "on" : ""}
               >
                 <i className="ti ti-credit-card" aria-hidden="true" />
-                Plan &amp; billing
+                {t("nav_billing")}
               </Link>
             </li>
             <li>
@@ -507,20 +515,20 @@ export function Shell({ sites, user, children }: ShellProps) {
                 className={isActive("/dashboard/partners") ? "on" : ""}
               >
                 <i className="ti ti-affiliate" aria-hidden="true" />
-                Partners
+                {t("nav_partners")}
               </Link>
             </li>
             <li>
               <a href="mailto:support@makoya.io" rel="noopener noreferrer">
                 <i className="ti ti-help-circle" aria-hidden="true" />
-                Help
+                {t("nav_help")}
               </a>
             </li>
           </ul>
           <div className="status">
             <span className="dot" aria-hidden="true" />
             <div>
-              <b>Status</b> <small>All systems operational</small>
+              <b>{t("status_bar")}</b> <small>{t("status_ok")}</small>
             </div>
           </div>
         </nav>
@@ -540,7 +548,7 @@ export function Shell({ sites, user, children }: ShellProps) {
             className="navtoggle"
             ref={navToggleRef}
             onClick={() => setNavOpen(true)}
-            aria-label="Open navigation menu"
+            aria-label={t("sidebar_open")}
             aria-expanded={navOpen}
             aria-controls="dashboard-nav"
           >
@@ -548,10 +556,45 @@ export function Shell({ sites, user, children }: ShellProps) {
           </button>
           <div className="search" role="search">
             <i className="ti ti-search" aria-hidden="true" style={{ fontSize: 18 }} />
-            <span style={{ color: "var(--t3)" }}>Search…</span>
+            <span style={{ color: "var(--t3)" }}>{t("topbar_search")}</span>
           </div>
           <div className="tcluster">
-            <button type="button" className="iconbtn" aria-label="Notifications">
+            {/* Language switcher — compact native <select> styled to match the
+                topbar chrome. Keyboard-accessible: arrow keys cycle options,
+                Enter/Space confirms. Screen readers announce the label. */}
+            <label className="sr-only" htmlFor="dash-lang-sel">
+              {t("language")}
+            </label>
+            <select
+              id="dash-lang-sel"
+              value={lang}
+              onChange={(e) => setLang(e.target.value as Lang)}
+              style={{
+                height: 40,
+                borderRadius: 11,
+                background: "rgba(255,255,255,.85)",
+                border: "1px solid var(--border)",
+                color: "var(--t2)",
+                fontSize: 13,
+                fontWeight: 600,
+                fontFamily: "inherit",
+                padding: "0 10px",
+                cursor: "pointer",
+                appearance: "none",
+                WebkitAppearance: "none",
+                minWidth: 54,
+                textAlign: "center",
+              }}
+              aria-label={t("language")}
+            >
+              {(Object.entries(LANG_LABELS) as Array<[Lang, string]>).map(([code, label]) => (
+                <option key={code} value={code}>
+                  {label}
+                </option>
+              ))}
+            </select>
+
+            <button type="button" className="iconbtn" aria-label={t("topbar_notifications")}>
               <i className="ti ti-bell" aria-hidden="true" />
             </button>
 
@@ -576,10 +619,12 @@ export function Shell({ sites, user, children }: ShellProps) {
 /**
  * UserMenu — avatar + name chip with a sign-out dropdown.
  * Isolated component to keep Shell readable.
+ * Calls useT() directly — it is always rendered inside DashboardI18nProvider.
  */
 function UserMenu({ user }: { user: ShellUser }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const { t } = useT();
 
   useEffect(() => {
     if (!open) return;
@@ -661,7 +706,7 @@ function UserMenu({ user }: { user: ShellUser }) {
               aria-hidden="true"
               style={{ fontSize: 15, color: "var(--t3)" }}
             />
-            Account
+            {t("user_account")}
           </Link>
           {/* Sign-out: POST to /auth/signout */}
           <form action="/auth/signout" method="POST">
@@ -686,7 +731,7 @@ function UserMenu({ user }: { user: ShellUser }) {
               }}
             >
               <i className="ti ti-logout" aria-hidden="true" style={{ fontSize: 15 }} />
-              Sign out
+              {t("user_sign_out")}
             </button>
           </form>
         </div>
