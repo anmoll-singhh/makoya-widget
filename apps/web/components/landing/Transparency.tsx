@@ -77,6 +77,9 @@ export function Transparency() {
     <section
       className="mx-auto w-full max-w-4xl px-6 py-24 md:py-32"
       aria-labelledby="transparency-heading"
+      // Ceramic green wash — very gentle centred glow (~7%) behind the
+      // annotation-card. Complements the Vellum rule without fighting it.
+      style={{ backgroundImage: "radial-gradient(ellipse 80% 60% at 50% 40%, rgba(138,179,155,.07) 0%, transparent 100%)" }}
     >
       {/*
        * <Reveal> wraps the entire card so it enters the viewport as a single

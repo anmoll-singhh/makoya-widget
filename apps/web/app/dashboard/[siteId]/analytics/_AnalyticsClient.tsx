@@ -166,7 +166,7 @@ export function AnalyticsClient({ siteId }: Props) {
         </div>
         <div className="mcard">
           <div className="l">
-            <i className="ti ti-star" aria-hidden="true" /> Most used
+            Most used
           </div>
           {mostUsed ? (
             <>

@@ -124,6 +124,8 @@ export function HowItWorks() {
       id="how"
       className="mx-auto w-full max-w-6xl px-6 py-24 md:py-32"
       aria-labelledby="how-heading"
+      // Ceramic green wash — 6% tint on section bg for warmth; text/buttons unaffected.
+      style={{ backgroundImage: "linear-gradient(to bottom, rgba(138,179,155,.06) 0%, transparent 65%)" }}
     >
       {/* ── Header block: eyebrow + section heading ── */}
       <Reveal>

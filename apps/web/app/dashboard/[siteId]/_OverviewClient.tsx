@@ -456,8 +456,12 @@ export function OverviewClient({ siteId, domain, initialData }: Props) {
             </div>
           </div>
 
-          {/* Right: score gauge */}
-          <div className="gcard" style={{ justifyContent: "center" }}>
+          {/* Right: score gauge — glassmorphism card matching v7 mockup design.
+               * mk-glass gives: semi-transparent blue-tinted fill, backdrop blur,
+               * inner highlight border, and elevation shadow. The hero-bg gradient
+               * shows through the glass, creating the branded gradient-on-gradient
+               * effect from the v7 design spec. */}
+          <div className="gcard mk-glass" style={{ justifyContent: "center" }}>
             <div className="hg">
               <GaugeRing
                 value={score}
@@ -629,11 +633,6 @@ export function OverviewClient({ siteId, domain, initialData }: Props) {
         <RevealItem as="section" className="card pad">
           <div className="dch">
             <h3>
-              <i
-                className="ti ti-sparkles"
-                aria-hidden="true"
-                style={{ color: "var(--primary-hover)", fontSize: 16, verticalAlign: -2 }}
-              />{" "}
               Next best action
             </h3>
             <Link className="viewall" href={`/dashboard/${siteId}/mike`}>

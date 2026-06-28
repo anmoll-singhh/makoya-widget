@@ -101,6 +101,9 @@ export function HonestDifference() {
       id="honest"
       aria-labelledby="honest-heading"
       className="mx-auto w-full max-w-6xl px-6 py-24 md:py-32"
+      // Ceramic green wash — faint bilateral fade that warms the section without
+      // touching text or accent tokens. Alpha kept at ≤8% to preserve AA contrast.
+      style={{ backgroundImage: "linear-gradient(to bottom, rgba(138,179,155,.08) 0%, transparent 60%)" }}
     >
       {/* ── Eyebrow + Heading + Intro ─────────────────────────────────────── */}
       <Reveal>
