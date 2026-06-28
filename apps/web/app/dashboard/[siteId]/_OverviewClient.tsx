@@ -11,9 +11,22 @@
  *   - Issues resolved (–) → data.issuesResolvedThisMonth
  *   - Needs human (–)     → data.needsHuman
  *   - Journey progress    → derived from data.status
- *   - Score trend chart   → data.trend (SVG polyline)
- *   - Activity feed       → data.activity
- *   - Framework coverage  → data.coverage
+ *
+ * Task 7 (2026-06-28): removed three sections that added noise without
+ * actionable signal:
+ *  - "Accessibility score trend" chart — owners care about the number, not
+ *    a 6-week polyline on a page they only visit occasionally.
+ *  - "Activity feed" — duplicates the audit trail owners already have in Mike.
+ *  - "Framework progress" — coverage bars generated from automated checks
+ *    were too coarse to be useful at a glance; detailed breakdown lives in
+ *    Reports instead.
+ *
+ *  NOTE: lib/overview.ts + the /api/sites/[id]/overview route still return
+ *  `coverage`, `trend`, and `activity`. This client simply no longer reads
+ *  them. The server lib is intentionally left untouched to avoid a second
+ *  PR touching already-tested backend code. TypeScript structural typing lets
+ *  the server type (superset) satisfy the narrower client-local OverviewData
+ *  without a cast.
  *
  * PERF — no client fetch waterfall:
  *   The server `page.tsx` now fetches the overview view-model with `getOverview`
@@ -43,7 +56,7 @@
  *
  * v7 CSS classes (all in app/dashboard/dashboard.css, imported by the layout):
  *   .pagehead, .hero, .hero-bg, .hero-grid, .gcard, .gwrap, .grid4, .kpi,
- *   .card, .pad, .dch, .row2, .row3, .it, .ic, .pill, .note, .fw, .skel, etc.
+ *   .card, .pad, .dch, .row2, .it, .ic, .pill, .note, .fw, .skel, etc.
  */
 
 import { useState, useEffect, useRef } from "react";
@@ -51,18 +64,12 @@ import Link from "next/link";
 import { CountUp, GaugeRing, Reveal, RevealItem } from "../_components/motion";
 
 /* ── API shape (mirrors lib/overview.ts return; kept client-local) ───────────── */
-interface CoverageEntry {
-  framework: string;
-  pct: number;
-}
-interface ActivityEntry {
-  id: string;
-  actor: string;
-  type: string;
-  summary: string;
-  wcagRef: string | null;
-  createdAt: string;
-}
+/**
+ * Client-local subset of the server's OverviewData. The `coverage`, `trend`,
+ * and `activity` fields are present in the server response (lib/overview.ts) but
+ * intentionally omitted here — those sections were removed from the UI in Task 7.
+ * TypeScript structural typing lets the server type (superset) pass as initialData.
+ */
 export interface OverviewData {
   score: number | null;
   scoreDelta: number | null;
@@ -72,25 +79,9 @@ export interface OverviewData {
   needsHuman: number;
   issuesResolvedThisMonth: number;
   widgetOpens: number;
-  coverage: CoverageEntry[];
-  trend: { period: string; score: number | null }[];
-  activity: ActivityEntry[];
 }
 
 /* ── Helpers ─────────────────────────────────────────────────────────────────── */
-function relTime(iso: string): string {
-  const t = new Date(iso).getTime();
-  if (Number.isNaN(t)) return "";
-  const diff = Date.now() - t;
-  const h = Math.floor(diff / 3_600_000);
-  if (h < 1) return "just now";
-  if (h < 24) return `${h}h ago`;
-  const d = Math.floor(h / 24);
-  if (d === 1) return "yesterday";
-  if (d < 30) return `${d}d ago`;
-  const mo = Math.floor(d / 30);
-  return `${mo}mo ago`;
-}
 /** Derive journey step state from install/monitoring status. */
 function journeyState(status: string): {
   connect: boolean;
@@ -102,101 +93,6 @@ function journeyState(status: string): {
   }
   // monitoring, active, action_needed → widget is installed, scanning is happening
   return { connect: true, scan: true, improve: "now" };
-}
-
-/* ── Score Trend Chart ────────────────────────────────────────────────────────── */
-function TrendChart({ trend }: { trend: { period: string; score: number | null }[] }) {
-  const points = trend.filter((t) => t.score != null) as { period: string; score: number }[];
-  if (points.length < 2) {
-    return (
-      <div className="muted tiny" style={{ padding: "30px 0" }}>
-        Not enough history to chart a trend yet.
-      </div>
-    );
-  }
-  const w = 620;
-  const h = 168;
-  const max = 100;
-  const step = (w - 20) / (points.length - 1);
-  const coords = points.map((p, i) => {
-    const x = 10 + i * step;
-    const y = h - (p.score / max) * (h - 20) - 10;
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  });
-  const areaPath =
-    `M${coords[0].split(",")[0]},${h} ` +
-    coords.map((c) => `L${c}`).join(" ") +
-    ` L${coords[coords.length - 1].split(",")[0]},${h} Z`;
-  const last = coords[coords.length - 1].split(",");
-
-  return (
-    <div style={{ display: "flex", gap: 6 }}>
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          fontSize: 11.5,
-          color: "var(--t2)",
-          height: `${h}px`,
-          padding: "4px 0",
-          textAlign: "right",
-          fontWeight: 600,
-        }}
-      >
-        <span>100</span>
-        <span>75</span>
-        <span>50</span>
-        <span>25</span>
-        <span>0</span>
-      </div>
-      <div style={{ flex: 1 }}>
-        <svg
-          viewBox={`0 0 ${w} ${h}`}
-          style={{ width: "100%", height: `${h}px`, display: "block" }}
-          aria-hidden="true"
-        >
-          <defs>
-            <linearGradient id="ov-ar" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stopColor="#1E63FF" stopOpacity=".16" />
-              <stop offset="1" stopColor="#1E63FF" stopOpacity="0" />
-            </linearGradient>
-          </defs>
-          <path d={areaPath} fill="url(#ov-ar)" />
-          <polyline
-            fill="none"
-            stroke="#1E63FF"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            points={coords.join(" ")}
-          />
-          <circle
-            cx={last[0]}
-            cy={last[1]}
-            r="5.5"
-            fill="#1E63FF"
-            stroke="#fff"
-            strokeWidth="2.5"
-          />
-        </svg>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            fontSize: 11.5,
-            color: "var(--t2)",
-            marginTop: 6,
-            fontWeight: 600,
-          }}
-        >
-          {points.map((p) => (
-            <span key={p.period}>{p.period.slice(5)}</span>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
 }
 
 /* ── Loading skeleton — shaped like the real Overview content ─────────────────── */
@@ -238,16 +134,10 @@ function OverviewSkeleton() {
             </div>
           ))}
         </div>
-        {/* Rows placeholders */}
-        <div className="row2">
-          <div className="card pad">
-            <div className="skel" style={{ width: 200, height: 18, marginBottom: 16 }} />
-            <div className="skel" style={{ width: "100%", height: 168 }} />
-          </div>
-          <div className="card pad">
-            <div className="skel" style={{ width: 160, height: 18, marginBottom: 16 }} />
-            <div className="skel" style={{ width: "100%", height: 110 }} />
-          </div>
+        {/* NBA placeholder */}
+        <div className="card pad">
+          <div className="skel" style={{ width: 160, height: 18, marginBottom: 16 }} />
+          <div className="skel" style={{ width: "100%", height: 110 }} />
         </div>
       </div>
     </>
@@ -594,39 +484,10 @@ export function OverviewClient({ siteId, domain, initialData }: Props) {
         </RevealItem>
       </Reveal>
 
-      {/* Row 2: trend chart + next best action.
-          Columns come from the responsive `.row2` class (collapses to 1col on
-          mobile) — never inline grid-template, which a media query can't undo. */}
-      <Reveal className="row2" style={{ marginBottom: 20 }}>
-        <RevealItem as="section" className="card pad">
-          <div className="dch">
-            <h3>Accessibility score trend</h3>
-          </div>
-          <TrendChart trend={data.trend} />
-          <div className="between" style={{ marginTop: 12 }}>
-            <div
-              style={{
-                display: "flex",
-                gap: 18,
-                fontSize: 12.5,
-                color: "var(--t2)",
-                fontWeight: 600,
-              }}
-            >
-              <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span
-                  style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--primary)" }}
-                />
-                Score
-              </span>
-            </div>
-            <Link className="viewall" href={`/dashboard/${siteId}/reports`}>
-              View full analytics →
-            </Link>
-          </div>
-        </RevealItem>
-
-        <RevealItem as="section" className="card pad">
+      {/* Next best action — standalone card (was the right column of row2;
+          the left "Trend chart" column was removed in Task 7). */}
+      <Reveal>
+        <RevealItem as="section" className="card pad" style={{ marginBottom: 20 }}>
           <div className="dch">
             <h3>
               <i
@@ -750,183 +611,6 @@ export function OverviewClient({ siteId, domain, initialData }: Props) {
                 )}
               </>
             )}
-          </div>
-        </RevealItem>
-      </Reveal>
-
-      {/* Row 3: activity feed + framework coverage.
-          `.grid2` gives two equal columns that collapse to one on mobile. */}
-      <Reveal className="grid2">
-        {/* Activity feed */}
-        <RevealItem as="section" className="card pad feed">
-          <div className="dch">
-            <h3>Activity feed</h3>
-          </div>
-          {data.activity.length === 0 ? (
-            <div className="muted tiny" style={{ padding: "16px 0" }}>
-              No activity recorded yet — it appears here after your first scan.
-            </div>
-          ) : (
-            data.activity.slice(0, 5).map((a) => {
-              const isResolve = /resolv/i.test(a.type);
-              const isFound = /found|issue/i.test(a.type) && !isResolve;
-              const isInstall = /install|widget/i.test(a.type);
-              const ic = isResolve
-                ? { bg: "var(--green-soft)", c: "var(--green-ink)", i: "ti-check" }
-                : isFound
-                  ? { bg: "var(--warn-soft)", c: "var(--warn)", i: "ti-alert-triangle" }
-                  : isInstall
-                    ? { bg: "var(--primary-soft)", c: "var(--primary-hover)", i: "ti-info-circle" }
-                    : { bg: "var(--bg)", c: "var(--t3)", i: "ti-activity" };
-              return (
-                <div
-                  className="it"
-                  key={a.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: 12,
-                    padding: "11px 0",
-                    borderBottom: "1px solid var(--border)",
-                  }}
-                >
-                  <div
-                    className="ic"
-                    style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: 9,
-                      background: ic.bg,
-                      color: ic.c,
-                      display: "grid",
-                      placeItems: "center",
-                      flexShrink: 0,
-                      fontSize: 15,
-                    }}
-                  >
-                    <i className={`ti ${ic.i}`} aria-hidden="true" />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div
-                      className="ft"
-                      style={{ fontWeight: 700, fontSize: 13.5, color: "var(--deep)" }}
-                    >
-                      {a.summary}
-                    </div>
-                    {a.wcagRef && (
-                      <div
-                        className="fs"
-                        style={{ fontSize: 12, color: "var(--t2)", marginTop: 1 }}
-                      >
-                        WCAG {a.wcagRef}
-                      </div>
-                    )}
-                  </div>
-                  <span
-                    className="tm"
-                    style={{
-                      fontSize: 12,
-                      color: "var(--t3)",
-                      whiteSpace: "nowrap",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {relTime(a.createdAt)}
-                  </span>
-                </div>
-              );
-            })
-          )}
-        </RevealItem>
-
-        {/* Framework coverage */}
-        <RevealItem as="section" className="card pad">
-          <div className="dch">
-            <h3>Framework progress</h3>
-            <Link className="viewall" href={`/dashboard/${siteId}/reports`}>
-              View report
-            </Link>
-          </div>
-          {data.coverage.length === 0 ? (
-            <div className="muted tiny" style={{ padding: "16px 0" }}>
-              Coverage data appears after your first full scan.
-            </div>
-          ) : (
-            <>
-              {data.coverage.map((c) => (
-                <div className="fw" key={c.framework}>
-                  <span className="lab">{c.framework.toUpperCase()}</span>
-                  <div
-                    className="track"
-                    role="img"
-                    aria-label={`${c.framework.toUpperCase()} tracked at ${c.pct} percent`}
-                  >
-                    <span
-                      style={{
-                        width: `${c.pct}%`,
-                        background: c.pct >= 75 ? "var(--primary)" : "var(--green-fill)",
-                      }}
-                    />
-                  </div>
-                  <span
-                    className="val"
-                    style={{
-                      width: 40,
-                      textAlign: "right",
-                      fontSize: 13,
-                      fontWeight: 700,
-                      color: "var(--deep)",
-                    }}
-                  >
-                    {c.pct}%
-                  </span>
-                </div>
-              ))}
-              <div
-                className="between"
-                style={{ marginTop: 18, paddingTop: 16, borderTop: "1px solid var(--border)" }}
-              >
-                <span style={{ fontSize: 13, fontWeight: 700, color: "var(--t2)" }}>
-                  Overall coverage
-                </span>
-                <span
-                  style={{
-                    fontSize: 13.5,
-                    fontWeight: 700,
-                    color: "var(--green-ink)",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 7,
-                  }}
-                >
-                  {score != null && score >= 75
-                    ? "Good"
-                    : score != null && score >= 50
-                      ? "Fair"
-                      : "Needs work"}
-                  <span
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: "50%",
-                      background:
-                        score != null && score >= 75
-                          ? "var(--green-ink)"
-                          : score != null && score >= 50
-                            ? "var(--warn)"
-                            : "var(--danger)",
-                    }}
-                  />
-                </span>
-              </div>
-            </>
-          )}
-          <div className="note info" style={{ marginTop: 14, fontSize: 12.5 }}>
-            <i className="ti ti-info-circle" aria-hidden="true" />
-            <div>
-              Coverage is the share of tracked checks currently passing — an estimate from automated
-              checks, not a compliance guarantee.
-            </div>
           </div>
         </RevealItem>
       </Reveal>
