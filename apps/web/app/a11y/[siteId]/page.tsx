@@ -40,6 +40,12 @@ export default async function PublicStatementPage({
 }) {
   const { siteId } = await params;
 
+  // Guard malformed path input: site ids are UUIDs. A non-UUID can't match any
+  // row and would otherwise make Postgres throw on the uuid cast → a 500 on this
+  // public, unauthenticated page. Treat bad input as a clean 404 instead.
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!UUID.test(siteId)) notFound();
+
   const html = await getPublicStatementHtml(getAdminSupabase(), siteId);
   if (!html) notFound();
 
