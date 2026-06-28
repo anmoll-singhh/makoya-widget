@@ -3,6 +3,13 @@
  * accessibility issues (the v3.1 Audit/Issues screen).
  *
  *  - GET   → issues grouped by status ({ failing, needs_review, passing }).
+ *            Each issue now includes rich plain-language detail fields:
+ *            `whatItMeans`, `whoItAffects`, `disabilityGroups`, `howToFix`,
+ *            `measuredEvidence`, `codeSnippet`. These are sourced from the latest
+ *            stored scan's JSONB (which carries fields set by the plain-language
+ *            mapper at scan time). If the latest scan doesn't contain the rule
+ *            (e.g. the issue was resolved before the latest scan), we fall back
+ *            to the curated MAP in lib/scanner/plain-language.ts.
  *  - PATCH → set an issue's status and/or assignee.
  *
  * Auth + ownership mirror /api/sites/[id]/analytics: 401 with no session; 404
@@ -26,11 +33,81 @@ import { getServerSupabase } from "@/lib/supabase/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { getSite } from "@/lib/sites";
 import { listIssues, updateIssue, getIssueMeta, shouldLogResolve } from "@/lib/issues";
+import type { IssueRecord } from "@/lib/issues";
+import { getLatestScan } from "@/lib/scans";
+import { toPlainIssue } from "@/lib/scanner/plain-language";
+import type { AccessibilityIssue } from "@/types";
 import { logRemediation } from "@/lib/remediation";
 import { logActivity } from "@/lib/activity";
 import { parseBody } from "@/lib/validation/api";
 import { issuePatchBodySchema } from "@/lib/validation/issues";
 import { captureError } from "@/lib/observability";
+
+/** The rich per-issue shape returned by GET — extends the tracker record with
+ *  plain-language explanation fields sourced from the latest scan or the curated
+ *  rule MAP. codeSnippet is the first offending node's html if the scanner
+ *  captured it; absent gracefully when unavailable. */
+interface EnrichedIssueRecord extends IssueRecord {
+  whatItMeans: string | null;
+  whoItAffects: string | null;
+  disabilityGroups: string[];
+  howToFix: string | null;
+  measuredEvidence: string | null;
+  /** First offending DOM node html from the scanner, or null if unavailable. */
+  codeSnippet: string | null;
+}
+
+const SEVERITY_BUCKETS = ["critical", "serious", "moderate", "minor"] as const;
+
+/**
+ * Enrich one IssueRecord with plain-language detail.
+ * Primary source: the AccessibilityIssue stored in the latest scan (which has
+ * `whyItMatters`, `whoItAffects`, `howToFix`, `disabilityGroups`, and
+ * `measuredEvidence` set by the plain-language mapper at scan-ingest time).
+ * Fallback: the curated MAP in lib/scanner/plain-language.ts (no scan needed).
+ * The code snippet comes from `nodes[0].html` on the stored scan issue.
+ */
+function enrichIssue(
+  rec: IssueRecord,
+  scanMap: Map<string, AccessibilityIssue>,
+): EnrichedIssueRecord {
+  const stored = scanMap.get(rec.ruleId);
+
+  let whatItMeans: string | null = stored?.whyItMatters ?? null;
+  let whoItAffects: string | null = stored?.whoItAffects ?? null;
+  let disabilityGroups: string[] = (stored?.disabilityGroups ?? []) as string[];
+  let howToFix: string | null = stored?.howToFix ?? null;
+  const measuredEvidence: string | null = stored?.measuredEvidence ?? null;
+  const codeSnippet: string | null = stored?.nodes?.[0]?.html ?? null;
+
+  // Fallback to the curated MAP when the stored scan didn't carry plain-language
+  // fields (pre-v2 scans) or the rule isn't in the latest scan (resolved issues).
+  if (!whatItMeans) {
+    const plain = toPlainIssue({
+      id: rec.ruleId,
+      description: rec.title,
+      help: rec.title,
+      impact: null,
+      tags: [],
+      helpUrl: "",
+      nodes: [],
+    } as AccessibilityIssue);
+    whatItMeans = plain.whatItMeans;
+    whoItAffects = plain.whoItAffects;
+    disabilityGroups = plain.disabilityGroups as string[];
+    howToFix = plain.howToFix ?? null;
+  }
+
+  return {
+    ...rec,
+    whatItMeans,
+    whoItAffects,
+    disabilityGroups,
+    howToFix,
+    measuredEvidence,
+    codeSnippet,
+  };
+}
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -46,8 +123,31 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   }
 
   try {
-    const issues = await listIssues(supabase, id);
-    return NextResponse.json(issues);
+    // Fetch the tracker issues and the latest scan in parallel. The scan is best-effort:
+    // a scan-fetch failure should never degrade the issues response — we fall back to
+    // MAP-derived plain-language in that case (via enrichIssue's fallback branch).
+    const [grouped, scan] = await Promise.all([
+      listIssues(supabase, id),
+      getLatestScan(supabase, id).catch(() => null),
+    ]);
+
+    // Build a ruleId → stored AccessibilityIssue map from the latest scan's JSONB.
+    // The JSONB buckets are typed as AccessibilityReport["issues"]; each entry may
+    // carry whyItMatters/whoItAffects/howToFix/disabilityGroups from scan ingest.
+    const scanMap = new Map<string, AccessibilityIssue>();
+    if (scan?.issues) {
+      for (const bucket of SEVERITY_BUCKETS) {
+        for (const si of scan.issues[bucket] ?? []) {
+          if (si?.id) scanMap.set(si.id, si as AccessibilityIssue);
+        }
+      }
+    }
+
+    return NextResponse.json({
+      failing: grouped.failing.map((r) => enrichIssue(r, scanMap)),
+      needs_review: grouped.needs_review.map((r) => enrichIssue(r, scanMap)),
+      passing: grouped.passing.map((r) => enrichIssue(r, scanMap)),
+    });
   } catch (e) {
     captureError(e, { route: "sites/[id]/issues#GET" });
     return NextResponse.json({ error: "failed to load issues" }, { status: 500 });

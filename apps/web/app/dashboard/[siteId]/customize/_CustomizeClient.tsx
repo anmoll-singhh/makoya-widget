@@ -24,9 +24,30 @@
  *   - No "compliant", "certified", or "guaranteed accessible" copy.
  *   - Toggles are real <button role="switch" aria-checked> — keyboard-operable.
  *   - Seg tabs are real <button> elements; active state from React state not CSS class.
+ *
+ * Live widget preview (Task 7):
+ *   Loads /widget/core.js once (via a <script> element inserted into <head>).
+ *   On every config change, tears down #makoya-widget-root (if present) and
+ *   calls window.MakoyaWidget.init(currentConfig) so the real widget renders
+ *   in the configured corner — colour, position, icon, size, language, etc.
+ *   all update instantly without a publish/reload. The preview panel on the
+ *   right indicates where to look; the approximate static mock remains visible
+ *   while the script loads or if it fails (belt-and-suspenders). Widget init
+ *   failures are swallowed — the customize screen must never break because of
+ *   a preview script error. Widget root is cleaned up on unmount.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+
+/* ── Global type for the widget runtime loaded from /widget/core.js ─────────── */
+declare global {
+  interface Window {
+    /** Injected by /widget/core.js — available once the script fires onload. */
+    MakoyaWidget?: {
+      init: (config: Record<string, unknown>) => void;
+    };
+  }
+}
 import type {
   FeatureKey,
   WidgetPosition,
@@ -109,6 +130,74 @@ export function CustomizeClient({ siteId }: Props) {
   const [saving, setSaving] = useState(false);
   const [saveOk, setSaveOk] = useState(false);
   const [saveErr, setSaveErr] = useState<string | null>(null);
+
+  /* ── Live widget preview state ─────────────────────────────────────────────── */
+  type ScriptState = "idle" | "loading" | "ready" | "failed";
+  const [scriptState, setScriptState] = useState<ScriptState>("idle");
+  // Prevents double-injection under React strict-mode double-invocation.
+  const scriptInjected = useRef(false);
+
+  /* ── Load /widget/core.js once on mount ────────────────────────────────────── */
+  useEffect(() => {
+    if (scriptInjected.current) return;
+    scriptInjected.current = true;
+
+    // If the script was somehow already loaded (HMR, remount), mark ready immediately.
+    if (window.MakoyaWidget) {
+      setScriptState("ready");
+      return;
+    }
+    // Avoid injecting a duplicate tag (e.g. HMR keeps the DOM tag but loses React state).
+    if (document.getElementById("mky-preview-script")) {
+      setScriptState("loading"); // will resolve when existing tag fires onload
+      return;
+    }
+
+    setScriptState("loading");
+    const s = document.createElement("script");
+    s.id = "mky-preview-script";
+    s.src = "/widget/core.js";
+    s.async = true;
+    s.onload = () => setScriptState("ready");
+    s.onerror = () => setScriptState("failed");
+    document.head.appendChild(s);
+  }, []);
+
+  /* ── Re-init the real widget whenever config changes and script is ready ────── */
+  useEffect(() => {
+    if (scriptState !== "ready" || !config) return;
+    if (!window.MakoyaWidget) return;
+    try {
+      // Tear down any existing widget root so we get a clean re-init.
+      document.getElementById("makoya-widget-root")?.remove();
+      window.MakoyaWidget.init({
+        primaryColor: config.primaryColor,
+        position: config.position,
+        launcherIcon: config.launcherIcon,
+        launcherSize: config.launcherSize,
+        defaultLanguage: config.defaultLanguage,
+        panelTitle: config.panelTitle,
+        hideBranding: config.hideBranding,
+        featuresEnabled: config.featuresEnabled,
+        mobileEnabled: config.mobileEnabled,
+        defaultProfile: config.defaultProfile,
+        accessibilityStatementUrl: config.accessibilityStatementUrl,
+      });
+    } catch {
+      // Widget init failure must NEVER crash the customize screen.
+    }
+  }, [scriptState, config]);
+
+  /* ── Clean up widget root when the customize page is unmounted ─────────────── */
+  useEffect(() => {
+    return () => {
+      try {
+        document.getElementById("makoya-widget-root")?.remove();
+      } catch {
+        // Guard against unusual teardown environments.
+      }
+    };
+  }, []);
 
   /* ── Initial fetch ─────────────────────────────────────────────────────────── */
   useEffect(() => {
@@ -663,11 +752,60 @@ export function CustomizeClient({ siteId }: Props) {
             Live preview
           </div>
 
-          {/* Widget preview */}
+          {/* Live-widget status badge — shown when the real widget is running.
+              The widget renders in the configured page corner (fixed positioning),
+              so we can't literally embed it inside this box. Instead, this badge
+              confirms it's live and tells the user where to look. */}
+          {scriptState === "ready" && (
+            <div
+              className="note good"
+              role="status"
+              aria-live="polite"
+              style={{ padding: "9px 13px", marginBottom: -4 }}
+            >
+              <i className="ti ti-device-desktop-check" aria-hidden="true" />
+              <div style={{ fontSize: 12.5 }}>
+                <b>Widget live</b> — look in the{" "}
+                <b>{config.position.replace("-", " ")}</b> corner.{" "}
+                Click the launcher to preview the panel. Updates as you edit.
+              </div>
+            </div>
+          )}
+          {scriptState === "loading" && (
+            <div
+              className="note info"
+              role="status"
+              aria-live="polite"
+              style={{ padding: "9px 13px", marginBottom: -4 }}
+            >
+              <i className="ti ti-loader-2" aria-hidden="true" />
+              <div style={{ fontSize: 12.5 }}>Loading live widget preview…</div>
+            </div>
+          )}
+          {scriptState === "failed" && (
+            <div
+              className="note warn"
+              role="status"
+              aria-live="polite"
+              style={{ padding: "9px 13px", marginBottom: -4 }}
+            >
+              <i className="ti ti-alert-triangle" aria-hidden="true" />
+              <div style={{ fontSize: 12.5 }}>
+                Live widget unavailable — using approximate preview below.
+              </div>
+            </div>
+          )}
+
+          {/* Approximate static widget panel — always shown as a visual reference for
+              panel layout, feature tiles, and header colour. When the real widget is
+              loaded it renders in the page corner; this mock shows the panel interior.
+              Labelled as "approximate" when the real widget is live so users don't
+              expect perfect parity. */}
           <div className="wpv">
             <div className="hd" style={{ background: config.primaryColor || "var(--primary)" }}>
               <span>
-                <i className="ti ti-accessible" aria-hidden="true" /> Accessibility
+                <i className="ti ti-accessible" aria-hidden="true" />{" "}
+                {config.panelTitle || "Accessibility"}
               </span>
               <i className="ti ti-x" aria-hidden="true" />
             </div>
@@ -707,6 +845,14 @@ export function CustomizeClient({ siteId }: Props) {
                   })}
                 </div>
               </>
+            )}
+            {scriptState === "ready" && (
+              <div
+                className="tiny muted"
+                style={{ padding: "10px 12px 6px", textAlign: "center" }}
+              >
+                Approximate panel layout — real widget is live in the corner.
+              </div>
             )}
           </div>
 
