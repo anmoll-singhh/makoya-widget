@@ -6,13 +6,13 @@ describe("feature-order", () => {
   it("buildFeatureRows returns all 19 keys with enabled first in order", () => {
     const rows = buildFeatureRows(["contrast", "textSize"]);
     expect(rows).toHaveLength(19);
-    expect(rows.slice(0, 2).map(r => r.key)).toEqual(["contrast", "textSize"]);
-    expect(rows.slice(0, 2).every(r => r.on)).toBe(true);
-    expect(rows.slice(2).every(r => r.on)).toBe(false);
+    expect(rows.slice(0, 2).map((r) => r.key)).toEqual(["contrast", "textSize"]);
+    expect(rows.slice(0, 2).every((r) => r.on)).toBe(true);
+    expect(rows.slice(2).every((r) => r.on)).toBe(false);
   });
   it("drops unknown/duplicate keys and keeps canonical fill order", () => {
     const rows = buildFeatureRows(["textSize", "textSize", "nope" as any]);
-    expect(rows.filter(r => r.on).map(r => r.key)).toEqual(["textSize"]);
+    expect(rows.filter((r) => r.on).map((r) => r.key)).toEqual(["textSize"]);
     expect(rows).toHaveLength(19);
   });
   it("rowsToEnabled round-trips an all-on default", () => {

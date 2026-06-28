@@ -4,6 +4,7 @@ import {
   rowToStatement,
   upsertStatement,
   getStatement,
+  getPublicStatementHtml,
   type StatementInput,
 } from "./statement";
 
@@ -231,5 +232,62 @@ describe("getStatement", () => {
       },
     } as any;
     await expect(getStatement(client, SITE)).rejects.toBeTruthy();
+  });
+});
+
+// ── getPublicStatementHtml: the PUBLIC /a11y/[siteId] loader ───────────────────
+// SAFETY: it must return ONLY the rendered html for the requested site, never
+// any owner-private field — and `null` (→ notFound) when there is no statement.
+describe("getPublicStatementHtml", () => {
+  it("returns the stored html when a statement exists", async () => {
+    const client = makeFakeClient();
+    await upsertStatement(client, SITE, baseInput());
+    const html = await getPublicStatementHtml(client, SITE);
+    expect(html).toBeTypeOf("string");
+    expect(html).toContain("Acme Co");
+    expect(html).toContain("aims to conform");
+  });
+
+  it("returns null when no statement exists (the not-found path)", async () => {
+    const client = makeFakeClient();
+    expect(await getPublicStatementHtml(client, SITE)).toBeNull();
+  });
+
+  it("returns null when the stored html is blank", async () => {
+    const client = {
+      from() {
+        return {
+          select() {
+            return this;
+          },
+          eq() {
+            return this;
+          },
+          maybeSingle() {
+            return Promise.resolve({ data: { html: "   " }, error: null });
+          },
+        };
+      },
+    } as any;
+    expect(await getPublicStatementHtml(client, SITE)).toBeNull();
+  });
+
+  it("throws on an infra error", async () => {
+    const client = {
+      from() {
+        return {
+          select() {
+            return this;
+          },
+          eq() {
+            return this;
+          },
+          maybeSingle() {
+            return Promise.resolve({ data: null, error: { message: "boom" } });
+          },
+        };
+      },
+    } as any;
+    await expect(getPublicStatementHtml(client, SITE)).rejects.toBeTruthy();
   });
 });

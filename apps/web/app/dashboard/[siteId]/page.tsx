@@ -23,6 +23,7 @@
 import { requireAgent } from "@/lib/agent-context";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getOverview, type OverviewData } from "@/lib/overview";
+import { getScoreTrend, type ScoreTrendPoint } from "@/lib/scans";
 import { OverviewClient } from "./_OverviewClient";
 
 export default async function OverviewPage({
@@ -37,11 +38,18 @@ export default async function OverviewPage({
   // Any infra error is swallowed to null so the client falls back to its fetch
   // (and shows its own skeleton/error state) — the page never crashes here.
   let initialData: OverviewData | null = null;
+  let initialScanTrend: ScoreTrendPoint[] | null = null;
   try {
     const supabase = await getServerSupabase();
-    initialData = await getOverview(supabase, siteId);
+    // Both reads use the same cookie-bound, RLS-scoped client. Fetched together
+    // so the Overview's score-trend sparkline paints on first render too.
+    [initialData, initialScanTrend] = await Promise.all([
+      getOverview(supabase, siteId),
+      getScoreTrend(supabase, siteId),
+    ]);
   } catch {
     initialData = null;
+    initialScanTrend = null;
   }
 
   return (
@@ -49,6 +57,7 @@ export default async function OverviewPage({
       siteId={siteId}
       domain={site.domain}
       initialData={initialData}
+      initialScanTrend={initialScanTrend}
     />
   );
 }

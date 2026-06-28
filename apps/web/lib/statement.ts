@@ -186,3 +186,31 @@ export async function getStatement(
   if (error) throw error; // infra failure — caller decides
   return data ? rowToStatement(data) : null;
 }
+
+/**
+ * PUBLIC read of ONLY the rendered statement `html` for one site — the data path
+ * behind the visitor-facing `/a11y/[siteId]` page (the footer URL).
+ *
+ * MULTI-TENANT SAFETY: this is the only statement read that may run with the
+ * SERVICE-ROLE client (the public page has no session). It therefore selects a
+ * SINGLE column — `html` — and nothing else, so no owner-private field
+ * (brand/contact/jurisdictions/timestamps) can ever leak through the public
+ * surface. The html itself is owner-authored, non-secret, and already
+ * XSS-escaped at generation time by `generateStatementHtml`.
+ *
+ * Error discipline mirrors `getStatement`: an infra `error` → throw; a missing
+ * row (or an empty/blank html) → `null` so the page can `notFound()` cleanly.
+ */
+export async function getPublicStatementHtml(
+  client: SupabaseClient,
+  siteId: string
+): Promise<string | null> {
+  const { data, error } = await client
+    .from("accessibility_statements")
+    .select("html")
+    .eq("site_id", siteId)
+    .maybeSingle();
+  if (error) throw error; // infra failure — caller decides
+  const html = data?.html;
+  return typeof html === "string" && html.trim().length > 0 ? html : null;
+}

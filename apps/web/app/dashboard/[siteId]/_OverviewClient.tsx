@@ -49,6 +49,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { CountUp, GaugeRing, Reveal, RevealItem } from "../_components/motion";
+import { ScoreTrendChart, type ScoreTrendPoint } from "./_components/ScoreTrendChart";
 
 /* ── API shape (mirrors lib/overview.ts return; kept client-local) ───────────── */
 interface CoverageEntry {
@@ -260,13 +261,40 @@ interface Props {
   domain: string;
   /** Server-fetched view-model — when present, renders without a client waterfall. */
   initialData?: OverviewData | null;
+  /** Server-fetched per-scan score history for the trend sparkline. */
+  initialScanTrend?: ScoreTrendPoint[] | null;
 }
 
 /* ── Main Component ──────────────────────────────────────────────────────────── */
-export function OverviewClient({ siteId, domain, initialData }: Props) {
+export function OverviewClient({ siteId, domain, initialData, initialScanTrend }: Props) {
   const [data, setData] = useState<OverviewData | null>(initialData ?? null);
   const [loading, setLoading] = useState(initialData == null);
   const [error, setError] = useState(false);
+
+  // Per-scan score trend (the raw `scans` history). Seeded from the server prop;
+  // if absent (server fetch skipped/failed) it is fetched client-side as a
+  // best-effort fallback — a failure here never blocks the rest of the Overview.
+  const [scanTrend, setScanTrend] = useState<ScoreTrendPoint[]>(initialScanTrend ?? []);
+  useEffect(() => {
+    if (initialScanTrend != null) {
+      setScanTrend(initialScanTrend);
+      return;
+    }
+    let live = true;
+    fetch(`/api/sites/${siteId}/scan-trend`, { credentials: "same-origin" })
+      .then((r) => (r.ok ? (r.json() as Promise<{ trend: ScoreTrendPoint[] }>) : Promise.reject(r.status)))
+      .then((d) => {
+        if (live) setScanTrend(d.trend ?? []);
+      })
+      .catch(() => {
+        /* non-fatal — the card falls back to the monthly trend / empty state */
+      });
+    return () => {
+      live = false;
+    };
+    // initialScanTrend intentionally omitted — a new ref each RSC refresh would refetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [siteId]);
   // Guard so initialData is seeded exactly once on mount. initialData is a new
   // object ref on every RSC re-render (router.refresh()), so it is intentionally
   // excluded from the effect deps — including it would reset displayed data on
@@ -606,7 +634,13 @@ export function OverviewClient({ siteId, domain, initialData }: Props) {
           <div className="dch">
             <h3>Accessibility score trend</h3>
           </div>
-          <TrendChart trend={data.trend} />
+          {/* Prefer the per-scan history (available as soon as a site is scanned
+              twice); fall back to the monthly rollup when scan history is thin. */}
+          {scanTrend.length >= 2 ? (
+            <ScoreTrendChart points={scanTrend} />
+          ) : (
+            <TrendChart trend={data.trend} />
+          )}
           <div className="between" style={{ marginTop: 12 }}>
             <div
               style={{

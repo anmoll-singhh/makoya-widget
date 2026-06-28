@@ -136,7 +136,19 @@ export function StatementClient({ siteId, domain, accountEmail }: Props) {
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [urlCopied, setUrlCopied] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+
+  /* Public URL — the page a merchant links from their footer. Starts as a
+   * relative path (SSR-safe, no hydration mismatch) and is upgraded to an
+   * absolute origin URL on the client so the copy is paste-ready anywhere. */
+  const relPublicUrl = `/a11y/${siteId}`;
+  const [publicUrl, setPublicUrl] = useState(relPublicUrl);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setPublicUrl(`${window.location.origin}${relPublicUrl}`);
+    }
+  }, [relPublicUrl]);
 
   /* ── Fetch existing statement ──────────────────────────────────────────────── */
   useEffect(() => {
@@ -215,6 +227,17 @@ export function StatementClient({ siteId, domain, accountEmail }: Props) {
       await navigator.clipboard?.writeText(html);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // clipboard not available — silently ignore
+    }
+  }
+
+  /* ── Copy the public URL ─────────────────────────────────────────────────── */
+  async function copyPublicUrl() {
+    try {
+      await navigator.clipboard?.writeText(publicUrl);
+      setUrlCopied(true);
+      setTimeout(() => setUrlCopied(false), 2000);
     } catch {
       // clipboard not available — silently ignore
     }
@@ -385,6 +408,39 @@ export function StatementClient({ siteId, domain, accountEmail }: Props) {
               .
             </div>
           )}
+
+          {/* Public URL — the link a merchant puts in their footer. Goes live
+              once a statement has been saved (the page 404s until then). */}
+          <div style={{ marginTop: 16 }}>
+            <label className="fl" htmlFor="stmt-public-url" style={{ marginTop: 0 }}>
+              Public URL <span className="muted">(link this in your footer)</span>
+            </label>
+            <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
+              <input
+                id="stmt-public-url"
+                className="inp"
+                type="text"
+                value={publicUrl}
+                readOnly
+                onFocus={(e) => e.currentTarget.select()}
+                style={{ flex: 1, fontFamily: "var(--font-geist-mono, monospace)", fontSize: 12.5 }}
+              />
+              <button
+                className="btn"
+                type="button"
+                onClick={() => void copyPublicUrl()}
+                aria-label="Copy the public accessibility-statement URL"
+              >
+                <i className="ti ti-link" aria-hidden="true" />
+                {urlCopied ? "Copied!" : "Copy link"}
+              </button>
+            </div>
+            {!record && (
+              <div className="tiny muted" style={{ marginTop: 6 }}>
+                Save your statement first — the page goes live at this URL once saved.
+              </div>
+            )}
+          </div>
 
           {/* Honest note — verbatim from mockup */}
           <div className="note info" style={{ marginTop: 16 }}>
