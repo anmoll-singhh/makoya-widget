@@ -3,30 +3,28 @@
  * accessibility issues (the v3.1 Audit/Issues screen).
  *
  *  - GET   → issues grouped by status ({ failing, needs_review, passing }).
- *            Each issue now includes rich plain-language detail fields:
+ *            Each issue includes rich plain-language detail fields:
  *            `whatItMeans`, `whoItAffects`, `disabilityGroups`, `howToFix`,
- *            `measuredEvidence`, `codeSnippet`. These are sourced from the latest
- *            stored scan's JSONB (which carries fields set by the plain-language
- *            mapper at scan time). If the latest scan doesn't contain the rule
- *            (e.g. the issue was resolved before the latest scan), we fall back
- *            to the curated MAP in lib/scanner/plain-language.ts.
+ *            `measuredEvidence`, `codeSnippet` (first offending node html),
+ *            `codeSelector` (first offending node CSS selector path).
+ *            These are sourced from the latest stored scan's JSONB (which carries
+ *            fields set by the plain-language mapper at scan time), falling back
+ *            to the curated MAP in lib/scanner/plain-language.ts for pre-v2 scans
+ *            or resolved issues no longer in the latest scan.
  *  - PATCH → set an issue's status and/or assignee.
  *
- * Auth + ownership mirror /api/sites/[id]/analytics: 401 with no session; 404
- * when the site doesn't exist or isn't the caller's (RLS already scopes the read,
- * the ownership check just turns a not-found into a clean 404 and avoids
- * confirming foreign site ids). The PATCH body is validated with Zod via
- * `parseBody`, which DROPS field-level detail → a generic 400. The targeted issue
- * is confirmed to belong to THIS site (and, via RLS, the caller) before any write;
- * a foreign/missing issue is a clean 404. DB errors never reach the client — they
- * route through the `captureError` observability seam as a generic 500.
+ * Auth + ownership: 401 with no session; 404 when the site doesn't exist or
+ * isn't the caller's (RLS already scopes the read). The PATCH body is validated
+ * with Zod via `parseBody` → generic 400 on failure. The targeted issue is
+ * confirmed to belong to THIS site before any write; a foreign/missing issue is
+ * a clean 404. DB errors never reach the client — they route through the
+ * `captureError` observability seam as a generic 500.
  *
- * Side effect: when a PATCH actually TRANSITIONS an issue into `passing` (the
- * previous status, read alongside the ownership check via `getIssueMeta`, was NOT
- * already `passing`), the route appends a `remediation_log` + `activity_log` entry
- * via the SERVICE-ROLE client (those tables are service-role-write). This logging
- * is BEST-EFFORT and fully swallowed: a logging failure must never change the
- * PATCH's success/error contract, because the issue update has already committed.
+ * Side effect: when a PATCH actually TRANSITIONS an issue into `passing`, the
+ * route appends a `remediation_log` + `activity_log` entry via the SERVICE-ROLE
+ * client (those tables are service-role-write). This logging is BEST-EFFORT and
+ * fully swallowed: a logging failure must never change the PATCH success/error
+ * contract, because the issue update has already committed.
  */
 import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase/server";
@@ -45,16 +43,22 @@ import { captureError } from "@/lib/observability";
 
 /** The rich per-issue shape returned by GET — extends the tracker record with
  *  plain-language explanation fields sourced from the latest scan or the curated
- *  rule MAP. codeSnippet is the first offending node's html if the scanner
- *  captured it; absent gracefully when unavailable. */
+ *  rule MAP.
+ *  - codeSnippet: first offending DOM node html if the scanner captured it.
+ *  - codeSelector: joined CSS selector path (nodes[0].target) for the same node,
+ *    enabling the Mike UI to show "selector → html" for easy grepping.
+ *  Both fields are null when the scanner did not capture node evidence. */
 interface EnrichedIssueRecord extends IssueRecord {
   whatItMeans: string | null;
   whoItAffects: string | null;
   disabilityGroups: string[];
   howToFix: string | null;
   measuredEvidence: string | null;
-  /** First offending DOM node html from the scanner, or null if unavailable. */
+  /** First offending DOM node outer-html, or null if unavailable. */
   codeSnippet: string | null;
+  /** CSS selector path (nodes[0].target joined with " > ") for the first
+   *  offending node, or null when the scanner did not capture it. */
+  codeSelector: string | null;
 }
 
 const SEVERITY_BUCKETS = ["critical", "serious", "moderate", "minor"] as const;
@@ -65,7 +69,7 @@ const SEVERITY_BUCKETS = ["critical", "serious", "moderate", "minor"] as const;
  * `whyItMatters`, `whoItAffects`, `howToFix`, `disabilityGroups`, and
  * `measuredEvidence` set by the plain-language mapper at scan-ingest time).
  * Fallback: the curated MAP in lib/scanner/plain-language.ts (no scan needed).
- * The code snippet comes from `nodes[0].html` on the stored scan issue.
+ * The code snippet comes from `nodes[0].html` and selector from `nodes[0].target`.
  */
 function enrichIssue(
   rec: IssueRecord,
@@ -79,6 +83,12 @@ function enrichIssue(
   let howToFix: string | null = stored?.howToFix ?? null;
   const measuredEvidence: string | null = stored?.measuredEvidence ?? null;
   const codeSnippet: string | null = stored?.nodes?.[0]?.html ?? null;
+  // Selector: join the target array to a readable CSS path (e.g. "html > body > main > button")
+  const rawTarget = stored?.nodes?.[0]?.target;
+  const codeSelector: string | null =
+    Array.isArray(rawTarget) && rawTarget.length > 0
+      ? (rawTarget as string[]).join(" > ")
+      : null;
 
   // Fallback to the curated MAP when the stored scan didn't carry plain-language
   // fields (pre-v2 scans) or the rule isn't in the latest scan (resolved issues).
@@ -106,6 +116,7 @@ function enrichIssue(
     howToFix,
     measuredEvidence,
     codeSnippet,
+    codeSelector,
   };
 }
 
@@ -132,8 +143,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     ]);
 
     // Build a ruleId → stored AccessibilityIssue map from the latest scan's JSONB.
-    // The JSONB buckets are typed as AccessibilityReport["issues"]; each entry may
-    // carry whyItMatters/whoItAffects/howToFix/disabilityGroups from scan ingest.
     const scanMap = new Map<string, AccessibilityIssue>();
     if (scan?.issues) {
       for (const bucket of SEVERITY_BUCKETS) {
@@ -192,11 +201,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     });
 
     // Best-effort: when an owner actually TRANSITIONS an issue into `passing`,
-    // record it in the remediation + activity logs (these feed the monthly
-    // "issues resolved" metric and the Overview activity feed). Those tables are
-    // service-role-write, so we use the admin client. A logging failure must
-    // NEVER turn a successful issue update into a 500 — the update already
-    // committed — so we SWALLOW any error through the observability seam.
+    // record it in the remediation + activity logs. A logging failure must
+    // NEVER turn a successful issue update into a 500.
     if (shouldLogResolve(meta.status, parsed.data.status)) {
       try {
         const admin = getAdminSupabase();
