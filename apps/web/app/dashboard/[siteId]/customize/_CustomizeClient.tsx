@@ -79,6 +79,11 @@ const FEATURE_META: Record<FeatureKey, { label: string; icon: string; desc: stri
     desc: "Pause motion & autoplay",
   },
   readingRuler: { label: "Reading ruler", icon: "ti-ruler-2", desc: "Focus line across the page" },
+  highlightHover: {
+    label: "Highlight on hover",
+    icon: "ti-focus-2",
+    desc: "Outline the element under the cursor",
+  },
   highlightLinks: { label: "Highlight links", icon: "ti-link", desc: "Underline & colour links" },
   bigCursor: { label: "Big cursor", icon: "ti-pointer", desc: "Enlarge the mouse cursor" },
   readableFont: {

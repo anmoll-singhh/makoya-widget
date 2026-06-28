@@ -118,4 +118,10 @@ export const FEATURE_META: FeatureMeta[] = [
     description: "Click text to have it read out loud.",
     group: "audio",
   },
+  {
+    key: "highlightHover",
+    label: "Highlight on hover",
+    description: "Outline the element under the cursor.",
+    group: "navigation",
+  },
 ];
