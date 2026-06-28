@@ -20,6 +20,15 @@
  *   - Assignment: PATCH {issueId, assigneeId} (real write)
  *   - Resolve: PATCH {issueId, status: "passing"} (real write)
  *   - Mark as needing review: PATCH {issueId, status: "needs_review"}
+ *   - Rich detail: each issue row is expandable (accessible disclosure:
+ *     button with aria-expanded controlling a region) to reveal:
+ *     · what it means / who it affects (plain-language, jargon-free)
+ *     · disability groups (structured audience tags, rendered as chips)
+ *     · how to fix (concrete, action-oriented)
+ *     · code snippet (first offending DOM node html from the scanner,
+ *       rendered in a monospace block; omitted gracefully when unavailable)
+ *     · measured evidence (e.g. "Contrast 2.3:1 — needs 4.5:1")
+ *     All content mirrors the public ScanResults / IssueCard structure.
  *
  * Honesty: no WCAG/ADA "compliant" or "guaranteed" copy. Issue status reflects
  * the scanner's findings + human overrides; it is not a legal certification.
@@ -40,6 +49,15 @@ interface IssueRecord {
   checksPassing: number;
   checksTotal: number;
   assigneeId: string | null;
+  /* Rich plain-language detail — populated by the GET issues API from the
+     latest scan's JSONB or the curated rule MAP. null when unavailable. */
+  whatItMeans: string | null;
+  whoItAffects: string | null;
+  disabilityGroups: string[];
+  howToFix: string | null;
+  measuredEvidence: string | null;
+  /** First offending DOM node html from the scanner, or null if unavailable. */
+  codeSnippet: string | null;
 }
 
 type GroupedIssues = Record<IssueStatus, IssueRecord[]>;
@@ -72,21 +90,65 @@ function ringOffset(pct: number): number {
 // wcagCriterion values present across all issues (failing + needs_review + passing),
 // i.e. the criteria the scanner actually checked. See `trackedCriteria` below.
 
+/** Short human labels for the structured disability-group keys the scanner emits.
+ *  Mirrors IssueCard.tsx / plain-language.ts so badges render consistently. */
+const DISABILITY_LABELS: Record<string, string> = {
+  blind: "Blind",
+  "low-vision": "Low vision",
+  "color-blind": "Colour blindness",
+  "deaf-hard-of-hearing": "Deaf / HoH",
+  motor: "Motor",
+  cognitive: "Cognitive",
+  vestibular: "Motion sensitivity",
+  speech: "Speech",
+};
+
+/* ── Section label for the detail panel ─────────────────────────────────────── */
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        fontSize: 10.5,
+        fontWeight: 700,
+        textTransform: "uppercase",
+        letterSpacing: ".05em",
+        color: "var(--t3)",
+        marginBottom: 4,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 /* ── IssueRow component ──────────────────────────────────────────────────────── */
 interface IssueRowProps {
   issue: IssueRecord;
   group: { key: IssueStatus; label: string; icon: string; pillClass: string };
   team: TeamMember[];
-  onPatch: (issueId: string, patch: { status?: IssueStatus; assigneeId?: string | null }) => Promise<void>;
+  onPatch: (
+    issueId: string,
+    patch: { status?: IssueStatus; assigneeId?: string | null }
+  ) => Promise<void>;
 }
 
 function IssueRow({ issue, group, team, onPatch }: IssueRowProps) {
   const [busy, setBusy] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
-  const assignee = team.find(
-    (m) => m.userId === issue.assigneeId || m.id === issue.assigneeId
+  const assignee = team.find((m) => m.userId === issue.assigneeId || m.id === issue.assigneeId);
+
+  // Whether this issue has any rich detail worth expanding to reveal.
+  const hasDetail = !!(
+    issue.whatItMeans ||
+    issue.whoItAffects ||
+    issue.howToFix ||
+    issue.codeSnippet ||
+    issue.measuredEvidence
   );
+
+  const detailId = `mike-detail-${issue.id}`;
 
   async function handleResolve() {
     if (busy) return;
@@ -121,139 +183,91 @@ function IssueRow({ issue, group, team, onPatch }: IssueRowProps) {
     issue.checksTotal > 0
       ? issue.checksPassing / issue.checksTotal
       : group.key === "passing"
-      ? 1
-      : 0;
+        ? 1
+        : 0;
+  void pct; // consumed elsewhere if needed
 
   return (
-    <div className="trow" style={{ gridTemplateColumns: "1fr 200px 160px" }}>
-      {/* Issue title + WCAG ref */}
-      <div>
-        <div style={{ fontWeight: 700, color: "var(--deep)" }}>{issue.title}</div>
-        <div className="tiny muted">
-          {issue.wcagCriterion ? `WCAG ${issue.wcagCriterion} · ` : ""}
-          {issue.checksTotal > 0
-            ? `${issue.checksPassing} of ${issue.checksTotal} checks passing`
-            : "Tracked rule"}
-        </div>
-      </div>
-
-      {/* Owner / assignment column */}
-      <div style={{ position: "relative" }}>
-        {assignee ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+    <>
+      {/* Main grid row — border-bottom removed when detail is expanded to avoid
+          a double-line between the row and the detail panel. */}
+      <div
+        className="trow"
+        style={{
+          gridTemplateColumns: "1fr 200px 160px",
+          borderBottom: expanded && hasDetail ? "none" : undefined,
+        }}
+      >
+        {/* Issue title + WCAG ref + expand toggle */}
+        <div>
+          {hasDetail ? (
             <button
               type="button"
-              onClick={() => setAssignOpen((o) => !o)}
-              aria-expanded={assignOpen}
-              aria-haspopup="listbox"
+              id={`mike-row-btn-${issue.id}`}
+              aria-expanded={expanded}
+              aria-controls={detailId}
+              onClick={() => setExpanded((e) => !e)}
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
                 background: "none",
                 border: "none",
-                cursor: "pointer",
                 padding: 0,
+                cursor: "pointer",
+                textAlign: "left",
                 fontFamily: "inherit",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
               }}
-              aria-label={`Assigned to ${assignee.email}. Click to change.`}
             >
-              <div
-                className="av"
-                style={{
-                  width: 26,
-                  height: 26,
-                  background: "var(--primary-soft)",
-                  color: "var(--primary-hover)",
-                  fontSize: 10,
-                  borderRadius: "50%",
-                  display: "grid",
-                  placeItems: "center",
-                  fontWeight: 700,
-                  flexShrink: 0,
-                }}
-              >
-                {initials(assignee.email)}
-              </div>
-              <span className="tiny" style={{ fontWeight: 600, color: "var(--t1)" }}>
-                {assignee.email.split("@")[0]}
+              <span style={{ fontWeight: 700, color: "var(--deep)", fontSize: "inherit" }}>
+                {issue.title}
               </span>
+              <i
+                className={`ti ti-chevron-${expanded ? "up" : "down"}`}
+                aria-hidden="true"
+                style={{ fontSize: 13, color: "var(--t3)", flexShrink: 0 }}
+              />
             </button>
+          ) : (
+            <div style={{ fontWeight: 700, color: "var(--deep)" }}>{issue.title}</div>
+          )}
+          <div className="tiny muted">
+            {issue.wcagCriterion ? `WCAG ${issue.wcagCriterion} · ` : ""}
+            {issue.checksTotal > 0
+              ? `${issue.checksPassing} of ${issue.checksTotal} checks passing`
+              : "Tracked rule"}
           </div>
-        ) : (
-          <button
-            type="button"
-            className="viewall"
-            onClick={() => setAssignOpen((o) => !o)}
-            aria-expanded={assignOpen}
-            aria-haspopup="listbox"
-            style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
-          >
-            Assign
-          </button>
-        )}
+        </div>
 
-        {assignOpen && (
-          <div
-            role="listbox"
-            aria-label="Assign issue"
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                setAssignOpen(false);
-              }
-            }}
-            // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
-            tabIndex={-1}
-            style={{
-              position: "absolute",
-              top: "calc(100% + 4px)",
-              left: 0,
-              zIndex: 50,
-              background: "#fff",
-              border: "1px solid var(--border)",
-              borderRadius: 11,
-              boxShadow: "0 6px 24px rgba(13,27,77,.14)",
-              minWidth: 200,
-              overflow: "hidden",
-            }}
-          >
-            <div style={{ padding: "9px 14px", fontSize: 11.5, fontWeight: 700, color: "var(--t3)", textTransform: "uppercase", letterSpacing: ".04em", borderBottom: "1px solid var(--border)" }}>
-              Assign to
-            </div>
-            {team.length === 0 && (
-              <div style={{ padding: "10px 14px", fontSize: 13, color: "var(--t2)" }}>No team members yet.</div>
-            )}
-            {team.map((m) => (
+        {/* Owner / assignment column */}
+        <div style={{ position: "relative" }}>
+          {assignee ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <button
-                key={m.id}
                 type="button"
-                role="option"
-                aria-selected={assignee?.id === m.id}
-                onClick={() => handleAssign(m.userId ?? m.id)}
+                onClick={() => setAssignOpen((o) => !o)}
+                aria-expanded={assignOpen}
+                aria-haspopup="listbox"
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 9,
-                  width: "100%",
-                  padding: "9px 14px",
-                  background: assignee?.id === m.id ? "var(--primary-soft)" : "none",
+                  gap: 8,
+                  background: "none",
                   border: "none",
                   cursor: "pointer",
+                  padding: 0,
                   fontFamily: "inherit",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: "var(--t1)",
-                  textAlign: "left",
                 }}
+                aria-label={`Assigned to ${assignee.email}. Click to change.`}
               >
                 <div
                   className="av"
                   style={{
-                    width: 24,
-                    height: 24,
-                    background: "var(--bg)",
-                    color: "var(--t2)",
-                    fontSize: 9,
+                    width: 26,
+                    height: 26,
+                    background: "var(--primary-soft)",
+                    color: "var(--primary-hover)",
+                    fontSize: 10,
                     borderRadius: "50%",
                     display: "grid",
                     placeItems: "center",
@@ -261,96 +275,313 @@ function IssueRow({ issue, group, team, onPatch }: IssueRowProps) {
                     flexShrink: 0,
                   }}
                 >
-                  {initials(m.email)}
+                  {initials(assignee.email)}
                 </div>
-                {m.email}
+                <span className="tiny" style={{ fontWeight: 600, color: "var(--t1)" }}>
+                  {assignee.email.split("@")[0]}
+                </span>
               </button>
-            ))}
-            {assignee && (
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="viewall"
+              onClick={() => setAssignOpen((o) => !o)}
+              aria-expanded={assignOpen}
+              aria-haspopup="listbox"
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                fontFamily: "inherit",
+                padding: 0,
+              }}
+            >
+              Assign
+            </button>
+          )}
+
+          {assignOpen && (
+            <div
+              role="listbox"
+              aria-label="Assign issue"
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  setAssignOpen(false);
+                }
+              }}
+              // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
+              tabIndex={-1}
+              style={{
+                position: "absolute",
+                top: "calc(100% + 4px)",
+                left: 0,
+                zIndex: 50,
+                background: "#fff",
+                border: "1px solid var(--border)",
+                borderRadius: 11,
+                boxShadow: "0 6px 24px rgba(13,27,77,.14)",
+                minWidth: 200,
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  padding: "9px 14px",
+                  fontSize: 11.5,
+                  fontWeight: 700,
+                  color: "var(--t3)",
+                  textTransform: "uppercase",
+                  letterSpacing: ".04em",
+                  borderBottom: "1px solid var(--border)",
+                }}
+              >
+                Assign to
+              </div>
+              {team.length === 0 && (
+                <div style={{ padding: "10px 14px", fontSize: 13, color: "var(--t2)" }}>
+                  No team members yet.
+                </div>
+              )}
+              {team.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  role="option"
+                  aria-selected={assignee?.id === m.id}
+                  onClick={() => handleAssign(m.userId ?? m.id)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 9,
+                    width: "100%",
+                    padding: "9px 14px",
+                    background: assignee?.id === m.id ? "var(--primary-soft)" : "none",
+                    border: "none",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "var(--t1)",
+                    textAlign: "left",
+                  }}
+                >
+                  <div
+                    className="av"
+                    style={{
+                      width: 24,
+                      height: 24,
+                      background: "var(--bg)",
+                      color: "var(--t2)",
+                      fontSize: 9,
+                      borderRadius: "50%",
+                      display: "grid",
+                      placeItems: "center",
+                      fontWeight: 700,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {initials(m.email)}
+                  </div>
+                  {m.email}
+                </button>
+              ))}
+              {assignee && (
+                <button
+                  type="button"
+                  onClick={() => handleAssign(null)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 9,
+                    width: "100%",
+                    padding: "9px 14px",
+                    background: "none",
+                    border: "none",
+                    borderTop: "1px solid var(--border)",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    color: "var(--danger)",
+                    textAlign: "left",
+                  }}
+                >
+                  <i className="ti ti-x" aria-hidden="true" style={{ fontSize: 14 }} />
+                  Remove assignment
+                </button>
+              )}
               <button
                 type="button"
-                onClick={() => handleAssign(null)}
+                onClick={() => setAssignOpen(false)}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 9,
+                  display: "block",
                   width: "100%",
-                  padding: "9px 14px",
-                  background: "none",
+                  padding: "8px 14px",
+                  background: "var(--bg)",
                   border: "none",
                   borderTop: "1px solid var(--border)",
                   cursor: "pointer",
                   fontFamily: "inherit",
-                  fontSize: 12.5,
+                  fontSize: 12,
                   fontWeight: 600,
-                  color: "var(--danger)",
-                  textAlign: "left",
+                  color: "var(--t3)",
+                  textAlign: "center",
                 }}
               >
-                <i className="ti ti-x" aria-hidden="true" style={{ fontSize: 14 }} />
-                Remove assignment
+                Cancel
               </button>
-            )}
+            </div>
+          )}
+        </div>
+
+        {/* Status + action buttons */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <span className={`pill ${group.pillClass}`}>
+            <i className={`ti ${group.icon}`} aria-hidden="true" />
+            {group.label}
+          </span>
+          {group.key !== "passing" && (
             <button
               type="button"
-              onClick={() => setAssignOpen(false)}
-              style={{
-                display: "block",
-                width: "100%",
-                padding: "8px 14px",
-                background: "var(--bg)",
-                border: "none",
-                borderTop: "1px solid var(--border)",
-                cursor: "pointer",
-                fontFamily: "inherit",
-                fontSize: 12,
-                fontWeight: 600,
-                color: "var(--t3)",
-                textAlign: "center",
-              }}
+              className="btn"
+              disabled={busy}
+              aria-busy={busy}
+              onClick={handleResolve}
+              style={{ padding: "5px 10px", fontSize: 11.5, height: "auto" }}
+              title="Mark as passing"
             >
-              Cancel
+              {busy ? "…" : <i className="ti ti-check" aria-hidden="true" />}
+              <span className="sr-only">Mark as passing</span>
             </button>
-          </div>
-        )}
+          )}
+          {group.key === "failing" && (
+            <button
+              type="button"
+              className="btn"
+              disabled={busy}
+              aria-busy={busy}
+              onClick={handleNeedsReview}
+              style={{ padding: "5px 10px", fontSize: 11.5, height: "auto" }}
+              title="Mark as needs review"
+            >
+              <i className="ti ti-flag" aria-hidden="true" />
+              <span className="sr-only">Mark as needs review</span>
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Status + action buttons */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-        <span className={`pill ${group.pillClass}`}>
-          <i className={`ti ${group.icon}`} aria-hidden="true" />
-          {group.label}
-        </span>
-        {group.key !== "passing" && (
-          <button
-            type="button"
-            className="btn"
-            disabled={busy}
-            aria-busy={busy}
-            onClick={handleResolve}
-            style={{ padding: "5px 10px", fontSize: 11.5, height: "auto" }}
-            title="Mark as passing"
-          >
-            {busy ? "…" : <i className="ti ti-check" aria-hidden="true" />}
-            <span className="sr-only">Mark as passing</span>
-          </button>
-        )}
-        {group.key === "failing" && (
-          <button
-            type="button"
-            className="btn"
-            disabled={busy}
-            aria-busy={busy}
-            onClick={handleNeedsReview}
-            style={{ padding: "5px 10px", fontSize: 11.5, height: "auto" }}
-            title="Mark as needs review"
-          >
-            <i className="ti ti-flag" aria-hidden="true" />
-            <span className="sr-only">Mark as needs review</span>
-          </button>
-        )}
-      </div>
-    </div>
+      {/* Expandable detail panel — controlled by aria-expanded on the title button.
+          Shows the same rich explanation structure as the public ScanResults IssueCard
+          (measured evidence → what it means → who it affects → how to fix → code).
+          Content is REAL: sourced from the latest scan's JSONB or the curated MAP.
+          No WCAG/ADA "compliant" or "guaranteed" language. */}
+      {hasDetail && expanded && (
+        <div
+          id={detailId}
+          role="region"
+          aria-labelledby={`mike-row-btn-${issue.id}`}
+          style={{
+            background: "var(--bg)",
+            borderTop: "1px solid var(--border)",
+            borderBottom: "1px solid var(--border)",
+            padding: "14px 20px 16px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+          }}
+        >
+          {/* Measured evidence — the fact-backed proof line; shown first */}
+          {issue.measuredEvidence && (
+            <div>
+              <SectionLabel>Measured</SectionLabel>
+              <code
+                style={{
+                  display: "inline-block",
+                  fontSize: 12,
+                  fontFamily: "monospace",
+                  background: "var(--border)",
+                  color: "var(--t2)",
+                  borderRadius: 6,
+                  padding: "2px 9px",
+                  lineHeight: 1.7,
+                }}
+              >
+                {issue.measuredEvidence}
+              </code>
+            </div>
+          )}
+
+          {/* What it means */}
+          {issue.whatItMeans && (
+            <div>
+              <SectionLabel>What it means</SectionLabel>
+              <div style={{ fontSize: 13, color: "var(--t1)", lineHeight: 1.55 }}>
+                {issue.whatItMeans}
+              </div>
+            </div>
+          )}
+
+          {/* Who it affects + disability group chips */}
+          {issue.whoItAffects && (
+            <div>
+              <SectionLabel>Who it affects</SectionLabel>
+              <div style={{ fontSize: 13, color: "var(--t1)", lineHeight: 1.55 }}>
+                {issue.whoItAffects}
+              </div>
+              {issue.disabilityGroups.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 7 }}>
+                  {issue.disabilityGroups.map((g) => (
+                    <span
+                      key={g}
+                      className="pill gray"
+                      style={{ fontSize: 11 }}
+                    >
+                      {DISABILITY_LABELS[g] ?? g}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* How to fix — concrete, action-oriented guidance */}
+          {issue.howToFix && (
+            <div>
+              <SectionLabel>How to fix</SectionLabel>
+              <div style={{ fontSize: 13, color: "var(--t1)", lineHeight: 1.55 }}>
+                {issue.howToFix}
+              </div>
+            </div>
+          )}
+
+          {/* Code snippet — first offending DOM node html; omitted when unavailable */}
+          {issue.codeSnippet && (
+            <div>
+              <SectionLabel>Offending element</SectionLabel>
+              <pre
+                style={{
+                  fontFamily: "monospace",
+                  fontSize: 11.5,
+                  background: "var(--border)",
+                  borderRadius: 8,
+                  padding: "8px 12px",
+                  overflowX: "auto",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-all",
+                  color: "var(--t1)",
+                  margin: 0,
+                  lineHeight: 1.5,
+                }}
+              >
+                {issue.codeSnippet}
+              </pre>
+            </div>
+          )}
+        </div>
+      )}
+    </>
   );
 }
 
@@ -376,8 +607,9 @@ export function MikeClient({ siteId, domain }: Props) {
     setError(false);
 
     Promise.all([
-      fetch(`/api/sites/${siteId}/issues`, { credentials: "same-origin" })
-        .then((r) => (r.ok ? (r.json() as Promise<GroupedIssues>) : Promise.reject(r.status))),
+      fetch(`/api/sites/${siteId}/issues`, { credentials: "same-origin" }).then((r) =>
+        r.ok ? (r.json() as Promise<GroupedIssues>) : Promise.reject(r.status)
+      ),
       fetch("/api/team", { credentials: "same-origin" })
         .then((r) => (r.ok ? (r.json() as Promise<TeamResponse>) : null))
         .catch(() => null),
@@ -412,11 +644,7 @@ export function MikeClient({ siteId, domain }: Props) {
 
     // Apply optimistic update
     function applyPatch(grouped: GroupedIssues): GroupedIssues {
-      const allIssues = [
-        ...grouped.failing,
-        ...grouped.needs_review,
-        ...grouped.passing,
-      ];
+      const allIssues = [...grouped.failing, ...grouped.needs_review, ...grouped.passing];
       const target = allIssues.find((i) => i.id === issueId);
       if (!target) return grouped;
 
@@ -482,13 +710,28 @@ export function MikeClient({ siteId, domain }: Props) {
           <div className="card pad">
             <div className="skel" style={{ width: 180, height: 18, marginBottom: 16 }} />
             {[0, 1, 2, 3, 4].map((i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: "1px solid var(--border)" }}>
-                <div className="skel" style={{ width: 34, height: 34, borderRadius: 9, flex: "none" }} />
+              <div
+                key={i}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "12px 0",
+                  borderBottom: "1px solid var(--border)",
+                }}
+              >
+                <div
+                  className="skel"
+                  style={{ width: 34, height: 34, borderRadius: 9, flex: "none" }}
+                />
                 <div style={{ flex: 1 }}>
                   <div className="skel" style={{ width: "60%", height: 14, marginBottom: 6 }} />
                   <div className="skel" style={{ width: "35%", height: 11 }} />
                 </div>
-                <div className="skel" style={{ width: 70, height: 22, borderRadius: 999, flex: "none" }} />
+                <div
+                  className="skel"
+                  style={{ width: 70, height: 22, borderRadius: 999, flex: "none" }}
+                />
               </div>
             ))}
           </div>
@@ -522,10 +765,9 @@ export function MikeClient({ siteId, domain }: Props) {
   };
   const total = counts.failing + counts.needs_review + counts.passing;
   const passPct = total > 0 ? Math.round((counts.passing / total) * 100) : 0;
-  const unassigned = [
-    ...issues.failing,
-    ...issues.needs_review,
-  ].filter((i) => !i.assigneeId).length;
+  const unassigned = [...issues.failing, ...issues.needs_review].filter(
+    (i) => !i.assigneeId
+  ).length;
   const criteriaMet = new Set(
     issues.passing.filter((i) => i.wcagCriterion).map((i) => i.wcagCriterion)
   ).size;
@@ -533,11 +775,7 @@ export function MikeClient({ siteId, domain }: Props) {
   // scanner actually checked). Used as the denominator so "X of N" is honest, not an
   // overstated fixed number like /50 or /33.
   const trackedCriteria = new Set(
-    [
-      ...issues.failing,
-      ...issues.needs_review,
-      ...issues.passing,
-    ]
+    [...issues.failing, ...issues.needs_review, ...issues.passing]
       .filter((i) => i.wcagCriterion)
       .map((i) => i.wcagCriterion)
   ).size;
@@ -579,9 +817,10 @@ export function MikeClient({ siteId, domain }: Props) {
       ...g,
       items:
         search.trim().length > 0
-          ? g.items.filter((i) =>
-              i.title.toLowerCase().includes(search.toLowerCase()) ||
-              (i.wcagCriterion ?? "").includes(search)
+          ? g.items.filter(
+              (i) =>
+                i.title.toLowerCase().includes(search.toLowerCase()) ||
+                (i.wcagCriterion ?? "").includes(search)
             )
           : g.items,
     }));
@@ -682,14 +921,13 @@ export function MikeClient({ siteId, domain }: Props) {
             }}
           >
             {trackedCriteria === 0 ? (
-              <span style={{ fontSize: 13, color: "var(--t3)" }}>
-                No criteria checked yet
-              </span>
+              <span style={{ fontSize: 13, color: "var(--t3)" }}>No criteria checked yet</span>
             ) : (
               <>
                 {criteriaMet}
                 <span style={{ fontSize: 13, color: "var(--t3)" }}>
-                  {" "}of {trackedCriteria} tracked criteria
+                  {" "}
+                  of {trackedCriteria} tracked criteria
                 </span>
               </>
             )}
@@ -771,9 +1009,20 @@ export function MikeClient({ siteId, domain }: Props) {
       <div className="between" style={{ marginBottom: 14 }}>
         <div
           className="search"
-          style={{ maxWidth: 280, margin: 0, boxShadow: "none", display: "flex", alignItems: "center", gap: 8 }}
+          style={{
+            maxWidth: 280,
+            margin: 0,
+            boxShadow: "none",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
         >
-          <i className="ti ti-search" aria-hidden="true" style={{ fontSize: 15, color: "var(--t3)", flexShrink: 0 }} />
+          <i
+            className="ti ti-search"
+            aria-hidden="true"
+            style={{ fontSize: 15, color: "var(--t3)", flexShrink: 0 }}
+          />
           <input
             type="search"
             placeholder="Search issues…"
@@ -803,9 +1052,12 @@ export function MikeClient({ siteId, domain }: Props) {
         <div className="note info" role="note">
           <i className="ti ti-info-circle" aria-hidden="true" />
           <div>
-            No tracked issues yet — they appear here after the first accessibility scan. Run a
-            scan from the{" "}
-            <a href={`/dashboard/${siteId}`} style={{ color: "var(--primary-hover)", fontWeight: 700 }}>
+            No tracked issues yet — they appear here after the first accessibility scan. Run a scan
+            from the{" "}
+            <a
+              href={`/dashboard/${siteId}`}
+              style={{ color: "var(--primary-hover)", fontWeight: 700 }}
+            >
               overview
             </a>
             .
@@ -817,7 +1069,7 @@ export function MikeClient({ siteId, domain }: Props) {
           <div>No issues match your search or filter.</div>
         </div>
       ) : (
-        <div className="tcard">
+        <div className="tcard tbl-scroll">
           <div className="thead" style={{ gridTemplateColumns: "1fr 200px 160px" }}>
             <div>Issue</div>
             <div>Owner</div>
