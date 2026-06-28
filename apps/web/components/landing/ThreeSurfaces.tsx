@@ -46,6 +46,9 @@ export function ThreeSurfaces() {
       id="surfaces"
       className="mx-auto w-full max-w-6xl px-6 py-24 md:py-32"
       aria-labelledby="surfaces-heading"
+      // Ceramic green wash — ~7% top-to-transparent, section-level only.
+      // Text/button colours are unchanged; the tint lives only on the background.
+      style={{ backgroundImage: "linear-gradient(to bottom, rgba(138,179,155,.07) 0%, transparent 70%)" }}
     >
       {/* ── Section header ─────────────────────────────────────── */}
       <Reveal>

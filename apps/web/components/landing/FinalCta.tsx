@@ -55,6 +55,10 @@ export function FinalCta() {
     <section
       className="px-6 py-24 md:py-32"
       aria-labelledby="final-cta-heading"
+      // Ceramic green wash — faint tint on the outer padding area (not the dark
+      // inner band, which uses var(--ink-900)). The dark band dominates; this
+      // tints only the section's breathing room around it.
+      style={{ backgroundImage: "linear-gradient(to bottom, rgba(138,179,155,.06) 0%, transparent 40%)" }}
     >
       {/*
         Dark warm-ink band — rounded, full-width up to max-w-5xl.
