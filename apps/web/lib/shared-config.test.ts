@@ -18,7 +18,7 @@ describe("shared launcher icons", () => {
 });
 
 describe("expanded widget config", () => {
-  it("DEFAULT_CONFIG exposes all 16 feature keys", () => {
+  it("DEFAULT_CONFIG exposes all 18 feature keys", () => {
     expect(DEFAULT_CONFIG.featuresEnabled).toEqual([
       "textSize",
       "lineSpacing",
@@ -36,6 +36,8 @@ describe("expanded widget config", () => {
       "muteSounds",
       "readAloud",
       "highlightHover",
+      "biggerTargets",
+      "focusIndicator",
     ]);
   });
   it("DEFAULT_CONFIG has the new scalar fields with safe defaults", () => {
@@ -51,6 +53,31 @@ describe("expanded widget config", () => {
       "lg"
     );
     expect(resolveConfig("s1", { defaultLanguage: "es" }).defaultLanguage).toBe("es");
+  });
+});
+
+describe("launcher shape + position offsets (Tasks 1 + 3)", () => {
+  it("DEFAULT_CONFIG has launcherShape='circle' and offsets=0", () => {
+    expect(DEFAULT_CONFIG.launcherShape).toBe("circle");
+    expect(DEFAULT_CONFIG.offsetX).toBe(0);
+    expect(DEFAULT_CONFIG.offsetY).toBe(0);
+  });
+  it("resolveConfig fills launcherShape/offsets from defaults when absent", () => {
+    const c = resolveConfig("s1", {});
+    expect(c.launcherShape).toBe("circle");
+    expect(c.offsetX).toBe(0);
+    expect(c.offsetY).toBe(0);
+  });
+  it("resolveConfig keeps provided launcherShape and offsets", () => {
+    const c = resolveConfig("s1", { launcherShape: "rounded", offsetX: 24, offsetY: -10 });
+    expect(c.launcherShape).toBe("rounded");
+    expect(c.offsetX).toBe(24);
+    expect(c.offsetY).toBe(-10);
+  });
+  it("resolveConfig clamps offsets to ±200", () => {
+    const c = resolveConfig("s1", { offsetX: 999, offsetY: -999 });
+    expect(c.offsetX).toBe(200);
+    expect(c.offsetY).toBe(-200);
   });
 });
 

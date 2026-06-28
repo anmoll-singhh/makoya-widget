@@ -75,6 +75,12 @@ export const ICON: Partial<Record<FeatureKey, string>> = {
 
   /** Highlight on hover: crosshair / target icon */
   highlightHover: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>`,
+
+  /** Bigger tap targets: hand pointer hitting a large target */
+  biggerTargets: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="12" cy="12" r="3" fill="currentColor" fill-opacity=".25"/><path d="M12 9v6M9 12h6" stroke-width="1.5"/></svg>`,
+
+  /** Focus indicator: crosshair / target rings */
+  focusIndicator: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg>`,
 };
 
 // ---------------------------------------------------------------------------
@@ -276,6 +282,18 @@ export function buildFeature(
       const label = t(lang, "f_highlightHover");
       return row(icon, label,
         makeSwitch(label, prefs.hoverHighlight, (v) => { prefs.hoverHighlight = v; }, onChange));
+    }
+
+    case "biggerTargets": {
+      const label = t(lang, "f_biggerTargets");
+      return row(icon, label,
+        makeSwitch(label, prefs.biggerTargets, (v) => { prefs.biggerTargets = v; }, onChange));
+    }
+
+    case "focusIndicator": {
+      const label = t(lang, "f_focusIndicator");
+      return row(icon, label,
+        makeSwitch(label, prefs.focusIndicator, (v) => { prefs.focusIndicator = v; }, onChange));
     }
 
     default:

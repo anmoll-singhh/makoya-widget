@@ -44,21 +44,6 @@ export const revealVariant = {
   },
 } satisfies Variants;
 
-/**
- * revealItem — a single child inside a RevealStagger grid. More travel + a hair
- * of scale so card grids resolve with a tactile "settle" rather than a flat fade.
- * Plays as a child of staggerParent(), so the parent owns the cascade timing.
- */
-export const revealItem = {
-  hidden: { opacity: 0, y: 28, scale: 0.97 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: { duration: 0.55, ease: EASE_INK },
-  },
-} satisfies Variants;
-
 export function staggerParent(stagger: number = 0.04) {
   return {
     hidden: {},

@@ -11,6 +11,13 @@ export type WidgetPosition =
   | "top-right"
   | "top-left";
 
+/** Shape of the launcher button.
+ *  circle  → border-radius 50% (the classic round pill button)
+ *  rounded → border-radius 16px (soft square, like modern app icons)
+ *  square  → border-radius 8px (more formal / corporate feel)
+ */
+export type LauncherShape = "circle" | "rounded" | "square";
+
 export type LauncherIconKey = "accessibility" | "person" | "eye" | "adjust";
 
 /** Inline SVGs for the launcher button. Shared so the widget and the
@@ -39,13 +46,21 @@ export type FeatureKey =
   | "textAlign"
   | "muteSounds"
   | "readAloud"
-  | "highlightHover";
+  | "highlightHover"
+  /** Enlarge the tap/click target area on links, buttons, and interactive elements. */
+  | "biggerTargets"
+  /** Enhance visible focus indicators on all keyboard-focusable elements. */
+  | "focusIndicator";
 
 export type WidgetLauncherSize = "sm" | "md" | "lg";
 export type WidgetLanguage = "en" | "es" | "fr" | "de";
 export type WidgetProfileKey =
   | "none" | "vision" | "lowVision" | "dyslexia"
-  | "adhd" | "seizure" | "senior" | "cognitive" | "colorBlind";
+  | "adhd" | "seizure" | "senior" | "cognitive" | "colorBlind"
+  /** Motor / tremor-friendly: big cursor, extra tap-target area, stop motion. */
+  | "motorTremor"
+  /** ESL / easy-reading: readable font, line spacing, reading ruler. */
+  | "eslReading";
 
 export interface WidgetConfig {
   /** Public site id (lives in the <script> snippet — NOT a secret). */
@@ -56,6 +71,11 @@ export interface WidgetConfig {
   position: WidgetPosition;
   /** Which launcher icon the button shows. */
   launcherIcon: LauncherIconKey;
+  /**
+   * Shape of the launcher button.
+   * circle = 50% (round pill), rounded = 16px, square = 8px.
+   */
+  launcherShape: LauncherShape;
   /** Which toggles are shown, in display order. */
   featuresEnabled: FeatureKey[];
   /** Paid plans can hide the "Powered by Makoya" line. */
@@ -91,6 +111,18 @@ export interface WidgetConfig {
   inheritFonts: boolean;
   /** Show the widget on small/mobile viewports. Default on. */
   mobileEnabled: boolean;
+  /**
+   * Horizontal pixel offset applied on top of the corner anchor position.
+   * Positive = further right (for right-edge positions: towards edge;
+   * for left-edge positions: away from edge). Clamped to ±200 px.
+   */
+  offsetX: number;
+  /**
+   * Vertical pixel offset applied on top of the corner anchor position.
+   * Positive = further down (for bottom-edge positions: towards bottom;
+   * for top-edge positions: away from top). Clamped to ±200 px.
+   */
+  offsetY: number;
 }
 
 /** Safe defaults. The widget MUST render even if config never loads. */
@@ -99,11 +131,12 @@ export const DEFAULT_CONFIG: WidgetConfig = {
   primaryColor: "#2563eb",
   position: "bottom-right",
   launcherIcon: "accessibility",
+  launcherShape: "circle",
   featuresEnabled: [
     "textSize","lineSpacing","contrast","stopMotion","readingRuler",
     "highlightLinks","bigCursor","readableFont","hideImages",
     "saturation","readingMask","highlightTitles","textAlign","muteSounds","readAloud",
-    "highlightHover",
+    "highlightHover","biggerTargets","focusIndicator",
   ],
   hideBranding: false,
   brandingUrl: "https://makoya.example/scan",
@@ -116,12 +149,24 @@ export const DEFAULT_CONFIG: WidgetConfig = {
   domObserverEnabled: true,
   inheritFonts: false,
   mobileEnabled: true,
+  offsetX: 0,
+  offsetY: 0,
 };
 
-/** Merge a partial config (from the network) over safe defaults. */
+/** Clamp a number to [min, max]. */
+function clamp(v: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, v));
+}
+
+/** Merge a partial config (from the network) over safe defaults.
+ *  offsetX and offsetY are clamped to ±200 px for safety. */
 export function resolveConfig(
   siteId: string,
   partial: Partial<WidgetConfig> | null | undefined
 ): WidgetConfig {
-  return { ...DEFAULT_CONFIG, ...(partial ?? {}), siteId };
+  const merged = { ...DEFAULT_CONFIG, ...(partial ?? {}), siteId };
+  // Clamp offsets — avoids clients pushing the launcher off-screen.
+  if (typeof merged.offsetX === "number") merged.offsetX = clamp(merged.offsetX, -200, 200);
+  if (typeof merged.offsetY === "number") merged.offsetY = clamp(merged.offsetY, -200, 200);
+  return merged;
 }

@@ -38,6 +38,7 @@
  */
 
 import { useState, useEffect, useRef } from "react";
+import { LAUNCHER_ICONS } from "@makoya/shared";
 
 /* ── Global type for the widget runtime loaded from /widget/core.js ─────────── */
 declare global {
@@ -52,6 +53,7 @@ import type {
   FeatureKey,
   WidgetPosition,
   LauncherIconKey,
+  LauncherShape,
   WidgetLauncherSize,
   WidgetLanguage,
   WidgetProfileKey,
@@ -60,7 +62,7 @@ import type { SiteConfig } from "@/lib/sites-mappers";
 import { contrastRatio } from "@/lib/contrast";
 import { LoadingButton } from "../../_components";
 
-/* ── Feature metadata (matches packages/shared FeatureKey list) ──────────────── */
+/* ── Feature metadata (matches packages/shared FeatureKey list — all 17 keys) ── */
 const FEATURE_META: Record<FeatureKey, { label: string; icon: string; desc: string }> = {
   textSize: {
     label: "Bigger text",
@@ -106,6 +108,16 @@ const FEATURE_META: Record<FeatureKey, { label: string; icon: string; desc: stri
   textAlign: { label: "Text align", icon: "ti-align-left", desc: "Left / centre / justify" },
   muteSounds: { label: "Mute sounds", icon: "ti-volume-off", desc: "Silence autoplay audio" },
   readAloud: { label: "Read page aloud", icon: "ti-volume", desc: "Text-to-speech" },
+  biggerTargets: {
+    label: "Bigger tap targets",
+    icon: "ti-hand-click",
+    desc: "Enlarge clickable areas for easier motor access",
+  },
+  focusIndicator: {
+    label: "Enhanced focus",
+    icon: "ti-focus-2",
+    desc: "Bold, high-contrast keyboard focus ring",
+  },
 };
 const FEATURE_KEYS = Object.keys(FEATURE_META) as FeatureKey[];
 
@@ -495,26 +507,134 @@ export function CustomizeClient({ siteId }: Props) {
                 </select>
               </div>
 
-              {/* Launcher icon */}
+              {/* Launcher icon — SVG swatch picker */}
               <div className="card cpad">
-                <label className="fl" htmlFor="cu-icon" style={{ marginTop: 0 }}>
+                <div className="fl" style={{ marginTop: 0, marginBottom: 8, fontSize: 13, fontWeight: 500, color: "var(--t2)" }}>
                   Launcher icon
-                </label>
-                <select
-                  id="cu-icon"
-                  className="inp"
-                  value={config.launcherIcon}
-                  onChange={(e) =>
-                    setConfig((c) =>
-                      c ? { ...c, launcherIcon: e.target.value as LauncherIconKey } : c
-                    )
-                  }
-                >
-                  <option value="accessibility">Accessibility (person)</option>
-                  <option value="person">Person</option>
-                  <option value="eye">Eye</option>
-                  <option value="adjust">Adjust sliders</option>
-                </select>
+                </div>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  {(Object.keys(LAUNCHER_ICONS) as LauncherIconKey[]).map((key) => {
+                    const active = config.launcherIcon === key;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        aria-pressed={active}
+                        aria-label={`${key} icon`}
+                        title={key}
+                        onClick={() =>
+                          setConfig((c) => (c ? { ...c, launcherIcon: key } : c))
+                        }
+                        style={{
+                          width: 52,
+                          height: 52,
+                          borderRadius: 12,
+                          border: active ? "2px solid var(--primary)" : "2px solid var(--border)",
+                          background: active ? "var(--primary-soft)" : "var(--surface)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer",
+                          padding: 10,
+                          color: active ? "var(--primary)" : "var(--t2)",
+                        }}
+                        dangerouslySetInnerHTML={{ __html: LAUNCHER_ICONS[key] }}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Launcher shape */}
+              <div className="card cpad">
+                <div className="fl" style={{ marginTop: 0, marginBottom: 8, fontSize: 13, fontWeight: 500, color: "var(--t2)" }}>
+                  Launcher shape
+                </div>
+                <div style={{ display: "flex", gap: 10 }}>
+                  {(["circle", "rounded", "square"] as LauncherShape[]).map((shape) => {
+                    const active = (config.launcherShape ?? "circle") === shape;
+                    const radius = shape === "circle" ? "50%" : shape === "rounded" ? "12px" : "4px";
+                    const label = shape === "circle" ? "Circle" : shape === "rounded" ? "Rounded" : "Square";
+                    return (
+                      <button
+                        key={shape}
+                        type="button"
+                        aria-pressed={active}
+                        aria-label={`${label} shape`}
+                        title={label}
+                        onClick={() =>
+                          setConfig((c) => (c ? { ...c, launcherShape: shape } : c))
+                        }
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          gap: 6,
+                          padding: "10px 16px",
+                          borderRadius: 8,
+                          border: active ? "2px solid var(--primary)" : "2px solid var(--border)",
+                          background: active ? "var(--primary-soft)" : "var(--surface)",
+                          cursor: "pointer",
+                          fontSize: 12,
+                          color: active ? "var(--primary)" : "var(--t2)",
+                          fontWeight: active ? 600 : 400,
+                        }}
+                      >
+                        <span
+                          style={{
+                            width: 28,
+                            height: 28,
+                            borderRadius: radius,
+                            background: active ? "var(--primary)" : "var(--border)",
+                            display: "block",
+                          }}
+                        />
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Position offsets */}
+              <div className="card cpad">
+                <div className="fl" style={{ marginTop: 0, marginBottom: 8, fontSize: 13, fontWeight: 500, color: "var(--t2)" }}>
+                  Position offset <span className="muted" style={{ fontWeight: 400 }}>(px, ±200)</span>
+                </div>
+                <div style={{ display: "flex", gap: 12 }}>
+                  <label style={{ flex: 1 }}>
+                    <div className="tiny muted" style={{ marginBottom: 4 }}>X (left/right)</div>
+                    <input
+                      type="number"
+                      className="inp"
+                      min={-200}
+                      max={200}
+                      step={4}
+                      value={config.offsetX ?? 0}
+                      onChange={(e) => {
+                        const v = Math.max(-200, Math.min(200, Number(e.target.value) || 0));
+                        setConfig((c) => (c ? { ...c, offsetX: v } : c));
+                      }}
+                      aria-label="Horizontal position offset in pixels"
+                    />
+                  </label>
+                  <label style={{ flex: 1 }}>
+                    <div className="tiny muted" style={{ marginBottom: 4 }}>Y (up/down)</div>
+                    <input
+                      type="number"
+                      className="inp"
+                      min={-200}
+                      max={200}
+                      step={4}
+                      value={config.offsetY ?? 0}
+                      onChange={(e) => {
+                        const v = Math.max(-200, Math.min(200, Number(e.target.value) || 0));
+                        setConfig((c) => (c ? { ...c, offsetY: v } : c));
+                      }}
+                      aria-label="Vertical position offset in pixels"
+                    />
+                  </label>
+                </div>
               </div>
 
               {/* Launcher size */}
@@ -623,6 +743,8 @@ export function CustomizeClient({ siteId }: Props) {
                   <option value="senior">Senior</option>
                   <option value="cognitive">Cognitive disability</option>
                   <option value="colorBlind">Color blindness</option>
+                  <option value="motorTremor">Motor / tremor</option>
+                  <option value="eslReading">Easy reading (ESL)</option>
                 </select>
                 <div className="tiny muted" style={{ marginTop: 6 }}>
                   Auto-applies a preset on the visitor&apos;s first open.

@@ -61,6 +61,8 @@ function activeFeatureKeys(p: Prefs): Set<string> {
   if (p.mute) s.add("muteSounds");
   if (p.readAloud) s.add("readAloud");
   if (p.hoverHighlight) s.add("highlightHover");
+  if (p.biggerTargets) s.add("biggerTargets");
+  if (p.focusIndicator) s.add("focusIndicator");
   return s;
 }
 
@@ -71,14 +73,6 @@ function activeFeatureKeys(p: Prefs): Set<string> {
 const LANG_STORAGE_KEY = "makoya_lang";
 
 const CLOSE_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>`;
-
-/** Corner positioning for the launcher button and desktop panel. */
-const POSITIONS: Record<string, string> = {
-  "bottom-right": "bottom:16px; right:16px;",
-  "bottom-left":  "bottom:16px; left:16px;",
-  "top-right":    "top:16px;    right:16px;",
-  "top-left":     "top:16px;    left:16px;",
-};
 
 /**
  * FeatureKey → section key mapping.
@@ -100,6 +94,8 @@ const FEATURE_SECTION: Record<string, "sec_content" | "sec_color" | "sec_nav" | 
   readingMask:     "sec_nav",
   bigCursor:       "sec_nav",
   highlightHover:  "sec_nav",
+  biggerTargets:   "sec_nav",
+  focusIndicator:  "sec_nav",
   muteSounds:      "sec_audio",
   readAloud:       "sec_audio",
 };
@@ -187,16 +183,42 @@ function _mount(config: WidgetConfig): void {
   const mute      = makeMute();
   const hover     = makeHoverHighlight();
 
-  // ─── Corner positioning ──────────────────────────────────────────────────
-  const corner = POSITIONS[config.position] ?? POSITIONS["bottom-right"];
+  // ─── Corner positioning + offsets ───────────────────────────────────────
+  // offsetX/Y shift the button (and panel) away from the anchor corner.
+  // Positive offsetX = further right; positive offsetY = further down.
+  // For right-anchored positions, "further right" means a SMALLER right value;
+  // for left-anchored positions it means a LARGER left value, and so on.
+  const ox = typeof config.offsetX === "number" ? config.offsetX : 0;
+  const oy = typeof config.offsetY === "number" ? config.offsetY : 0;
   const isBottom = config.position.startsWith("bottom");
   const isRight  = config.position.endsWith("right");
+
+  // Base inset for the launcher button (16 px from each edge).
+  const BASE = 16;
+  const btnCorner = isBottom
+    ? (isRight
+        ? `bottom:${BASE - oy}px; right:${BASE - ox}px;`
+        : `bottom:${BASE - oy}px; left:${BASE + ox}px;`)
+    : (isRight
+        ? `top:${BASE + oy}px; right:${BASE - ox}px;`
+        : `top:${BASE + oy}px; left:${BASE + ox}px;`);
 
   // ─── Launcher button ────────────────────────────────────────────────────
   const btn = document.createElement("button");
   btn.className = "mky-btn";
   btn.type = "button";
-  btn.style.cssText = corner;
+  btn.style.cssText = btnCorner;
+
+  // Apply launcher shape via inline border-radius (overrides the 50% default
+  // in PANEL_CSS without regenerating the whole stylesheet).
+  const shapeBorderRadius: Record<string, string> = {
+    circle:  "50%",
+    rounded: "16px",
+    square:  "8px",
+  };
+  const br = shapeBorderRadius[config.launcherShape ?? "circle"] ?? "50%";
+  btn.style.borderRadius = br;
+
   btn.setAttribute("aria-label", t(lang, "title"));
   btn.setAttribute("aria-expanded", "false");
   btn.innerHTML = LAUNCHER_ICONS[config.launcherIcon] ?? LAUNCHER_ICONS.accessibility;
@@ -208,13 +230,19 @@ function _mount(config: WidgetConfig): void {
   panel.setAttribute("aria-modal", "true");
   panel.setAttribute("aria-label", config.panelTitle || t(lang, "title"));
   // Desktop position: above/below the launcher depending on corner.
+  // Panel base inset is 84 px (button 56 px + 16 px gap + 12 px clearance).
+  // Offsets shift the panel in the same direction as the button.
   // (Mobile overrides via CSS bottom-sheet — these inline styles are beaten
   // by !important rules in the @media block in PANEL_CSS.)
-  panel.style.cssText = [
-    corner,
-    isBottom ? `bottom: 84px;`  : `top: 84px;`,
-    isRight  ? `right: 16px;`   : `left: 16px;`,
-  ].filter(Boolean).join(" ");
+  const PANEL_BASE = 84;
+  const panelCss = isBottom
+    ? (isRight
+        ? `bottom:${PANEL_BASE - oy}px; right:${BASE - ox}px;`
+        : `bottom:${PANEL_BASE - oy}px; left:${BASE + ox}px;`)
+    : (isRight
+        ? `top:${PANEL_BASE + oy}px; right:${BASE - ox}px;`
+        : `top:${PANEL_BASE + oy}px; left:${BASE + ox}px;`);
+  panel.style.cssText = panelCss;
 
   // Baseline for the feature_activated diff. `null` until the FIRST apply() so
   // that the initial mount (which applies stored prefs / a default profile) is

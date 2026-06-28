@@ -24,7 +24,7 @@ export interface FeatureMeta {
 }
 
 /**
- * All 15 widget feature entries in canonical default order.
+ * All 18 widget feature entries in canonical default order.
  * Matches the order of DEFAULT_CONFIG.featuresEnabled exactly.
  */
 export const FEATURE_META: FeatureMeta[] = [
@@ -122,6 +122,18 @@ export const FEATURE_META: FeatureMeta[] = [
     key: "highlightHover",
     label: "Highlight on hover",
     description: "Outline the element under the cursor.",
+    group: "navigation",
+  },
+  {
+    key: "biggerTargets",
+    label: "Bigger tap targets",
+    description: "Enlarge clickable areas for easier motor access.",
+    group: "navigation",
+  },
+  {
+    key: "focusIndicator",
+    label: "Enhanced focus",
+    description: "Bold, high-contrast keyboard focus ring.",
     group: "navigation",
   },
 ];
