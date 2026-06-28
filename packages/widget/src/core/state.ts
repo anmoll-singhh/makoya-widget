@@ -66,6 +66,24 @@ export interface Prefs {
    * LIVE: controlled by ui/live.ts makeHoverHighlight() — not a CSS attribute.
    */
   hoverHighlight: boolean;
+  /**
+   * Keyboard navigation aids: skip-to-content + jump between headings/landmarks
+   * /links via keyboard, with a visible focus marker on the active target.
+   * LIVE: controlled by ui/live.ts makeKeyboardNav() — not a CSS attribute.
+   */
+  keyboardNav: boolean;
+  /**
+   * Global enhanced focus indicator — every focused element gets a strong,
+   * high-contrast outline (distinct from `links`, which only restyles <a>).
+   * Pure CSS: applyPrefs sets data-mky-focus.
+   */
+  focusMode: boolean;
+  /**
+   * Colour-blind assist via real daltonization SVG filters (NOT saturation).
+   * "off" | protanopia | deuteranopia | tritanopia.
+   * Pure CSS/SVG: applyPrefs sets data-mky-cf; effects.ts injects the filters.
+   */
+  colorFilter: "off" | "protanopia" | "deuteranopia" | "tritanopia";
 }
 
 export const STORAGE_KEY = "makoya_prefs";
@@ -88,6 +106,9 @@ export const DEFAULT_PREFS: Prefs = {
   readAloud: false,
   rulerColor: "#ffd400",
   hoverHighlight: false,
+  keyboardNav: false,
+  focusMode: false,
+  colorFilter: "off",
 };
 
 export function loadPrefs(): Prefs {
@@ -144,5 +165,8 @@ export function applyPrefs(prefs: Prefs): void {
   setHtmlAttr("data-mky-sat", prefs.saturation === "off" ? null : prefs.saturation);
   setHtmlAttr("data-mky-titles", prefs.titles ? "on" : null);
   setHtmlAttr("data-mky-align", prefs.align ? "on" : null);
-  // mask, mute, readAloud → LIVE (ui/live.ts), no CSS attribute needed here.
+  // New: global focus indicator + colour-blind daltonization (pure CSS/SVG).
+  setHtmlAttr("data-mky-focus", prefs.focusMode ? "on" : null);
+  setHtmlAttr("data-mky-cf", prefs.colorFilter === "off" ? null : prefs.colorFilter);
+  // mask, mute, readAloud, keyboardNav → LIVE (ui/live.ts), no CSS attribute here.
 }
