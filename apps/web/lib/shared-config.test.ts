@@ -20,9 +20,21 @@ describe("shared launcher icons", () => {
 describe("expanded widget config", () => {
   it("DEFAULT_CONFIG exposes all 16 feature keys", () => {
     expect(DEFAULT_CONFIG.featuresEnabled).toEqual([
-      "textSize","lineSpacing","contrast","stopMotion","readingRuler",
-      "highlightLinks","bigCursor","readableFont","hideImages",
-      "saturation","readingMask","highlightTitles","textAlign","muteSounds","readAloud",
+      "textSize",
+      "lineSpacing",
+      "contrast",
+      "stopMotion",
+      "readingRuler",
+      "highlightLinks",
+      "bigCursor",
+      "readableFont",
+      "hideImages",
+      "saturation",
+      "readingMask",
+      "highlightTitles",
+      "textAlign",
+      "muteSounds",
+      "readAloud",
       "highlightHover",
     ]);
   });
@@ -35,7 +47,9 @@ describe("expanded widget config", () => {
   });
   it("resolveConfig fills new fields from defaults and keeps provided values", () => {
     expect(resolveConfig("s1", {}).launcherSize).toBe("md");
-    expect(resolveConfig("s1", { launcherSize: "lg", defaultLanguage: "es" }).launcherSize).toBe("lg");
+    expect(resolveConfig("s1", { launcherSize: "lg", defaultLanguage: "es" }).launcherSize).toBe(
+      "lg"
+    );
     expect(resolveConfig("s1", { defaultLanguage: "es" }).defaultLanguage).toBe("es");
   });
 });

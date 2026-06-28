@@ -770,8 +770,7 @@ export function CustomizeClient({ siteId }: Props) {
             >
               <i className="ti ti-device-desktop-check" aria-hidden="true" />
               <div style={{ fontSize: 12.5 }}>
-                <b>Widget live</b> — look in the{" "}
-                <b>{config.position.replace("-", " ")}</b> corner.{" "}
+                <b>Widget live</b> — look in the <b>{config.position.replace("-", " ")}</b> corner.{" "}
                 Click the launcher to preview the panel. Updates as you edit.
               </div>
             </div>
@@ -852,10 +851,7 @@ export function CustomizeClient({ siteId }: Props) {
               </>
             )}
             {scriptState === "ready" && (
-              <div
-                className="tiny muted"
-                style={{ padding: "10px 12px 6px", textAlign: "center" }}
-              >
+              <div className="tiny muted" style={{ padding: "10px 12px 6px", textAlign: "center" }}>
                 Approximate panel layout — real widget is live in the corner.
               </div>
             )}
