@@ -509,7 +509,16 @@ export function CustomizeClient({ siteId }: Props) {
 
               {/* Launcher icon — SVG swatch picker */}
               <div className="card cpad">
-                <div className="fl" style={{ marginTop: 0, marginBottom: 8, fontSize: 13, fontWeight: 500, color: "var(--t2)" }}>
+                <div
+                  className="fl"
+                  style={{
+                    marginTop: 0,
+                    marginBottom: 8,
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: "var(--t2)",
+                  }}
+                >
                   Launcher icon
                 </div>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -522,9 +531,7 @@ export function CustomizeClient({ siteId }: Props) {
                         aria-pressed={active}
                         aria-label={`${key} icon`}
                         title={key}
-                        onClick={() =>
-                          setConfig((c) => (c ? { ...c, launcherIcon: key } : c))
-                        }
+                        onClick={() => setConfig((c) => (c ? { ...c, launcherIcon: key } : c))}
                         style={{
                           width: 52,
                           height: 52,
@@ -547,14 +554,25 @@ export function CustomizeClient({ siteId }: Props) {
 
               {/* Launcher shape */}
               <div className="card cpad">
-                <div className="fl" style={{ marginTop: 0, marginBottom: 8, fontSize: 13, fontWeight: 500, color: "var(--t2)" }}>
+                <div
+                  className="fl"
+                  style={{
+                    marginTop: 0,
+                    marginBottom: 8,
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: "var(--t2)",
+                  }}
+                >
                   Launcher shape
                 </div>
                 <div style={{ display: "flex", gap: 10 }}>
                   {(["circle", "rounded", "square"] as LauncherShape[]).map((shape) => {
                     const active = (config.launcherShape ?? "circle") === shape;
-                    const radius = shape === "circle" ? "50%" : shape === "rounded" ? "12px" : "4px";
-                    const label = shape === "circle" ? "Circle" : shape === "rounded" ? "Rounded" : "Square";
+                    const radius =
+                      shape === "circle" ? "50%" : shape === "rounded" ? "12px" : "4px";
+                    const label =
+                      shape === "circle" ? "Circle" : shape === "rounded" ? "Rounded" : "Square";
                     return (
                       <button
                         key={shape}
@@ -562,9 +580,7 @@ export function CustomizeClient({ siteId }: Props) {
                         aria-pressed={active}
                         aria-label={`${label} shape`}
                         title={label}
-                        onClick={() =>
-                          setConfig((c) => (c ? { ...c, launcherShape: shape } : c))
-                        }
+                        onClick={() => setConfig((c) => (c ? { ...c, launcherShape: shape } : c))}
                         style={{
                           display: "flex",
                           flexDirection: "column",
@@ -598,12 +614,26 @@ export function CustomizeClient({ siteId }: Props) {
 
               {/* Position offsets */}
               <div className="card cpad">
-                <div className="fl" style={{ marginTop: 0, marginBottom: 8, fontSize: 13, fontWeight: 500, color: "var(--t2)" }}>
-                  Position offset <span className="muted" style={{ fontWeight: 400 }}>(px, ±200)</span>
+                <div
+                  className="fl"
+                  style={{
+                    marginTop: 0,
+                    marginBottom: 8,
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: "var(--t2)",
+                  }}
+                >
+                  Position offset{" "}
+                  <span className="muted" style={{ fontWeight: 400 }}>
+                    (px, ±200)
+                  </span>
                 </div>
                 <div style={{ display: "flex", gap: 12 }}>
                   <label style={{ flex: 1 }}>
-                    <div className="tiny muted" style={{ marginBottom: 4 }}>X (left/right)</div>
+                    <div className="tiny muted" style={{ marginBottom: 4 }}>
+                      X (left/right)
+                    </div>
                     <input
                       type="number"
                       className="inp"
@@ -619,7 +649,9 @@ export function CustomizeClient({ siteId }: Props) {
                     />
                   </label>
                   <label style={{ flex: 1 }}>
-                    <div className="tiny muted" style={{ marginBottom: 4 }}>Y (up/down)</div>
+                    <div className="tiny muted" style={{ marginBottom: 4 }}>
+                      Y (up/down)
+                    </div>
                     <input
                       type="number"
                       className="inp"

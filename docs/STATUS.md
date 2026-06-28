@@ -70,7 +70,7 @@ Widget snippet pattern: `<script src="https://makoya-gamma.vercel.app/widget/loa
 
 | Worktree | Branch | Owner / purpose | Status |
 |---|---|---|---|
-| `C:\Users\ANMOL\Desktop\makoya-a11y` | `feat/a11y-feature-wave` | **A11y feature wave** — widget keyboard-nav + focus mode + real dyslexia font + daltonization + read-aloud upgrade; scanner +5 custom checks; public statement page + score-trend chart | 🔶 WIP (claimed 2026-06-29) — do not edit widget `packages/*`, `lib/scanner/*`, or new statement/trend files in main while active |
+| `C:\Users\ANMOL\Desktop\makoya-a11y` | `feat/a11y-feature-wave` | **A11y feature wave** — widget keyboard-nav + focus mode + real dyslexia font + daltonization + read-aloud upgrade; scanner +5 custom checks; public statement page + score-trend chart | ✅ DONE + PUSHED (4 commits, `feat/a11y-feature-wave` @ origin) — CI green (652 web + widget tests), live dev smoke passed. **NOT merged, NOT deployed** (awaiting founder OK). Spec: `docs/specs/2026-06-29-a11y-feature-wave.md` |
 | `C:\Users\ANMOL\Desktop\makoya` | `feat/phase-1-licensing` | **Widget license + domain gate (Phase 1)** | ✅ MERGED + **DEPLOYED LIVE** (monitor); branch prunable |
 | `C:\Users\ANMOL\Desktop\makoya` | `feat/phase-1.5-and-delivery` | **Phase 1.5 token wall + core-bypass close + WP/Shopify delivery** | ✅ MERGED + QA-before/after green + **DEPLOYED LIVE** (monitor); branch prunable |
 | `C:\Users\ANMOL\Desktop\makoya-scanner-v3` | `feat/scanner-evidence-v3` | Scanner evidence v3 (other session) | ✅ deploy blocker fixed (`0cf0a1a` vendored HTMLCS as string module) + second-engine LIVE |
