@@ -76,10 +76,7 @@ interface VerifyInstallResponse {
 // Route handler
 // ---------------------------------------------------------------------------
 
-export async function GET(
-  _req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await getServerSupabase();
 

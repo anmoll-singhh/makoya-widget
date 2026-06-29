@@ -18,7 +18,8 @@
  */
 import { NextResponse } from "next/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
-import { getConfig, getSiteLicense, type SiteLicense } from "@/lib/sites";
+import { getSiteBundle, type SiteLicense, type SiteConfig } from "@/lib/sites";
+import { readSiteBundle, writeSiteBundle } from "@/lib/config-cache";
 import { logWidgetGate } from "@/lib/observability";
 import { verifySiteToken } from "@/lib/licensing/token";
 import { DEFAULT_CONFIG } from "@makoya/shared";
@@ -49,7 +50,11 @@ function isAllowedDomain(host: string | null, allowed: string[]): boolean {
 /** A site is "active" unless suspended/canceled, or a trial whose end has passed. */
 function licenseActive(site: Pick<SiteLicense, "licenseStatus" | "trialEndsAt">): boolean {
   if (site.licenseStatus === "suspended" || site.licenseStatus === "canceled") return false;
-  if (site.licenseStatus === "trial" && site.trialEndsAt && new Date(site.trialEndsAt) < new Date()) {
+  if (
+    site.licenseStatus === "trial" &&
+    site.trialEndsAt &&
+    new Date(site.trialEndsAt) < new Date()
+  ) {
     return false;
   }
   return true; // active, trial-not-expired, and past_due (grace) all pass
@@ -88,14 +93,43 @@ export async function GET(req: Request, { params }: { params: Promise<{ siteId: 
   };
 
   let site: SiteLicense | null = null;
-  let cfg: Awaited<ReturnType<typeof getConfig>> = null;
+  let cfg: SiteConfig | null = null;
   let infraError = false;
+  // Populated on a cache MISS for an existing site; written to Redis AFTER the
+  // verdict try/catch below (see review H1) so a hypothetical Redis-write throw can
+  // never be mistaken for a DB infra error and flip the gate to fail-OPEN.
+  let bundleToCache: { site: SiteLicense; config: SiteConfig | null } | null = null;
   try {
-    const admin = getAdminSupabase();
-    site = await getSiteLicense(admin, siteId); // throws on infra error; null if no such site
-    cfg = await getConfig(admin, siteId);
+    // Cache-first. readSiteBundle NEVER throws — null means miss / unconfigured /
+    // Redis blip, all of which correctly fall through to Postgres below.
+    const cached = await readSiteBundle(siteId);
+    if (cached) {
+      site = cached.site;
+      cfg = cached.config;
+    } else {
+      // MISS → one Postgres round-trip (was two), then populate the cache so the
+      // next visitor of this site skips the DB entirely.
+      const admin = getAdminSupabase();
+      const bundle = await getSiteBundle(admin, siteId); // throws on infra error
+      site = bundle.site;
+      cfg = bundle.config;
+      // Positive cache only: never cache a missing site, so a freshly created site
+      // appears immediately and a bad-id flood can't pin a negative result.
+      if (bundle.site) bundleToCache = { site: bundle.site, config: bundle.config };
+    }
   } catch {
     infraError = true; // DB/transport failure → fail OPEN below
+  }
+
+  // Cache populate lives OUTSIDE the verdict try/catch (review H1). writeSiteBundle
+  // never throws today; the extra guard keeps the never-500 contract even if a
+  // future SDK change ever broke that invariant.
+  if (bundleToCache) {
+    try {
+      await writeSiteBundle(siteId, bundleToCache);
+    } catch {
+      /* best-effort: a missed populate just means the next read repopulates */
+    }
   }
 
   const pass =
@@ -165,6 +199,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ siteId: 
         domObserverEnabled: DEFAULT_CONFIG.domObserverEnabled,
         inheritFonts: DEFAULT_CONFIG.inheritFonts,
         mobileEnabled: DEFAULT_CONFIG.mobileEnabled,
+        launcherShape: DEFAULT_CONFIG.launcherShape,
+        offsetX: DEFAULT_CONFIG.offsetX,
+        offsetY: DEFAULT_CONFIG.offsetY,
       },
       { headers }
     );
@@ -190,6 +227,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ siteId: 
       domObserverEnabled: cfg.domObserverEnabled,
       inheritFonts: cfg.inheritFonts,
       mobileEnabled: cfg.mobileEnabled,
+      launcherShape: cfg.launcherShape,
+      offsetX: cfg.offsetX,
+      offsetY: cfg.offsetY,
     },
     { headers }
   );

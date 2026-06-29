@@ -7,14 +7,20 @@
  *
  * Every collaborator is mocked: the service-role Supabase client (opaque
  * sentinel — the route only forwards it into the mocked data layer), the data
- * layer (`getSiteLicense` / `getConfig`), and the observability seam. No live
+ * layer (`getSiteBundle` — one round-trip license+config), the KV cache layer
+ * (`readSiteBundle`/`writeSiteBundle`), and the observability seam. No live
  * Supabase, no network. `WIDGET_ENFORCE` is toggled per-test and restored.
+ *
+ * Cache contract under test: by default readSiteBundle MISSES (returns null) so
+ * the route exercises the Postgres path via getSiteBundle and then populates the
+ * cache. A dedicated block proves the HIT path skips Postgres entirely.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { createHmac } from "node:crypto";
 
-const getSiteLicense = vi.fn();
-const getConfig = vi.fn();
+const getSiteBundle = vi.fn();
+const readSiteBundle = vi.fn();
+const writeSiteBundle = vi.fn();
 const logWidgetGate = vi.fn();
 
 // The route only passes this sentinel straight into the (mocked) data layer.
@@ -23,8 +29,12 @@ vi.mock("@/lib/supabase/admin", () => ({
 }));
 
 vi.mock("@/lib/sites", () => ({
-  getSiteLicense: (...args: unknown[]) => getSiteLicense(...args),
-  getConfig: (...args: unknown[]) => getConfig(...args),
+  getSiteBundle: (...args: unknown[]) => getSiteBundle(...args),
+}));
+
+vi.mock("@/lib/config-cache", () => ({
+  readSiteBundle: (...args: unknown[]) => readSiteBundle(...args),
+  writeSiteBundle: (...args: unknown[]) => writeSiteBundle(...args),
 }));
 
 vi.mock("@/lib/observability", () => ({
@@ -61,7 +71,13 @@ function call(origin?: string) {
   return GET(makeRequest(origin), { params: Promise.resolve({ siteId: SITE_ID }) });
 }
 
-function license(over: Partial<{ licenseStatus: string; trialEndsAt: string | null; allowedDomains: string[] }> = {}) {
+function license(
+  over: Partial<{
+    licenseStatus: string;
+    trialEndsAt: string | null;
+    allowedDomains: string[];
+  }> = {}
+) {
   return {
     licenseStatus: "active",
     trialEndsAt: null,
@@ -70,19 +86,26 @@ function license(over: Partial<{ licenseStatus: string; trialEndsAt: string | nu
   };
 }
 
+/** Convenience: set the Postgres-path bundle for a given license + config. */
+function dbBundle(site: ReturnType<typeof license> | null, config: unknown = sampleConfig) {
+  getSiteBundle.mockResolvedValue({ site, config: site ? config : null });
+}
+
 let originalEnforce: string | undefined;
 let originalSecret: string | undefined;
 
 beforeEach(() => {
-  getSiteLicense.mockReset();
-  getConfig.mockReset();
+  getSiteBundle.mockReset();
+  readSiteBundle.mockReset();
+  writeSiteBundle.mockReset();
   logWidgetGate.mockReset();
-  getConfig.mockResolvedValue(sampleConfig);
+  // Default: cache MISS → route uses the Postgres path. Write is a no-op spy.
+  readSiteBundle.mockResolvedValue(null);
+  writeSiteBundle.mockResolvedValue(undefined);
+  // Default Postgres bundle: an active, fully-configured site.
+  dbBundle(license());
   originalEnforce = process.env.WIDGET_ENFORCE;
   originalSecret = process.env.WIDGET_SIGNING_SECRET;
-  // Default every test to NO signing secret (monitor-safe token check) so the
-  // pre-existing license/domain tests are unaffected by the new grace logging.
-  // The token-specific tests opt in via secret(...).
   delete process.env.WIDGET_SIGNING_SECRET;
 });
 
@@ -121,17 +144,17 @@ function validToken(siteId: string, sec: string): string {
 function callWithToken(origin: string | undefined, token: string) {
   const headers: Record<string, string> = {};
   if (origin) headers["origin"] = origin;
-  const req = new Request(
-    `https://app.test/api/config/${SITE_ID}?t=${encodeURIComponent(token)}`,
-    { method: "GET", headers }
-  );
+  const req = new Request(`https://app.test/api/config/${SITE_ID}?t=${encodeURIComponent(token)}`, {
+    method: "GET",
+    headers,
+  });
   return GET(req, { params: Promise.resolve({ siteId: SITE_ID }) });
 }
 
 describe("GET /api/config/[siteId] — enforce mode verdicts", () => {
   it("unknown siteId (no license row) → active:false", async () => {
     enforce(true);
-    getSiteLicense.mockResolvedValue(null);
+    dbBundle(null);
 
     const res = await call("https://shop.example");
     const json = (await res.json()) as Record<string, unknown>;
@@ -140,13 +163,18 @@ describe("GET /api/config/[siteId] — enforce mode verdicts", () => {
     expect(json.active).toBe(false);
     expect(json.primaryColor).toBeUndefined();
     expect(logWidgetGate).toHaveBeenCalledWith(
-      expect.objectContaining({ siteId: SITE_ID, status: "no-site", enforced: true, reason: "no-site" })
+      expect.objectContaining({
+        siteId: SITE_ID,
+        status: "no-site",
+        enforced: true,
+        reason: "no-site",
+      })
     );
   });
 
   it("active site + matching Origin → active:true with display fields", async () => {
     enforce(true);
-    getSiteLicense.mockResolvedValue(license());
+    dbBundle(license());
 
     const res = await call("https://shop.example");
     const json = (await res.json()) as Record<string, unknown>;
@@ -159,7 +187,7 @@ describe("GET /api/config/[siteId] — enforce mode verdicts", () => {
 
   it("suspended → active:false", async () => {
     enforce(true);
-    getSiteLicense.mockResolvedValue(license({ licenseStatus: "suspended" }));
+    dbBundle(license({ licenseStatus: "suspended" }));
 
     const json = (await (await call("https://shop.example")).json()) as Record<string, unknown>;
     expect(json.active).toBe(false);
@@ -167,7 +195,7 @@ describe("GET /api/config/[siteId] — enforce mode verdicts", () => {
 
   it("canceled → active:false", async () => {
     enforce(true);
-    getSiteLicense.mockResolvedValue(license({ licenseStatus: "canceled" }));
+    dbBundle(license({ licenseStatus: "canceled" }));
 
     const json = (await (await call("https://shop.example")).json()) as Record<string, unknown>;
     expect(json.active).toBe(false);
@@ -175,9 +203,7 @@ describe("GET /api/config/[siteId] — enforce mode verdicts", () => {
 
   it("trial expired (trialEndsAt in the past) → active:false", async () => {
     enforce(true);
-    getSiteLicense.mockResolvedValue(
-      license({ licenseStatus: "trial", trialEndsAt: "2000-01-01T00:00:00Z" })
-    );
+    dbBundle(license({ licenseStatus: "trial", trialEndsAt: "2000-01-01T00:00:00Z" }));
 
     const json = (await (await call("https://shop.example")).json()) as Record<string, unknown>;
     expect(json.active).toBe(false);
@@ -185,9 +211,7 @@ describe("GET /api/config/[siteId] — enforce mode verdicts", () => {
 
   it("trial not expired (trialEndsAt in the future) → active:true", async () => {
     enforce(true);
-    getSiteLicense.mockResolvedValue(
-      license({ licenseStatus: "trial", trialEndsAt: "2999-01-01T00:00:00Z" })
-    );
+    dbBundle(license({ licenseStatus: "trial", trialEndsAt: "2999-01-01T00:00:00Z" }));
 
     const json = (await (await call("https://shop.example")).json()) as Record<string, unknown>;
     expect(json.active).toBe(true);
@@ -196,18 +220,23 @@ describe("GET /api/config/[siteId] — enforce mode verdicts", () => {
 
   it("active site + foreign Origin not in allowedDomains → active:false", async () => {
     enforce(true);
-    getSiteLicense.mockResolvedValue(license());
+    dbBundle(license());
 
     const json = (await (await call("https://evil.example")).json()) as Record<string, unknown>;
     expect(json.active).toBe(false);
     expect(logWidgetGate).toHaveBeenCalledWith(
-      expect.objectContaining({ host: "evil.example", status: "active", enforced: true, reason: "domain" })
+      expect.objectContaining({
+        host: "evil.example",
+        status: "active",
+        enforced: true,
+        reason: "domain",
+      })
     );
   });
 
   it("empty allowedDomains → not blocked (lenient, active:true)", async () => {
     enforce(true);
-    getSiteLicense.mockResolvedValue(license({ allowedDomains: [] }));
+    dbBundle(license({ allowedDomains: [] }));
 
     const json = (await (await call("https://anything.example")).json()) as Record<string, unknown>;
     expect(json.active).toBe(true);
@@ -215,7 +244,7 @@ describe("GET /api/config/[siteId] — enforce mode verdicts", () => {
 
   it("no Origin header → not blocked (host=null is lenient)", async () => {
     enforce(true);
-    getSiteLicense.mockResolvedValue(license());
+    dbBundle(license());
 
     const json = (await (await call(undefined)).json()) as Record<string, unknown>;
     expect(json.active).toBe(true);
@@ -225,7 +254,7 @@ describe("GET /api/config/[siteId] — enforce mode verdicts", () => {
 describe("GET /api/config/[siteId] — monitor mode (WIDGET_ENFORCE unset)", () => {
   it("always active:true even for a suspended + foreign-origin case, but the denial is still logged", async () => {
     enforce(false);
-    getSiteLicense.mockResolvedValue(license({ licenseStatus: "suspended" }));
+    dbBundle(license({ licenseStatus: "suspended" }));
 
     const res = await call("https://evil.example");
     const json = (await res.json()) as Record<string, unknown>;
@@ -239,9 +268,9 @@ describe("GET /api/config/[siteId] — monitor mode (WIDGET_ENFORCE unset)", () 
 });
 
 describe("GET /api/config/[siteId] — infra error fails OPEN", () => {
-  it("getSiteLicense throws → active:true (availability > enforcement), no gate log", async () => {
+  it("getSiteBundle throws → active:true (availability > enforcement), no gate log", async () => {
     enforce(true);
-    getSiteLicense.mockRejectedValue(new Error("db unavailable"));
+    getSiteBundle.mockRejectedValue(new Error("db unavailable"));
 
     const res = await call("https://evil.example");
     const json = (await res.json()) as Record<string, unknown>;
@@ -254,8 +283,7 @@ describe("GET /api/config/[siteId] — infra error fails OPEN", () => {
 
   it("active+no-config falls back to DEFAULT_CONFIG safe fields with active:true", async () => {
     enforce(true);
-    getSiteLicense.mockResolvedValue(license());
-    getConfig.mockResolvedValue(null);
+    getSiteBundle.mockResolvedValue({ site: license(), config: null });
 
     const json = (await (await call("https://shop.example")).json()) as Record<string, unknown>;
     expect(json.active).toBe(true);
@@ -266,11 +294,48 @@ describe("GET /api/config/[siteId] — infra error fails OPEN", () => {
 describe("GET /api/config/[siteId] — caching contract", () => {
   it("response carries cache-control: no-store", async () => {
     enforce(true);
-    getSiteLicense.mockResolvedValue(license());
+    dbBundle(license());
 
     const res = await call("https://shop.example");
     expect(res.headers.get("cache-control")).toBe("no-store");
     expect(res.headers.get("access-control-allow-origin")).toBe("*");
+  });
+
+  it("cache MISS → reads Postgres via getSiteBundle AND populates the cache for an existing site", async () => {
+    enforce(true);
+    readSiteBundle.mockResolvedValue(null); // miss
+    dbBundle(license());
+
+    await call("https://shop.example");
+
+    expect(getSiteBundle).toHaveBeenCalledTimes(1);
+    expect(writeSiteBundle).toHaveBeenCalledTimes(1);
+    expect(writeSiteBundle).toHaveBeenCalledWith(
+      SITE_ID,
+      expect.objectContaining({ site: expect.objectContaining({ licenseStatus: "active" }) })
+    );
+  });
+
+  it("cache HIT → serves from cache WITHOUT touching Postgres or repopulating", async () => {
+    enforce(true);
+    readSiteBundle.mockResolvedValue({ site: license(), config: sampleConfig });
+
+    const json = (await (await call("https://shop.example")).json()) as Record<string, unknown>;
+
+    expect(json.active).toBe(true);
+    expect(json.primaryColor).toBe("#123456");
+    expect(getSiteBundle).not.toHaveBeenCalled(); // Postgres never touched
+    expect(writeSiteBundle).not.toHaveBeenCalled(); // already cached
+  });
+
+  it("unknown site on a MISS is NOT cached (positive-cache-only)", async () => {
+    enforce(true);
+    readSiteBundle.mockResolvedValue(null);
+    dbBundle(null); // no such site
+
+    await call("https://shop.example");
+
+    expect(writeSiteBundle).not.toHaveBeenCalled();
   });
 });
 
@@ -280,7 +345,7 @@ describe("GET /api/config/[siteId] — signed-token wall (Phase 1.5)", () => {
   it("secret set + enforce + VALID token → active:true, no denial logged", async () => {
     enforce(true);
     secret(SECRET);
-    getSiteLicense.mockResolvedValue(license());
+    dbBundle(license());
 
     const res = await callWithToken("https://shop.example", validToken(SITE_ID, SECRET));
     const json = (await res.json()) as Record<string, unknown>;
@@ -293,13 +358,12 @@ describe("GET /api/config/[siteId] — signed-token wall (Phase 1.5)", () => {
   it("secret set + enforce + MISSING token → active:true (grace) + logged reason:'token'", async () => {
     enforce(true);
     secret(SECRET);
-    getSiteLicense.mockResolvedValue(license());
+    dbBundle(license());
 
-    // call() sends no `t=` query and no x-makoya-token header.
     const res = await call("https://shop.example");
     const json = (await res.json()) as Record<string, unknown>;
 
-    expect(json.active).toBe(true); // legacy install never hard-breaks
+    expect(json.active).toBe(true);
     expect(json.primaryColor).toBe("#123456");
     expect(logWidgetGate).toHaveBeenCalledWith(
       expect.objectContaining({ siteId: SITE_ID, enforced: true, reason: "token" })
@@ -309,7 +373,7 @@ describe("GET /api/config/[siteId] — signed-token wall (Phase 1.5)", () => {
   it("secret set + enforce + WRONG token → active:false + logged reason:'token'", async () => {
     enforce(true);
     secret(SECRET);
-    getSiteLicense.mockResolvedValue(license());
+    dbBundle(license());
 
     const res = await callWithToken("https://shop.example", "v1.totally-wrong-signature");
     const json = (await res.json()) as Record<string, unknown>;
@@ -322,9 +386,9 @@ describe("GET /api/config/[siteId] — signed-token wall (Phase 1.5)", () => {
   });
 
   it("MONITOR mode + secret set + WRONG token → active:true but logged reason:'token'", async () => {
-    enforce(false); // monitor mode never blocks
+    enforce(false);
     secret(SECRET);
-    getSiteLicense.mockResolvedValue(license());
+    dbBundle(license());
 
     const res = await callWithToken("https://shop.example", "v1.totally-wrong-signature");
     const json = (await res.json()) as Record<string, unknown>;
@@ -338,8 +402,8 @@ describe("GET /api/config/[siteId] — signed-token wall (Phase 1.5)", () => {
 
   it("secret UNSET + enforce + any token → token check is a no-op (license+domain only)", async () => {
     enforce(true);
-    secret(null); // WIDGET_SIGNING_SECRET cleared → verify returns reason:'ok'
-    getSiteLicense.mockResolvedValue(license());
+    secret(null);
+    dbBundle(license());
 
     const res = await callWithToken("https://shop.example", "v1.totally-wrong-signature");
     const json = (await res.json()) as Record<string, unknown>;

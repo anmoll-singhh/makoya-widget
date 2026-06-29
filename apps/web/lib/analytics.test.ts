@@ -74,13 +74,18 @@ describe("summarizeDaily", () => {
 
 // ── A minimal in-memory fake Supabase client (no live DB) ──────────────────────
 function makeFakeClient() {
-  const daily = new Map<string, { site_id: string; day: string; event: string; feature_key: string; count: number }>();
+  const daily = new Map<
+    string,
+    { site_id: string; day: string; event: string; feature_key: string; count: number }
+  >();
   const raw: any[] = [];
   const keyOf = (r: { site_id: string; day: string; event: string; feature_key: string }) =>
     `${r.site_id}|${r.day}|${r.event}|${r.feature_key}`;
 
   function from(table: string) {
-    const state: { filters: Record<string, any>; gte?: { col: string; val: string } } = { filters: {} };
+    const state: { filters: Record<string, any>; gte?: { col: string; val: string } } = {
+      filters: {},
+    };
     const builder: any = {
       select() {
         return builder;
@@ -110,14 +115,45 @@ function makeFakeClient() {
       },
       then(resolve: (v: any) => void) {
         let rows = [...daily.values()].filter((r) => r.site_id === state.filters.site_id);
-        if (state.gte && state.gte.col === "day") rows = rows.filter((r) => r.day >= state.gte!.val);
+        if (state.gte && state.gte.col === "day")
+          rows = rows.filter((r) => r.day >= state.gte!.val);
         resolve({ data: rows, error: null });
       },
     };
     return builder;
   }
 
-  return { from, _daily: daily, _raw: raw } as any;
+  // Mirrors the increment_widget_event_daily RPC: INSERT … ON CONFLICT DO UPDATE
+  // SET count = count + delta, applied atomically over all rows in the batch.
+  function rpc(
+    name: string,
+    args: {
+      p_site_id: string;
+      p_rows: { day: string; event: string; feature_key: string; delta: number }[];
+    }
+  ) {
+    if (name === "increment_widget_event_daily") {
+      for (const r of args.p_rows) {
+        const k = keyOf({
+          site_id: args.p_site_id,
+          day: r.day,
+          event: r.event,
+          feature_key: r.feature_key,
+        });
+        const prev = daily.get(k)?.count ?? 0;
+        daily.set(k, {
+          site_id: args.p_site_id,
+          day: r.day,
+          event: r.event,
+          feature_key: r.feature_key,
+          count: prev + r.delta,
+        });
+      }
+    }
+    return Promise.resolve({ error: null });
+  }
+
+  return { from, rpc, _daily: daily, _raw: raw } as any;
 }
 
 const SITE = "11111111-1111-1111-1111-111111111111";
