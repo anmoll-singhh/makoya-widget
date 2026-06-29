@@ -13,13 +13,24 @@
  */
 
 const isProd = process.env.NODE_ENV === "production";
+// `next build` sets NEXT_PHASE=phase-production-build while it COLLECTS PAGE DATA
+// (it imports every route module). Throwing here during that phase aborts the whole
+// build → the deploy never promotes → every route 404s. That was the recurring
+// "404 on deploy" failure: a build that ran without NEXT_PUBLIC_* injected (e.g. a
+// CLI/MCP deploy) crashed the build instead of the app. We therefore enforce at
+// RUNTIME (boot of a real server/process) but only WARN during the build phase, so
+// a missing/late env injection can never brick an entire deploy. When the vars ARE
+// present (the normal case) behaviour is unchanged — they inline as before.
+const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
 
 function requiredPublic(name: string, value: string | undefined): string {
   const missing = !value || value.startsWith("YOUR_") || value.includes("YOUR-PROJECT");
   if (missing) {
     const msg = `[env] ${name} is not set`;
-    if (isProd) throw new Error(`${msg}. Set it before deploying.`);
-    if (typeof window === "undefined") console.warn(`${msg} (placeholder — dev only).`);
+    if (isProd && !isBuildPhase) throw new Error(`${msg}. Set it before deploying.`);
+    if (typeof window === "undefined") {
+      console.warn(`${msg}${isBuildPhase ? " (build phase — continuing; set it in Vercel env)" : " (placeholder — dev only)"}.`);
+    }
     return value ?? "";
   }
   return value;
