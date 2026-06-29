@@ -32,3 +32,5 @@ apps/web/coverage/
 # stray local artifacts
 kickbacks.vsix
 apps/web/_shot.cjs
+# crash artifacts (e.g. Git-Bash on Windows drops these)
+*.stackdump
