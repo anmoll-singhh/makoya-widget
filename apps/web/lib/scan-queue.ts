@@ -72,10 +72,13 @@ export async function enqueueSites(siteIds: string[]): Promise<void> {
     for (let i = 0; i < siteIds.length; i += 500) {
       const chunk = siteIds.slice(i, i + 500);
       // ZADD key {score, member} ...
-      await redis.zadd(Q_KEY, ...(chunk.map((id) => ({ score: now, member: id })) as [
-        { score: number; member: string },
-        ...{ score: number; member: string }[],
-      ]));
+      await redis.zadd(
+        Q_KEY,
+        ...(chunk.map((id) => ({ score: now, member: id })) as [
+          { score: number; member: string },
+          ...{ score: number; member: string }[],
+        ])
+      );
     }
   } catch {
     /* best-effort: next producer run re-enqueues still-stale sites */

@@ -40,7 +40,9 @@ async function pollForFreshScan(
 
 export async function POST(req: Request) {
   const supabase = await getServerSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   let body: { siteId?: string };
@@ -53,7 +55,8 @@ export async function POST(req: Request) {
   if (!siteId) return NextResponse.json({ error: "siteId required" }, { status: 400 });
 
   const site = await getSite(supabase, siteId);
-  if (!site || site.ownerId !== user.id) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  if (!site || site.ownerId !== user.id)
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   // Recency cache: reuse a recent scan, else run a fresh one (stored via service role).
   let scan = await getLatestScan(supabase, siteId);
