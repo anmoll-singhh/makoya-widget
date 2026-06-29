@@ -17,6 +17,8 @@
  */
 import { requireAgent } from "@/lib/agent-context";
 import { getServerSupabase } from "@/lib/supabase/server";
+import { getSiteEntitlement } from "@/lib/billing/site-entitlement";
+import { UpgradeNotice } from "../../_components/UpgradeNotice";
 import { StatementClient } from "./_StatementClient";
 
 export default async function StatementPage({
@@ -28,6 +30,20 @@ export default async function StatementPage({
 
   // Auth + ownership guard.
   const { site } = await requireAgent(siteId);
+
+  // Plan gate: the statement generator is a Starter+ feature. Soft-lock for Free.
+  const gateSupabase = await getServerSupabase();
+  const ent = await getSiteEntitlement(gateSupabase, siteId, site.plan);
+  if (!ent.allows("statement")) {
+    return (
+      <UpgradeNotice
+        feature="statement"
+        title="Accessibility statement"
+        currentPlan={ent.plan}
+        siteId={siteId}
+      />
+    );
+  }
 
   // Grab the session email so the client can use it as the default contact.
   // If the email isn't available for any reason we fall back to an empty string

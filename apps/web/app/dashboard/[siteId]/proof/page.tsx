@@ -10,6 +10,9 @@
  * Each item shows its real state or an honest "not yet" when evidence is absent.
  */
 import { requireAgent } from "@/lib/agent-context";
+import { getServerSupabase } from "@/lib/supabase/server";
+import { getSiteEntitlement } from "@/lib/billing/site-entitlement";
+import { UpgradeNotice } from "../../_components/UpgradeNotice";
 import { ProofClient } from "./_ProofClient";
 
 export default async function ProofPage({
@@ -19,6 +22,21 @@ export default async function ProofPage({
 }) {
   const { siteId } = await params;
   const { site } = await requireAgent(siteId);
+
+  // Plan gate: the proof-of-effort pack is a Growth+ feature. Soft-lock the
+  // screen with an upgrade prompt for lower tiers (the API route 403s too).
+  const supabase = await getServerSupabase();
+  const ent = await getSiteEntitlement(supabase, siteId, site.plan);
+  if (!ent.allows("proof_pack")) {
+    return (
+      <UpgradeNotice
+        feature="proof_pack"
+        title="Proof of effort"
+        currentPlan={ent.plan}
+        siteId={siteId}
+      />
+    );
+  }
 
   return <ProofClient siteId={siteId} domain={site.domain} />;
 }

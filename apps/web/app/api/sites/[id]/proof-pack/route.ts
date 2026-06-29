@@ -17,6 +17,8 @@ import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getSite } from "@/lib/sites";
 import { getProofPack } from "@/lib/proof";
+import { getSiteEntitlement } from "@/lib/billing/site-entitlement";
+import { requiredPlanFor } from "@/lib/billing/entitlements";
 import { captureError } from "@/lib/observability";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -30,6 +32,16 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const site = await getSite(supabase, id);
   if (!site || site.ownerId !== user.id) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
+  }
+
+  // Plan gate: proof-of-effort is a Growth+ feature. Refuse for lower tiers even
+  // if a crafted request reaches this route (the UI soft-locks separately).
+  const ent = await getSiteEntitlement(supabase, id, site.plan);
+  if (!ent.allows("proof_pack")) {
+    return NextResponse.json(
+      { error: "upgrade required", requiredPlan: requiredPlanFor("proof_pack") },
+      { status: 403 }
+    );
   }
 
   try {

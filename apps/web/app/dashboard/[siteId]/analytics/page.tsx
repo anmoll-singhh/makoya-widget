@@ -12,6 +12,9 @@
  * NEVER hard-coded; all values come from the real widget_events rollup.
  */
 import { requireAgent } from "@/lib/agent-context";
+import { getServerSupabase } from "@/lib/supabase/server";
+import { getSiteEntitlement } from "@/lib/billing/site-entitlement";
+import { UpgradeNotice } from "../../_components/UpgradeNotice";
 import { AnalyticsClient } from "./_AnalyticsClient";
 
 export default async function AnalyticsPage({
@@ -22,7 +25,21 @@ export default async function AnalyticsPage({
   const { siteId } = await params;
 
   // Auth + ownership guard.
-  await requireAgent(siteId);
+  const { site } = await requireAgent(siteId);
+
+  // Plan gate: widget analytics is a Starter+ feature. Soft-lock for Free.
+  const supabase = await getServerSupabase();
+  const ent = await getSiteEntitlement(supabase, siteId, site.plan);
+  if (!ent.allows("analytics")) {
+    return (
+      <UpgradeNotice
+        feature="analytics"
+        title="Analytics"
+        currentPlan={ent.plan}
+        siteId={siteId}
+      />
+    );
+  }
 
   return <AnalyticsClient siteId={siteId} />;
 }

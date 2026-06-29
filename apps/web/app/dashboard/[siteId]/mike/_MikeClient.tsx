@@ -3,44 +3,33 @@
  * app/dashboard/[siteId]/mike/_MikeClient.tsx — v7 Mike audit screen (CLIENT).
  *
  * Wired to:
- *   GET  /api/sites/[siteId]/issues  → issues grouped by status
- *   GET  /api/team                   → team members (for assignment avatars)
- *   PATCH /api/sites/[siteId]/issues → { issueId, status?, assigneeId? }
+ *   GET   /api/sites/[siteId]/issues → issues grouped by status
+ *   PATCH /api/sites/[siteId]/issues → { issueId, status }
  *
- * All mockup numbers replaced with real data:
- *   - Passing checks % (73%) → computed from counts.passing / total * 100
- *   - Unassigned (8)         → count of issues with assigneeId === null
- *   - Criteria met (16/33)   → count of distinct wcagCriterion in passing / 33
- *   - Issue groups           → real failing/needs_review/passing rows
- *   - Assignee avatars       → team member email initials mapped by userId
+ * This is a CLIENT-FACING screen (the site owner, not an internal triager). It is
+ * built to answer two questions at a glance, for every issue:
+ *   1. WHICH rule is being violated — the WCAG criterion, its version (2.0/2.1/2.2)
+ *      AND its principle (Perceivable / Operable / Understandable / Robust), shown
+ *      as labelled tags on the row, plus a one-line plain-English "why" that is
+ *      visible WITHOUT expanding.
+ *   2. WHO it affects — the disability profiles impacted (blind, low-vision, motor,
+ *      cognitive, …) shown as icon+label chips in the dedicated "Affects" column.
  *
- * Mike-specific features:
- *   - Search: client-side filter on issue title (real rows)
- *   - Status filter pills: All | Failing | Needs review | Passing (real counts)
- *   - WCAG version filter: All | 2.0 | 2.1 | 2.2 (computed from wcagCriterion)
- *   - Assignment: PATCH {issueId, assigneeId} (real write)
- *   - Resolve: PATCH {issueId, status: "passing"} (real write)
- *   - Mark as needing review: PATCH {issueId, status: "needs_review"}
- *   - Rich detail: each issue row is expandable (accessible disclosure:
- *     button with aria-expanded controlling a region) to reveal:
- *     · WCAG version badge (2.0 / 2.1 / 2.2) next to the criterion ref
- *     · what it means / who it affects (plain-language, jargon-free)
- *     · disability groups (structured audience tags, rendered as chips)
- *     · how to fix (concrete, action-oriented, often with inline code examples)
- *     · code snippet: CSS selector path + offending DOM node html from the
- *       scanner (derived from stored measuredEvidence/nodes; omitted gracefully
- *       when unavailable — we never fabricate code)
- *     · measured evidence (e.g. "Contrast 2.3:1 — needs 4.5:1")
- *     All content mirrors the public ScanResults / IssueCard structure.
+ * Deliberately NOT here (this is a client dashboard, not a team tracker): there is
+ * no assignee / "Assign" control. Owners resolve or flag issues; they don't route
+ * them to teammates. The old Owner/Assign column is replaced by "Affects".
  *
- * WCAG version classification (pure, client-side):
- *   getWcagVersion("1.4.3")  → "2.0"
- *   getWcagVersion("1.4.10") → "2.1"  (Reflow, added in WCAG 2.1)
- *   getWcagVersion("2.5.8")  → "2.2"  (Target Size Minimum, added in 2.2)
- *   getWcagVersion(null)     → null
+ * Real data, no mock numbers:
+ *   - Passing checks %    → counts.passing / total * 100
+ *   - Profiles affected   → distinct disability groups across open issues
+ *   - Criteria met (X/N)  → distinct passing criteria / distinct tracked criteria
+ *   - Issue rows + detail → real failing/needs_review/passing rows + scan JSONB
  *
- * Honesty: no WCAG/ADA "compliant" or "guaranteed" copy. Issue status reflects
- * the scanner's findings + human overrides; it is not a legal certification.
+ * Expandable detail (accessible disclosure) reveals the full explanation: measured
+ * evidence → what it means → who it affects (chips) → how to fix → offending code.
+ *
+ * Honesty: no WCAG/ADA "compliant" or "guaranteed" copy. Issue status reflects the
+ * scanner's findings + human overrides; it is not a legal certification.
  */
 
 import { useState, useEffect } from "react";
@@ -74,6 +63,21 @@ function getWcagVersion(criterion: string | null | undefined): WcagVersion | nul
   return "2.0";
 }
 
+/* ── WCAG principle classifier (the four POUR principles) ─────────────────────── */
+type WcagPrinciple = "Perceivable" | "Operable" | "Understandable" | "Robust";
+
+/** The first number of a WCAG SC maps to its principle (1.x.x = Perceivable …). */
+function getWcagPrinciple(criterion: string | null | undefined): WcagPrinciple | null {
+  if (!criterion || !/^\d+\.\d+\.\d+$/.test(criterion)) return null;
+  switch (criterion.split(".")[0]) {
+    case "1": return "Perceivable";
+    case "2": return "Operable";
+    case "3": return "Understandable";
+    case "4": return "Robust";
+    default: return null;
+  }
+}
+
 /* ── API shapes (client-local; never import server modules) ──────────────────── */
 type IssueStatus = "failing" | "needs_review" | "passing";
 
@@ -86,7 +90,6 @@ interface IssueRecord {
   status: IssueStatus;
   checksPassing: number;
   checksTotal: number;
-  assigneeId: string | null;
   /* Rich plain-language detail — populated by the GET issues API from the
      latest scan's JSONB or the curated rule MAP. null when unavailable. */
   whatItMeans: string | null;
@@ -103,46 +106,29 @@ interface IssueRecord {
 
 type GroupedIssues = Record<IssueStatus, IssueRecord[]>;
 
-interface TeamMember {
-  id: string;
-  userId: string | null;
-  email: string;
-  role: string;
-}
-interface TeamResponse {
-  team: TeamMember[];
+/* ── Disability profiles: icon + label per structured group key ───────────────── */
+/** Mirrors the scanner's disability-group keys (plain-language.ts) and gives each
+ *  one a profile icon so the "Affects" column shows WHO each issue impacts. */
+const PROFILE_META: Record<string, { icon: string; label: string }> = {
+  blind: { icon: "ti-eye-off", label: "Blind" },
+  "low-vision": { icon: "ti-eyeglass", label: "Low vision" },
+  "color-blind": { icon: "ti-palette", label: "Colour blindness" },
+  "deaf-hard-of-hearing": { icon: "ti-ear", label: "Deaf / HoH" },
+  motor: { icon: "ti-hand-finger", label: "Motor" },
+  cognitive: { icon: "ti-brain", label: "Cognitive" },
+  vestibular: { icon: "ti-rotate-360", label: "Motion sensitivity" },
+  speech: { icon: "ti-microphone-2", label: "Speech" },
+};
+
+function profileLabel(group: string): string {
+  return PROFILE_META[group]?.label ?? group;
 }
 
 /* ── Helpers ─────────────────────────────────────────────────────────────────── */
-function initials(email: string): string {
-  const at = email.split("@")[0] ?? email;
-  const parts = at.split(/[.\-_+\s]+/).filter(Boolean);
-  const a = (parts[0]?.[0] ?? email[0] ?? "?").toUpperCase();
-  const b = (parts[1]?.[0] ?? "").toUpperCase();
-  return a + b;
-}
-
 function ringOffset(pct: number): number {
   const circ = 94.2;
   return circ * (1 - Math.max(0, Math.min(1, pct)));
 }
-
-// NOTE: WCAG_TOTAL is NOT hardcoded — it is derived at render time from the distinct
-// wcagCriterion values present across all issues (failing + needs_review + passing),
-// i.e. the criteria the scanner actually checked. See `trackedCriteria` below.
-
-/** Short human labels for the structured disability-group keys the scanner emits.
- *  Mirrors IssueCard.tsx / plain-language.ts so badges render consistently. */
-const DISABILITY_LABELS: Record<string, string> = {
-  blind: "Blind",
-  "low-vision": "Low vision",
-  "color-blind": "Colour blindness",
-  "deaf-hard-of-hearing": "Deaf / HoH",
-  motor: "Motor",
-  cognitive: "Cognitive",
-  vestibular: "Motion sensitivity",
-  speech: "Speech",
-};
 
 /** Version badge colours: subtle, distinct, non-alarming. */
 const WCAG_VERSION_STYLE: Record<WcagVersion, { bg: string; color: string }> = {
@@ -169,24 +155,74 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
+/* ── Affected-profiles cell ──────────────────────────────────────────────────── */
+/** Renders icon+label chips for the disability profiles an issue affects. The
+ *  whole cell carries an aria-label naming every group so screen-reader users
+ *  hear the full audience; the per-chip icons are decorative. */
+function AffectsCell({ groups }: { groups: string[] }) {
+  if (!groups || groups.length === 0) {
+    return <span className="tiny muted">—</span>;
+  }
+  const shown = groups.slice(0, 2);
+  const extra = groups.length - shown.length;
+  const fullLabel = groups.map(profileLabel).join(", ");
+
+  return (
+    <div
+      style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}
+      aria-label={`Affects ${fullLabel}`}
+    >
+      {shown.map((g) => {
+        const meta = PROFILE_META[g];
+        return (
+          <span
+            key={g}
+            title={profileLabel(g)}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 4,
+              padding: "2px 8px",
+              borderRadius: 99,
+              background: "var(--bg)",
+              border: "1px solid var(--border)",
+              fontSize: 11,
+              fontWeight: 600,
+              color: "var(--t2)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            <i
+              className={`ti ${meta?.icon ?? "ti-user"}`}
+              aria-hidden="true"
+              style={{ fontSize: 13, color: "var(--t3)" }}
+            />
+            {profileLabel(g)}
+          </span>
+        );
+      })}
+      {extra > 0 && (
+        <span className="tiny muted" title={fullLabel} style={{ fontWeight: 600 }}>
+          +{extra}
+        </span>
+      )}
+    </div>
+  );
+}
+
 /* ── IssueRow component ──────────────────────────────────────────────────────── */
 interface IssueRowProps {
   issue: IssueRecord;
   group: { key: IssueStatus; label: string; icon: string; pillClass: string };
-  team: TeamMember[];
-  onPatch: (
-    issueId: string,
-    patch: { status?: IssueStatus; assigneeId?: string | null }
-  ) => Promise<void>;
+  onPatch: (issueId: string, patch: { status: IssueStatus }) => Promise<void>;
 }
 
-function IssueRow({ issue, group, team, onPatch }: IssueRowProps) {
+function IssueRow({ issue, group, onPatch }: IssueRowProps) {
   const [busy, setBusy] = useState(false);
-  const [assignOpen, setAssignOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
-  const assignee = team.find((m) => m.userId === issue.assigneeId || m.id === issue.assigneeId);
   const wcagVersion = getWcagVersion(issue.wcagCriterion);
+  const principle = getWcagPrinciple(issue.wcagCriterion);
 
   // Whether this issue has any rich detail worth expanding to reveal.
   const hasDetail = !!(
@@ -217,16 +253,6 @@ function IssueRow({ issue, group, team, onPatch }: IssueRowProps) {
       setBusy(false);
     }
   }
-  async function handleAssign(memberId: string | null) {
-    setAssignOpen(false);
-    if (busy) return;
-    setBusy(true);
-    try {
-      await onPatch(issue.id, { assigneeId: memberId });
-    } finally {
-      setBusy(false);
-    }
-  }
 
   return (
     <>
@@ -235,11 +261,11 @@ function IssueRow({ issue, group, team, onPatch }: IssueRowProps) {
       <div
         className="trow"
         style={{
-          gridTemplateColumns: "1fr 200px 160px",
+          gridTemplateColumns: "1fr 210px 150px",
           borderBottom: expanded && hasDetail ? "none" : undefined,
         }}
       >
-        {/* Issue title + WCAG ref + version badge + expand toggle */}
+        {/* Issue title + rule (criterion + version + principle) + inline why */}
         <div>
           {hasDetail ? (
             <button
@@ -272,11 +298,18 @@ function IssueRow({ issue, group, team, onPatch }: IssueRowProps) {
           ) : (
             <div style={{ fontWeight: 700, color: "var(--deep)" }}>{issue.title}</div>
           )}
-          <div className="tiny muted" style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-            {issue.wcagCriterion && (
-              <span>WCAG {issue.wcagCriterion}</span>
+
+          {/* Rule line: WCAG criterion + version badge + principle tag + checks.
+              This makes "which specific rule is violated" explicit on the row. */}
+          <div
+            className="tiny muted"
+            style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 3 }}
+          >
+            {issue.wcagCriterion ? (
+              <span style={{ fontWeight: 700, color: "var(--t2)" }}>WCAG {issue.wcagCriterion}</span>
+            ) : (
+              <span style={{ fontWeight: 700, color: "var(--t2)" }}>Tracked rule</span>
             )}
-            {/* WCAG version badge — e.g. "2.1" shown inline after the criterion ref */}
             {wcagVersion && (
               <span
                 style={{
@@ -294,209 +327,43 @@ function IssueRow({ issue, group, team, onPatch }: IssueRowProps) {
                 {wcagVersion}
               </span>
             )}
-            {issue.wcagCriterion && <span>·</span>}
+            {principle && (
+              <span
+                className="pill gray"
+                style={{ fontSize: 10, fontWeight: 700 }}
+                title={`WCAG principle: ${principle}`}
+              >
+                {principle}
+              </span>
+            )}
+            <span aria-hidden="true">·</span>
             <span>
               {issue.checksTotal > 0
                 ? `${issue.checksPassing} of ${issue.checksTotal} checks passing`
                 : "Tracked rule"}
             </span>
           </div>
+
+          {/* Inline "why" — visible WITHOUT expanding so the owner sees the reason
+              this rule is flagged at a glance (full detail still on expand). */}
+          {issue.whatItMeans && (
+            <div
+              style={{
+                fontSize: 12.5,
+                color: "var(--t2)",
+                lineHeight: 1.45,
+                marginTop: 4,
+                maxWidth: 560,
+              }}
+            >
+              {issue.whatItMeans}
+            </div>
+          )}
         </div>
 
-        {/* Owner / assignment column */}
-        <div style={{ position: "relative" }}>
-          {assignee ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <button
-                type="button"
-                onClick={() => setAssignOpen((o) => !o)}
-                aria-expanded={assignOpen}
-                aria-haspopup="listbox"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  padding: 0,
-                  fontFamily: "inherit",
-                }}
-                aria-label={`Assigned to ${assignee.email}. Click to change.`}
-              >
-                <div
-                  className="av"
-                  style={{
-                    width: 26,
-                    height: 26,
-                    background: "var(--primary-soft)",
-                    color: "var(--primary-hover)",
-                    fontSize: 10,
-                    borderRadius: "50%",
-                    display: "grid",
-                    placeItems: "center",
-                    fontWeight: 700,
-                    flexShrink: 0,
-                  }}
-                >
-                  {initials(assignee.email)}
-                </div>
-                <span className="tiny" style={{ fontWeight: 600, color: "var(--t1)" }}>
-                  {assignee.email.split("@")[0]}
-                </span>
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              className="viewall"
-              onClick={() => setAssignOpen((o) => !o)}
-              aria-expanded={assignOpen}
-              aria-haspopup="listbox"
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                fontFamily: "inherit",
-                padding: 0,
-              }}
-            >
-              Assign
-            </button>
-          )}
-
-          {assignOpen && (
-            <div
-              role="listbox"
-              aria-label="Assign issue"
-              onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  setAssignOpen(false);
-                }
-              }}
-              // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
-              tabIndex={-1}
-              style={{
-                position: "absolute",
-                top: "calc(100% + 4px)",
-                left: 0,
-                zIndex: 50,
-                background: "#fff",
-                border: "1px solid var(--border)",
-                borderRadius: 11,
-                boxShadow: "0 6px 24px rgba(13,27,77,.14)",
-                minWidth: 200,
-                overflow: "hidden",
-              }}
-            >
-              <div
-                style={{
-                  padding: "9px 14px",
-                  fontSize: 11.5,
-                  fontWeight: 700,
-                  color: "var(--t3)",
-                  textTransform: "uppercase",
-                  letterSpacing: ".04em",
-                  borderBottom: "1px solid var(--border)",
-                }}
-              >
-                Assign to
-              </div>
-              {team.length === 0 && (
-                <div style={{ padding: "10px 14px", fontSize: 13, color: "var(--t2)" }}>
-                  No team members yet.
-                </div>
-              )}
-              {team.map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  role="option"
-                  aria-selected={assignee?.id === m.id}
-                  onClick={() => handleAssign(m.userId ?? m.id)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 9,
-                    width: "100%",
-                    padding: "9px 14px",
-                    background: assignee?.id === m.id ? "var(--primary-soft)" : "none",
-                    border: "none",
-                    cursor: "pointer",
-                    fontFamily: "inherit",
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: "var(--t1)",
-                    textAlign: "left",
-                  }}
-                >
-                  <div
-                    className="av"
-                    style={{
-                      width: 24,
-                      height: 24,
-                      background: "var(--bg)",
-                      color: "var(--t2)",
-                      fontSize: 9,
-                      borderRadius: "50%",
-                      display: "grid",
-                      placeItems: "center",
-                      fontWeight: 700,
-                      flexShrink: 0,
-                    }}
-                  >
-                    {initials(m.email)}
-                  </div>
-                  {m.email}
-                </button>
-              ))}
-              {assignee && (
-                <button
-                  type="button"
-                  onClick={() => handleAssign(null)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 9,
-                    width: "100%",
-                    padding: "9px 14px",
-                    background: "none",
-                    border: "none",
-                    borderTop: "1px solid var(--border)",
-                    cursor: "pointer",
-                    fontFamily: "inherit",
-                    fontSize: 12.5,
-                    fontWeight: 600,
-                    color: "var(--danger)",
-                    textAlign: "left",
-                  }}
-                >
-                  <i className="ti ti-x" aria-hidden="true" style={{ fontSize: 14 }} />
-                  Remove assignment
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setAssignOpen(false)}
-                style={{
-                  display: "block",
-                  width: "100%",
-                  padding: "8px 14px",
-                  background: "var(--bg)",
-                  border: "none",
-                  borderTop: "1px solid var(--border)",
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: "var(--t3)",
-                  textAlign: "center",
-                }}
-              >
-                Cancel
-              </button>
-            </div>
-          )}
+        {/* Affects column — the disability profiles this issue impacts */}
+        <div>
+          <AffectsCell groups={issue.disabilityGroups} />
         </div>
 
         {/* Status + action buttons */}
@@ -587,7 +454,7 @@ function IssueRow({ issue, group, team, onPatch }: IssueRowProps) {
             </div>
           )}
 
-          {/* Who it affects + disability group chips */}
+          {/* Who it affects + disability profile chips */}
           {issue.whoItAffects && (
             <div>
               <SectionLabel>Who it affects</SectionLabel>
@@ -600,9 +467,14 @@ function IssueRow({ issue, group, team, onPatch }: IssueRowProps) {
                     <span
                       key={g}
                       className="pill gray"
-                      style={{ fontSize: 11 }}
+                      style={{ fontSize: 11, display: "inline-flex", alignItems: "center", gap: 4 }}
                     >
-                      {DISABILITY_LABELS[g] ?? g}
+                      <i
+                        className={`ti ${PROFILE_META[g]?.icon ?? "ti-user"}`}
+                        aria-hidden="true"
+                        style={{ fontSize: 12 }}
+                      />
+                      {profileLabel(g)}
                     </span>
                   ))}
                 </div>
@@ -676,31 +548,23 @@ interface Props {
 /* ── Main Component ──────────────────────────────────────────────────────────── */
 export function MikeClient({ siteId, domain }: Props) {
   const [issues, setIssues] = useState<GroupedIssues | null>(null);
-  const [team, setTeam] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [filter, setFilter] = useState<"all" | IssueStatus>("all");
   const [wcagVersionFilter, setWcagVersionFilter] = useState<"all" | WcagVersion>("all");
   const [search, setSearch] = useState("");
 
-  /* Fetch issues + team in parallel */
+  /* Fetch issues */
   useEffect(() => {
     let live = true;
     setLoading(true);
     setError(false);
 
-    Promise.all([
-      fetch(`/api/sites/${siteId}/issues`, { credentials: "same-origin" }).then((r) =>
-        r.ok ? (r.json() as Promise<GroupedIssues>) : Promise.reject(r.status)
-      ),
-      fetch("/api/team", { credentials: "same-origin" })
-        .then((r) => (r.ok ? (r.json() as Promise<TeamResponse>) : null))
-        .catch(() => null),
-    ])
-      .then(([issueData, teamData]) => {
+    fetch(`/api/sites/${siteId}/issues`, { credentials: "same-origin" })
+      .then((r) => (r.ok ? (r.json() as Promise<GroupedIssues>) : Promise.reject(r.status)))
+      .then((issueData) => {
         if (!live) return;
         setIssues(issueData);
-        setTeam(teamData?.team ?? []);
         setLoading(false);
       })
       .catch(() => {
@@ -716,10 +580,7 @@ export function MikeClient({ siteId, domain }: Props) {
   }, [siteId]);
 
   /* Optimistic PATCH — update local state immediately, revert on failure */
-  async function handlePatch(
-    issueId: string,
-    patch: { status?: IssueStatus; assigneeId?: string | null }
-  ) {
+  async function handlePatch(issueId: string, patch: { status: IssueStatus }) {
     if (!issues) return;
 
     // Snapshot for potential revert
@@ -731,12 +592,7 @@ export function MikeClient({ siteId, domain }: Props) {
       const target = allIssues.find((i) => i.id === issueId);
       if (!target) return grouped;
 
-      const updated = {
-        ...target,
-        ...(patch.status !== undefined ? { status: patch.status } : {}),
-        ...(patch.assigneeId !== undefined ? { assigneeId: patch.assigneeId } : {}),
-      };
-
+      const updated = { ...target, status: patch.status };
       const newStatus = updated.status;
       const rest = allIssues.filter((i) => i.id !== issueId);
       return {
@@ -848,9 +704,11 @@ export function MikeClient({ siteId, domain }: Props) {
   };
   const total = counts.failing + counts.needs_review + counts.passing;
   const passPct = total > 0 ? Math.round((counts.passing / total) * 100) : 0;
-  const unassigned = [...issues.failing, ...issues.needs_review].filter(
-    (i) => !i.assigneeId
-  ).length;
+  // Distinct disability profiles impacted by the OPEN (failing + needs_review)
+  // issues — the headline "who is currently affected" number.
+  const profilesAffected = new Set(
+    [...issues.failing, ...issues.needs_review].flatMap((i) => i.disabilityGroups)
+  ).size;
   const criteriaMet = new Set(
     issues.passing.filter((i) => i.wcagCriterion).map((i) => i.wcagCriterion)
   ).size;
@@ -958,7 +816,7 @@ export function MikeClient({ siteId, domain }: Props) {
             className="tiny muted"
             style={{ fontWeight: 700, textTransform: "uppercase", fontSize: 11 }}
           >
-            Unassigned
+            Profiles affected
           </div>
           <div
             style={{
@@ -968,7 +826,8 @@ export function MikeClient({ siteId, domain }: Props) {
               fontFamily: "Satoshi",
             }}
           >
-            {unassigned}
+            {profilesAffected}
+            <span style={{ fontSize: 13, color: "var(--t3)" }}> of 8 disability groups</span>
           </div>
         </div>
 
@@ -1171,9 +1030,9 @@ export function MikeClient({ siteId, domain }: Props) {
         </div>
       ) : (
         <div className="tcard tbl-scroll">
-          <div className="thead" style={{ gridTemplateColumns: "1fr 200px 160px" }}>
-            <div>Issue</div>
-            <div>Owner</div>
+          <div className="thead" style={{ gridTemplateColumns: "1fr 210px 150px" }}>
+            <div>Issue &amp; rule</div>
+            <div>Affects</div>
             <div>Status</div>
           </div>
 
@@ -1184,13 +1043,7 @@ export function MikeClient({ siteId, domain }: Props) {
                   {g.label} · {g.items.length}
                 </div>
                 {g.items.map((issue) => (
-                  <IssueRow
-                    key={issue.id}
-                    issue={issue}
-                    group={g}
-                    team={team}
-                    onPatch={handlePatch}
-                  />
+                  <IssueRow key={issue.id} issue={issue} group={g} onPatch={handlePatch} />
                 ))}
               </div>
             )

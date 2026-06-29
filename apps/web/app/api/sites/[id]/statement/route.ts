@@ -20,6 +20,8 @@ import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getSite } from "@/lib/sites";
 import { getStatement, upsertStatement } from "@/lib/statement";
+import { getSiteEntitlement } from "@/lib/billing/site-entitlement";
+import { requiredPlanFor } from "@/lib/billing/entitlements";
 import { parseBody } from "@/lib/validation/api";
 import { statementBodySchema } from "@/lib/validation/statement";
 import { captureError } from "@/lib/observability";
@@ -35,6 +37,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const site = await getSite(supabase, id);
   if (!site || site.ownerId !== user.id) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
+  }
+
+  // Plan gate: the statement generator is a Starter+ feature.
+  const ent = await getSiteEntitlement(supabase, id, site.plan);
+  if (!ent.allows("statement")) {
+    return NextResponse.json(
+      { error: "upgrade required", requiredPlan: requiredPlanFor("statement") },
+      { status: 403 }
+    );
   }
 
   try {
@@ -57,6 +68,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const site = await getSite(supabase, id);
   if (!site || site.ownerId !== user.id) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
+  }
+
+  // Plan gate: the statement generator is a Starter+ feature.
+  const ent = await getSiteEntitlement(supabase, id, site.plan);
+  if (!ent.allows("statement")) {
+    return NextResponse.json(
+      { error: "upgrade required", requiredPlan: requiredPlanFor("statement") },
+      { status: 403 }
+    );
   }
 
   let json: unknown;

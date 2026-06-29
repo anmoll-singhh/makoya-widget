@@ -71,6 +71,22 @@ describe("PLAN_CATALOG integrity", () => {
     }
   });
 
+  it("gives every plan a 'best for' audience line and 1–4 'why buy' reasons", () => {
+    for (const plan of PLAN_CATALOG.plans) {
+      expect(plan.bestFor.length).toBeGreaterThan(0);
+      expect(plan.whyBuy.length).toBeGreaterThanOrEqual(1);
+      expect(plan.whyBuy.length).toBeLessThanOrEqual(4);
+      for (const reason of plan.whyBuy) expect(reason.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("never makes a compliance/guarantee claim in plan copy", () => {
+    for (const plan of PLAN_CATALOG.plans) {
+      const copy = [plan.tagline, plan.bestFor, ...plan.whyBuy, ...plan.features.map((f) => f.text)].join(" ");
+      expect(copy).not.toMatch(/guaranteed|legally compliant/i);
+    }
+  });
+
   it("has at least one included feature per paid plan", () => {
     const paid = PLAN_CATALOG.plans.filter((p) => p.slug !== "free");
     for (const plan of paid) {

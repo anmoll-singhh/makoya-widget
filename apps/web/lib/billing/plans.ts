@@ -61,6 +61,12 @@ export interface Plan {
   slug: PlanSlug;
   name: string;
   tagline: string;
+  /** WHO this plan is for — a one-line audience descriptor shown on the card so a
+   *  buyer can self-select ("Best for …"). */
+  bestFor: string;
+  /** WHY to pick this plan — 2–3 short, concrete reasons rendered as bullets
+   *  under the price. Plain-language, never a compliance/guarantee claim. */
+  whyBuy: string[];
   /** Whole USD. 0 for Free; null for Enterprise (custom/contact-sales). */
   monthlyPrice: number | null;
   yearlyPrice: number | null;
@@ -103,6 +109,12 @@ export const PLAN_CATALOG: PlanCatalog = {
       slug: "free",
       name: "Free",
       tagline: "Try the widget and see your accessibility score.",
+      bestFor: "Curious owners trying Makoya on one small site before paying.",
+      whyBuy: [
+        "Drop the widget on one site at no cost",
+        "See your accessibility score and top 3 issues",
+        "No card required — upgrade only when you're ready",
+      ],
       monthlyPrice: 0,
       yearlyPrice: 0,
       currency: "USD",
@@ -126,6 +138,12 @@ export const PLAN_CATALOG: PlanCatalog = {
       slug: "starter",
       name: "Starter",
       tagline: "Solo and small sites: the widget plus a monthly auto-audit.",
+      bestFor: "Freelancers, blogs and single small-business sites that want ongoing monitoring.",
+      whyBuy: [
+        "Full widget — 15 tools, 9 profiles, 4 languages",
+        "Weekly scans + Mike's monthly audit, with score-drop alerts",
+        "Publish an accessibility statement to show you're acting",
+      ],
       monthlyPrice: 45,
       yearlyPrice: 390,
       currency: "USD",
@@ -152,6 +170,12 @@ export const PLAN_CATALOG: PlanCatalog = {
       slug: "growth",
       name: "Growth",
       tagline: "SMB and e-commerce needing the full proof-of-effort pack.",
+      bestFor: "Growing businesses and online stores that need documented proof of their accessibility work.",
+      whyBuy: [
+        "Everything in Starter across up to 3 sites",
+        "Proof-of-effort pack + WCAG-mapped remediation log",
+        "Self-generated VPAT/ACR (1/yr) and your own branding",
+      ],
       monthlyPrice: 169,
       yearlyPrice: 1490,
       currency: "USD",
@@ -178,6 +202,12 @@ export const PLAN_CATALOG: PlanCatalog = {
       slug: "scale",
       name: "Scale",
       tagline: "High-traffic and multi-property teams that need priority support.",
+      bestFor: "Agencies and multi-property teams managing many high-traffic sites.",
+      whyBuy: [
+        "Everything in Growth across up to 10 sites, 10 seats + roles",
+        "Unlimited VPAT/ACR, full API and 24-month analytics",
+        "Priority + chat support, partner-eligible, white-label add-on",
+      ],
       monthlyPrice: 440,
       yearlyPrice: 3900,
       currency: "USD",
@@ -203,6 +233,12 @@ export const PLAN_CATALOG: PlanCatalog = {
       slug: "enterprise",
       name: "Enterprise",
       tagline: "Regulated and procurement: VPAT, SSO, SLA, white-glove.",
+      bestFor: "Regulated organisations and procurement teams needing SSO, SLAs and reviewed VPATs.",
+      whyBuy: [
+        "Unlimited sites and seats with SSO / SAML",
+        "Custom audit cadence + expert-reviewed VPATs",
+        "Dedicated CSM, SLA and white-label included",
+      ],
       monthlyPrice: null,
       yearlyPrice: null,
       currency: "USD",

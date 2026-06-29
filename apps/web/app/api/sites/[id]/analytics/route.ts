@@ -14,6 +14,8 @@ import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getSite } from "@/lib/sites";
 import { getWidgetAnalytics } from "@/lib/analytics";
+import { getSiteEntitlement } from "@/lib/billing/site-entitlement";
+import { requiredPlanFor } from "@/lib/billing/entitlements";
 import { captureError } from "@/lib/observability";
 
 const DEFAULT_DAYS = 30;
@@ -37,6 +39,15 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const site = await getSite(supabase, id);
   if (!site || site.ownerId !== user.id) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
+  }
+
+  // Plan gate: widget analytics is a Starter+ feature.
+  const ent = await getSiteEntitlement(supabase, id, site.plan);
+  if (!ent.allows("analytics")) {
+    return NextResponse.json(
+      { error: "upgrade required", requiredPlan: requiredPlanFor("analytics") },
+      { status: 403 }
+    );
   }
 
   const days = parseDays(new URL(req.url).searchParams.get("days"));

@@ -38,6 +38,10 @@ interface Plan {
   slug: string;
   name: string;
   tagline: string;
+  /** WHO the plan is for (rendered as "Best for …"). */
+  bestFor: string;
+  /** WHY to pick it — short reasons rendered as bullets. */
+  whyBuy: string[];
   monthlyPrice: number | null;
   yearlyPrice: number | null;
   visitLimit: number | null;
@@ -488,6 +492,62 @@ export function BillingClient({ siteId }: Props) {
                         ? "100k+ monthly visits"
                         : `Up to ${p.visitLimit.toLocaleString()} monthly visits`}
                     </div>
+
+                    {/* Best for — WHO should buy this plan (self-selection helper) */}
+                    {p.bestFor && (
+                      <div
+                        style={{
+                          fontSize: 12.5,
+                          color: "var(--t1)",
+                          lineHeight: 1.45,
+                          margin: "8px 0 0",
+                        }}
+                      >
+                        <span style={{ fontWeight: 700, color: "var(--deep)" }}>Best for: </span>
+                        {p.bestFor}
+                      </div>
+                    )}
+
+                    {/* Why this plan — concrete reasons, rendered as bullets */}
+                    {p.whyBuy.length > 0 && (
+                      <ul
+                        aria-label={`Why choose ${p.name}`}
+                        style={{
+                          listStyle: "none",
+                          margin: "8px 0 0",
+                          padding: 0,
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 5,
+                        }}
+                      >
+                        {p.whyBuy.map((reason, i) => (
+                          <li
+                            key={i}
+                            style={{
+                              display: "flex",
+                              alignItems: "flex-start",
+                              gap: 7,
+                              fontSize: 12.5,
+                              color: "var(--t2)",
+                              lineHeight: 1.4,
+                            }}
+                          >
+                            <i
+                              className="ti ti-sparkles"
+                              aria-hidden="true"
+                              style={{
+                                fontSize: 13,
+                                marginTop: 1,
+                                color: "var(--primary-hover)",
+                                flexShrink: 0,
+                              }}
+                            />
+                            <span>{reason}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
 
                     {/*
                      * Feature comparison matrix.
