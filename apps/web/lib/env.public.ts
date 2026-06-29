@@ -29,7 +29,9 @@ function requiredPublic(name: string, value: string | undefined): string {
     const msg = `[env] ${name} is not set`;
     if (isProd && !isBuildPhase) throw new Error(`${msg}. Set it before deploying.`);
     if (typeof window === "undefined") {
-      console.warn(`${msg}${isBuildPhase ? " (build phase — continuing; set it in Vercel env)" : " (placeholder — dev only)"}.`);
+      console.warn(
+        `${msg}${isBuildPhase ? " (build phase — continuing; set it in Vercel env)" : " (placeholder — dev only)"}.`
+      );
     }
     return value ?? "";
   }

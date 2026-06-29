@@ -21,7 +21,7 @@ apps/web/_*.txt
 # subagent-driven-development scratch
 .superpowers/
 .gstack/
-
+.claude/settings.local.json
 # Vitest coverage output
 coverage/
 apps/web/coverage/
