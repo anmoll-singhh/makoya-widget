@@ -12,6 +12,7 @@
 import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getSite, getConfig, updateConfig, type SiteConfig } from "@/lib/sites";
+import { purgeSiteBundle } from "@/lib/config-cache";
 import { captureError } from "@/lib/observability";
 import { configPatchSchema } from "@/lib/validation/config-patch";
 import { parseBody } from "@/lib/validation/api";
@@ -41,14 +42,21 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await getServerSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const site = await getSite(supabase, id);
-  if (!site || site.ownerId !== user.id) return NextResponse.json({ error: "not found" }, { status: 404 });
+  if (!site || site.ownerId !== user.id)
+    return NextResponse.json({ error: "not found" }, { status: 404 });
 
   let rawBody: unknown;
-  try { rawBody = await req.json(); } catch { return NextResponse.json({ error: "bad json" }, { status: 400 }); }
+  try {
+    rawBody = await req.json();
+  } catch {
+    return NextResponse.json({ error: "bad json" }, { status: 400 });
+  }
 
   const parsed = parseBody(configPatchSchema, rawBody);
   if (!parsed.ok) return NextResponse.json({ error: "invalid config fields" }, { status: 400 });
@@ -64,6 +72,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   try {
     await updateConfig(supabase, id, patch);
+    // Invalidate the public config cache so the widget picks up the edit on the
+    // next load (one-hop propagation). Best-effort: purge never throws, and the
+    // 300s TTL is the backstop if it somehow no-ops.
+    await purgeSiteBundle(id);
     return NextResponse.json({ ok: true });
   } catch (e) {
     captureError(e, { route: "sites/[id]/config#PATCH" });

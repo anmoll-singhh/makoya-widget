@@ -91,9 +91,11 @@ function accept(events: WidgetEventInput[]): AcceptedEvent[] {
  * client — the only writer to these tables. Throws on infra error; the public
  * route's never-500 wrapper turns that into `{ ok: true, accepted: 0 }`.
  *
- * The rollup increment is read-modify-write (select current count → upsert
- * count+delta). Best-effort telemetry tolerates the small concurrency window; the
- * raw `widget_events` table remains the exact, replayable source of truth.
+ * The rollup increment is a SINGLE atomic `INSERT … ON CONFLICT DO UPDATE SET
+ * count = count + delta` via the `increment_widget_event_daily` RPC — one
+ * round-trip for all buckets, with NO lost-update window (concurrent POSTs for the
+ * same bucket serialise on the row lock). The raw `widget_events` table remains the
+ * exact, replayable source of truth.
  */
 export async function recordEvents(
   service: SupabaseClient,
@@ -108,13 +110,18 @@ export async function recordEvents(
     site_id: siteId,
     event: e.event,
     feature_key: e.featureKey || null,
-    occurred_at: new Date(e.ts !== undefined && Number.isFinite(e.ts) ? e.ts : Date.now()).toISOString(),
+    occurred_at: new Date(
+      e.ts !== undefined && Number.isFinite(e.ts) ? e.ts : Date.now()
+    ).toISOString(),
   }));
   const { error: insErr } = await service.from("widget_events").insert(rawRows);
   if (insErr) throw insErr;
 
   // 2. Aggregate deltas per (day, event, feature_key) within this batch.
-  const deltas = new Map<string, { day: string; event: string; feature_key: string; delta: number }>();
+  const deltas = new Map<
+    string,
+    { day: string; event: string; feature_key: string; delta: number }
+  >();
   for (const e of accepted) {
     const day = dayOf(e.ts);
     const featureKey = e.event === "feature_activated" ? e.featureKey : "";
@@ -124,30 +131,16 @@ export async function recordEvents(
     else deltas.set(key, { day, event: e.event, feature_key: featureKey, delta: 1 });
   }
 
-  // 3. Read-modify-write each rollup bucket.
-  for (const d of deltas.values()) {
-    const { data, error: selErr } = await service
-      .from("widget_event_daily")
-      .select("count")
-      .eq("site_id", siteId)
-      .eq("day", d.day)
-      .eq("event", d.event)
-      .eq("feature_key", d.feature_key)
-      .maybeSingle();
-    if (selErr) throw selErr;
-    const current = (data?.count as number) ?? 0;
-    const { error: upErr } = await service.from("widget_event_daily").upsert(
-      {
-        site_id: siteId,
-        day: d.day,
-        event: d.event,
-        feature_key: d.feature_key,
-        count: current + d.delta,
-      },
-      { onConflict: "site_id,day,event,feature_key" }
-    );
-    if (upErr) throw upErr;
-  }
+  // 3. ONE atomic bulk increment for ALL buckets via the Postgres RPC. This
+  //    replaces the old per-bucket SELECT→UPSERT read-modify-write loop, which was
+  //    O(buckets) round-trips AND racy (concurrent POSTs could both read N and both
+  //    write N+1, losing an event). The RPC's INSERT … ON CONFLICT DO UPDATE
+  //    SET count = count + excluded.count is a single, lost-update-safe statement.
+  const { error: incErr } = await service.rpc("increment_widget_event_daily", {
+    p_site_id: siteId,
+    p_rows: [...deltas.values()],
+  });
+  if (incErr) throw incErr;
 
   return accepted.length;
 }

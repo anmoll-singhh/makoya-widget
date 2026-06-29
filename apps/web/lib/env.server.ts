@@ -35,4 +35,24 @@ export const env = {
   // Server-side Sentry DSN (NOT the NEXT_PUBLIC_ one). Empty = Sentry disabled.
   // The public DSN (SENTRY_DSN_PUBLIC) is available via the publicEnv spread above.
   SENTRY_DSN: process.env.SENTRY_DSN ?? "",
+
+  // ── Scanner queue (lib/scan-queue.ts + cron/scan-dispatch + internal/scan-worker)
+  // CRON_SECRET also authenticates the producer + dispatcher crons (Vercel Cron).
+  CRON_SECRET: process.env.CRON_SECRET ?? "",
+  // Shared secret the dispatcher sends to the worker route. Falls back to CRON_SECRET
+  // when unset so a single secret suffices; the worker rejects any mismatch.
+  SCAN_WORKER_SECRET: process.env.SCAN_WORKER_SECRET ?? process.env.CRON_SECRET ?? "",
+  // How many sites the dispatcher claims+fans-out per minute = concurrent worker
+  // instances = the scanner's cost/throughput dial.
+  SCAN_DISPATCH_BATCH: Number(process.env.SCAN_DISPATCH_BATCH ?? "10"),
+  // Max concurrent INTERACTIVE (user-triggered) scans before /api/scan sheds load.
+  SCAN_INTERACTIVE_MAX_INFLIGHT: Number(process.env.SCAN_INTERACTIVE_MAX_INFLIGHT ?? "5"),
+  // Absolute base URL the dispatcher uses to reach the worker route. Prefer an
+  // explicit APP_URL; else Vercel's stable production host. Empty locally = the
+  // dispatcher logs and skips (background scans are a deployed-only path).
+  APP_URL:
+    process.env.APP_URL ??
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : ""),
 };
