@@ -3,7 +3,7 @@
   "framework": "nextjs",
   "crons": [
     { "path": "/api/cron/rescan", "schedule": "0 3 * * *" },
-    { "path": "/api/cron/scan-dispatch", "schedule": "* * * * *" },
+    { "path": "/api/cron/scan-dispatch", "schedule": "0 4 * * *" },
     { "path": "/api/cron/recompute-reports", "schedule": "0 7 * * *" }
   ]
 }
