@@ -27,8 +27,14 @@
  *   <filter> by url(#…); the SVG itself is injected once into the host page.
  */
 
+import {
+  OPENDYSLEXIC_REGULAR_WOFF2,
+  OPENDYSLEXIC_BOLD_WOFF2,
+} from "./opendyslexic-font";
+
 const STYLE_ID = "makoya-effects";
 const SVG_ID = "makoya-colorfilters";
+const FONT_STYLE_ID = "makoya-dyslexia-font";
 
 /** The single stylesheet we add to the host <head>, scoped by html[data-mky-*]. */
 const EFFECT_CSS = `
@@ -57,10 +63,10 @@ html[data-mky-spacing="on"] body * {
                                Windows/macOS systems, so it is a real, honest
                                improvement even with NO webfont download.
      - Verdana/Tahoma        — humanist sans fallbacks with open letterforms.
-   TODO(font): a self-hosted OpenDyslexic woff2 (Regular+Bold) can be embedded as
-   a data: URI @font-face and injected lazily on first activation to guarantee the
-   face is present; shipped as the system stack for now to keep core.js lean and
-   never block render. */
+   OpenDyslexic is now GUARANTEED: a subset woff2 (Regular+Bold) is embedded as a
+   data: URI @font-face (see opendyslexic-font.ts) and injected lazily on first
+   activation by ensureDyslexiaFont() below — no third-party request, never blocks
+   render, and the stack above still applies until the @font-face resolves. */
 html[data-mky-font="on"] body,
 html[data-mky-font="on"] body * {
   font-family: "OpenDyslexic", "Atkinson Hyperlegible", "Comic Sans MS", "Comic Sans", Verdana, Tahoma, sans-serif !important;
@@ -190,6 +196,42 @@ export function ensureColorFilterSvg(): void {
     document.documentElement.appendChild(wrap);
   } catch {
     /* never throw — colour filter is a progressive enhancement */
+  }
+}
+
+/**
+ * Inject the embedded OpenDyslexic @font-face (Regular + Bold) into the host
+ * page exactly once, lazily — called from applyPrefs only when the readable-font
+ * feature is active, so the ~50 KB of base64 font data never touches the page
+ * unless the user opts in. `font-display: swap` means the CSS font stack renders
+ * immediately and is upgraded to OpenDyslexic when the face decodes, so this can
+ * never block render. Idempotent and never throws — a failure here just leaves
+ * the host page on the system-font stack defined in EFFECT_CSS.
+ */
+export function ensureDyslexiaFont(): void {
+  try {
+    if (document.getElementById(FONT_STYLE_ID)) return;
+    const style = document.createElement("style");
+    style.id = FONT_STYLE_ID;
+    style.textContent = `
+@font-face {
+  font-family: "OpenDyslexic";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("${OPENDYSLEXIC_REGULAR_WOFF2}") format("woff2");
+}
+@font-face {
+  font-family: "OpenDyslexic";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("${OPENDYSLEXIC_BOLD_WOFF2}") format("woff2");
+}`;
+    document.head.appendChild(style);
+  } catch {
+    /* never throw — embedded font is a progressive enhancement; the CSS stack
+       (Atkinson Hyperlegible / Comic Sans MS / Verdana) still applies */
   }
 }
 

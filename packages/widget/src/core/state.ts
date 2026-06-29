@@ -11,7 +11,7 @@
  * not set HTML attributes for them (no CSS-attr equivalent; they need JS).
  */
 
-import { ensureEffectStyles, setHtmlAttr } from "../features/effects";
+import { ensureEffectStyles, ensureDyslexiaFont, setHtmlAttr } from "../features/effects";
 
 export interface Prefs {
   /** 0 = off, 1/2/3 = size steps */
@@ -173,6 +173,10 @@ export function applyPrefs(prefs: Prefs): void {
   // WS1 Task 1: cursor changed from boolean → "off"|"black"|"white"
   setHtmlAttr("data-mky-cursor", prefs.cursor === "off" ? null : prefs.cursor);
   setHtmlAttr("data-mky-font", prefs.font ? "on" : null);
+  // Lazily embed the OpenDyslexic webfont the first time the readable-font
+  // feature is switched on (keeps the ~50 KB of base64 out of the page until
+  // it's actually wanted; idempotent + never throws).
+  if (prefs.font) ensureDyslexiaFont();
   setHtmlAttr("data-mky-images", prefs.images ? "off" : null);
   // WS1 Task 1: new attrs
   setHtmlAttr("data-mky-sat", prefs.saturation === "off" ? null : prefs.saturation);
