@@ -54,8 +54,18 @@ const JURISDICTION_NAMES: Record<Jurisdiction, string> = {
 };
 
 const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ] as const;
 
 /**
@@ -94,8 +104,8 @@ export function generateStatementHtml(input: StatementInput, now: Date = new Dat
     .map((j) => JURISDICTION_NAMES[j]);
 
   const lines: string[] = [];
-  lines.push("<section class=\"accessibility-statement\" aria-labelledby=\"a11y-statement-heading\">");
-  lines.push("  <h2 id=\"a11y-statement-heading\">Accessibility Statement</h2>");
+  lines.push('<section class="accessibility-statement" aria-labelledby="a11y-statement-heading">');
+  lines.push('  <h2 id="a11y-statement-heading">Accessibility Statement</h2>');
   lines.push(
     `  <p>${brand} is committed to digital accessibility and to continually improving the experience for all users, including people with disabilities.</p>`
   );

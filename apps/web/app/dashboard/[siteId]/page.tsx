@@ -26,11 +26,7 @@ import { getOverview, type OverviewData } from "@/lib/overview";
 import { getScoreTrend, type ScoreTrendPoint } from "@/lib/scans";
 import { OverviewClient } from "./_OverviewClient";
 
-export default async function OverviewPage({
-  params,
-}: {
-  params: Promise<{ siteId: string }>;
-}) {
+export default async function OverviewPage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = await params;
   const { site } = await requireAgent(siteId);
 

@@ -38,8 +38,7 @@ export function ScoreTrendChart({ points }: { points: ScoreTrendPoint[] }) {
   if (valid.length < 2) {
     return (
       <div className="muted tiny" role="status" style={{ padding: "30px 0" }}>
-        Not enough scan history to chart a trend yet — run another scan to see your score over
-        time.
+        Not enough scan history to chart a trend yet — run another scan to see your score over time.
       </div>
     );
   }
@@ -118,7 +117,14 @@ export function ScoreTrendChart({ points }: { points: ScoreTrendPoint[] }) {
             strokeLinejoin="round"
             points={coords.join(" ")}
           />
-          <circle cx={last[0]} cy={last[1]} r="5.5" fill="#1E63FF" stroke="#fff" strokeWidth="2.5" />
+          <circle
+            cx={last[0]}
+            cy={last[1]}
+            r="5.5"
+            fill="#1E63FF"
+            stroke="#fff"
+            strokeWidth="2.5"
+          />
         </svg>
         <div
           aria-hidden="true"

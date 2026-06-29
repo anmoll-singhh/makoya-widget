@@ -46,9 +46,7 @@ describe("generateStatementHtml", () => {
   });
 
   it("renders the human-readable name of each selected jurisdiction", () => {
-    const html = generateStatementHtml(
-      baseInput({ jurisdictions: ["ada", "aoda", "aca", "eaa"] })
-    );
+    const html = generateStatementHtml(baseInput({ jurisdictions: ["ada", "aoda", "aca", "eaa"] }));
     expect(html).toContain("the ADA (US)");
     expect(html).toContain("AODA (Ontario, Canada)");
     expect(html).toContain("the ACA (Canada)");
@@ -74,17 +72,13 @@ describe("generateStatementHtml", () => {
   });
 
   it("HTML-escapes the brand name to prevent injection", () => {
-    const html = generateStatementHtml(
-      baseInput({ brandName: '<script>alert(1)</script>' })
-    );
+    const html = generateStatementHtml(baseInput({ brandName: "<script>alert(1)</script>" }));
     expect(html).not.toContain("<script>alert(1)</script>");
     expect(html).toContain("&lt;script&gt;");
   });
 
   it("HTML-escapes the contact email", () => {
-    const html = generateStatementHtml(
-      baseInput({ contactEmail: 'a"b@x.test' })
-    );
+    const html = generateStatementHtml(baseInput({ contactEmail: 'a"b@x.test' }));
     expect(html).not.toContain('a"b@x.test');
     expect(html).toContain("&quot;");
   });
@@ -143,8 +137,7 @@ function makeFakeClient() {
 
   function from(_table: string) {
     const state: { filters: Record<string, any> } = { filters: {} };
-    const matches = (r: any) =>
-      Object.entries(state.filters).every(([c, v]) => r[c] === v);
+    const matches = (r: any) => Object.entries(state.filters).every(([c, v]) => r[c] === v);
 
     const builder: any = {
       select() {

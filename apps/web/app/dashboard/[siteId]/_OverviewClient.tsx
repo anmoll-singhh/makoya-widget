@@ -282,7 +282,9 @@ export function OverviewClient({ siteId, domain, initialData, initialScanTrend }
     }
     let live = true;
     fetch(`/api/sites/${siteId}/scan-trend`, { credentials: "same-origin" })
-      .then((r) => (r.ok ? (r.json() as Promise<{ trend: ScoreTrendPoint[] }>) : Promise.reject(r.status)))
+      .then((r) =>
+        r.ok ? (r.json() as Promise<{ trend: ScoreTrendPoint[] }>) : Promise.reject(r.status)
+      )
       .then((d) => {
         if (live) setScanTrend(d.trend ?? []);
       })
@@ -485,10 +487,10 @@ export function OverviewClient({ siteId, domain, initialData, initialScanTrend }
           </div>
 
           {/* Right: score gauge — glassmorphism card matching v7 mockup design.
-               * mk-glass gives: semi-transparent blue-tinted fill, backdrop blur,
-               * inner highlight border, and elevation shadow. The hero-bg gradient
-               * shows through the glass, creating the branded gradient-on-gradient
-               * effect from the v7 design spec. */}
+           * mk-glass gives: semi-transparent blue-tinted fill, backdrop blur,
+           * inner highlight border, and elevation shadow. The hero-bg gradient
+           * shows through the glass, creating the branded gradient-on-gradient
+           * effect from the v7 design spec. */}
           <div className="gcard mk-glass" style={{ justifyContent: "center" }}>
             <div className="hg">
               <GaugeRing
@@ -666,9 +668,7 @@ export function OverviewClient({ siteId, domain, initialData, initialScanTrend }
 
         <RevealItem as="section" className="card pad">
           <div className="dch">
-            <h3>
-              Next best action
-            </h3>
+            <h3>Next best action</h3>
             <Link className="viewall" href={`/dashboard/${siteId}/mike`}>
               View all
             </Link>

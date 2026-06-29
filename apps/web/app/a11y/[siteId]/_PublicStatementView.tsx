@@ -49,8 +49,8 @@ export function PublicStatementView({ html }: { html: string }) {
       */}
       <div dangerouslySetInnerHTML={{ __html: html }} />
       <p className="a11y-public__foot">
-        This statement describes the publisher&apos;s accessibility commitment and contact
-        details. It is not a legal certification.
+        This statement describes the publisher&apos;s accessibility commitment and contact details.
+        It is not a legal certification.
       </p>
     </main>
   );
