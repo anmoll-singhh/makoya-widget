@@ -22,7 +22,17 @@ import { getSiteBundle, type SiteLicense, type SiteConfig } from "@/lib/sites";
 import { readSiteBundle, writeSiteBundle } from "@/lib/config-cache";
 import { logWidgetGate } from "@/lib/observability";
 import { verifySiteToken } from "@/lib/licensing/token";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { DEFAULT_CONFIG } from "@makoya/shared";
+
+/** Client IP, best-effort, for per-caller rate limiting (Vercel sets x-forwarded-for). */
+function clientIp(req: Request): string {
+  return (
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    req.headers.get("x-real-ip") ||
+    "unknown"
+  );
+}
 
 /** Origin header → bare lowercase hostname, null-safe. */
 function hostFromOrigin(origin: string | null): string | null {
@@ -36,14 +46,19 @@ function hostFromOrigin(origin: string | null): string | null {
 
 /**
  * Best-effort domain deterrence (Phase 1 §6.5 — Origin is attacker-spoofable
- * outside a real browser; this is not a cryptographic wall). Lenient by design:
- *  - empty allowlist (not yet configured) → don't block,
- *  - no Origin (non-browser GET) → don't block,
+ * outside a real browser; this is not a cryptographic wall). Policy:
+ *  - empty allowlist (not yet configured) → don't block (lenient),
+ *  - non-empty allowlist + NO Origin → BLOCK. A real browser ALWAYS sends an
+ *    `Origin` on the widget's cross-origin config fetch, so a missing Origin
+ *    means a non-browser client (curl/proxy). Previously this passed, letting
+ *    anyone with the (public) token bypass the domain check with a one-liner
+ *    `curl …?t=TOKEN` that simply omits Origin. Closing it forces an attacker to
+ *    at least forge an Origin header.
  *  - otherwise the host must be explicitly listed.
  */
 function isAllowedDomain(host: string | null, allowed: string[]): boolean {
-  if (allowed.length === 0) return true;
-  if (!host) return true;
+  if (allowed.length === 0) return true; // not configured yet → lenient
+  if (!host) return false; // non-empty allowlist + no Origin → block (non-browser)
   return allowed.includes(host);
 }
 
@@ -91,6 +106,22 @@ export async function GET(req: Request, { params }: { params: Promise<{ siteId: 
     "cache-control": "no-store",
     "access-control-allow-origin": "*", // public read-only data, no credentials
   };
+
+  // Per-IP rate limit BEFORE any cache/DB work — this is the cheapest public
+  // endpoint and is `no-store` (uncached), so an unknown-siteId flood would
+  // otherwise hit Postgres on every request (DB DoS / bill-running). 120/min/IP
+  // is far above any human's pageview rate. checkRateLimit NEVER throws and FAILS
+  // OPEN on a Redis outage, so it can't break a real visitor. On limit we reply
+  // 429: the widget's fetchGatedConfig treats any non-200 as FAIL OPEN and mounts
+  // on defaults, so a throttled legit visitor still gets the widget (rule #1).
+  if (
+    await checkRateLimit(clientIp(req), { limit: 120, windowMs: 60_000, name: "widget-config" })
+  ) {
+    return NextResponse.json(
+      { siteId, active: true },
+      { status: 429, headers: { ...headers, "retry-after": "60" } }
+    );
+  }
 
   let site: SiteLicense | null = null;
   let cfg: SiteConfig | null = null;

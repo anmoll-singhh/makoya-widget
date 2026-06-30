@@ -16,6 +16,11 @@ export default defineConfig({
   define: {
     // Strip process.env references in browser build.
     "process.env.NODE_ENV": JSON.stringify("production"),
+    // `data-demo` is an OFFLINE-DEMO escape hatch that mounts the full widget with
+    // NO license/domain/token check. It must be OFF in the shipped bundle (else it
+    // is a free gate bypass: anyone embedding core.js with data-demo gets the
+    // widget). Defaults to false; set MAKOYA_ALLOW_DEMO=true only for a demo build.
+    __MAKOYA_ALLOW_DEMO__: JSON.stringify(process.env.MAKOYA_ALLOW_DEMO === "true"),
   },
   build: {
     // Don't wipe the other bundle when building the second target.

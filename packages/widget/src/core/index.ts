@@ -99,6 +99,19 @@ window.MakoyaWidget = { init };
  * unhandled rejection. fetchGatedConfig itself fails open ({} / active:true) on
  * any network/CORS/timeout error, so a real outage STILL mounts on defaults.
  */
+// Build-time constant injected by vite (`define`). false in the shipped bundle;
+// true only for an explicit demo build (MAKOYA_ALLOW_DEMO=true). Declared as
+// possibly-undefined because the tsx test runner does NOT do the define
+// substitution — there the `typeof` guard in demoAllowed() yields false.
+declare const __MAKOYA_ALLOW_DEMO__: boolean | undefined;
+
+/** Whether the `data-demo` no-fetch escape hatch is permitted in this build. */
+function demoAllowed(): boolean {
+  if (typeof __MAKOYA_ALLOW_DEMO__ !== "undefined") return __MAKOYA_ALLOW_DEMO__ === true;
+  // Test-runner path: the bundler define didn't run; honour a global if a test set one.
+  return (globalThis as { __MAKOYA_ALLOW_DEMO__?: boolean }).__MAKOYA_ALLOW_DEMO__ === true;
+}
+
 (async function autoInit() {
   try {
     const self =
@@ -114,7 +127,12 @@ window.MakoyaWidget = { init };
     const colorPart = color ? { primaryColor: color } : {};
 
     // Offline-demo escape hatch: mount on defaults, skip the network entirely.
-    if (self.hasAttribute("data-demo")) {
+    // GATED: only honoured when the build enabled it (__MAKOYA_ALLOW_DEMO__).
+    // The shipped production bundle sets this false (vite.config.ts), so a
+    // freeloader cannot embed core.js with data-demo to bypass the licensing
+    // gate. Under the tsx test runner the symbol is undefined → typeof guard →
+    // false (fail-closed); the demo test sets globalThis.__MAKOYA_ALLOW_DEMO__.
+    if (demoAllowed() && self.hasAttribute("data-demo")) {
       init({ siteId, ...colorPart });
       return;
     }

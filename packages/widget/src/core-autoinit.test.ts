@@ -7,7 +7,8 @@
  * Proves core/index.ts auto-init now FETCHES + GATES (the direct-core.js bypass
  * is closed) and NEVER throws:
  *   1. active:false response → init NOT reached (no mount).
- *   2. data-demo            → init reached WITHOUT any fetch (offline escape hatch).
+ *   2. data-demo (flag on)  → init reached WITHOUT any fetch (offline escape hatch);
+ *      and data-demo with the flag OFF (shipped bundle) is IGNORED → gated fetch.
  *   3. normal data-site     → fetch happens, THEN init reached (mount).
  *   4. data-no-auto         → neither fetch nor init (loader drives init).
  *   5. fetch throws         → does NOT propagate (no unhandled rejection) and
@@ -133,16 +134,33 @@ async function main(): Promise<void> {
     },
   );
 
-  // 2. data-demo → init reached WITHOUT a fetch -------------------------------
+  // 2. data-demo (demo build, flag ON) → init reached WITHOUT a fetch ----------
   await test(
-    "data-demo → init called WITHOUT fetch",
+    "data-demo + __MAKOYA_ALLOW_DEMO__ → init called WITHOUT fetch",
     () => {
+      (globalThis as { __MAKOYA_ALLOW_DEMO__?: boolean }).__MAKOYA_ALLOW_DEMO__ = true;
       setScript({ site: "demo" }, ["data-demo"]);
       nextFetch = { primaryColor: "#fff" };
     },
     () => {
-      assert.equal(fetchCalls, 0, "data-demo must NOT hit the network");
+      assert.equal(fetchCalls, 0, "data-demo must NOT hit the network in a demo build");
       assert.equal(mountAttempts, 1, "data-demo must still mount on defaults");
+    },
+  );
+
+  // 2b. data-demo in the SHIPPED bundle (flag OFF) → demo is IGNORED, the gated
+  //     fetch path runs instead. This is the production-safety guarantee: a
+  //     freeloader cannot use data-demo to bypass the licensing gate.
+  await test(
+    "data-demo WITHOUT the flag → ignored, falls through to the gated fetch",
+    () => {
+      (globalThis as { __MAKOYA_ALLOW_DEMO__?: boolean }).__MAKOYA_ALLOW_DEMO__ = false;
+      setScript({ site: "demo" }, ["data-demo"]);
+      nextFetch = { primaryColor: "#fff" }; // active not false → mounts after gating
+    },
+    () => {
+      assert.equal(fetchCalls, 1, "data-demo must be IGNORED in prod → gated fetch runs");
+      assert.equal(mountAttempts, 1, "still mounts (verdict allowed) via the normal path");
     },
   );
 

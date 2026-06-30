@@ -102,6 +102,18 @@ export function captureError(err: unknown, context?: Record<string, unknown>): v
  * the widget is still served — so the founder can watch the funnel before
  * flipping `WIDGET_ENFORCE=true`. Routed through this seam, never raw console at
  * the call site (CLAUDE.md observability rule).
+ *
+ * Two destinations, both no-ops until their key is set, both wrapped so a failure
+ * NEVER breaks the gate (the config route's never-500 / fail-open contract must
+ * survive a broken reporter):
+ *   1. Sentry — a `warning`-level message, GROUPED BY `reason` (one issue per
+ *      check, with a running count) so the founder sees enforcement volume at a
+ *      glance; siteId/host/status ride along as `extra`.
+ *   2. PostHog — a `widget_gate_denied` funnel event keyed to the site, so the
+ *      denial path shows up alongside the rest of the product funnel.
+ * In non-prod we also emit a `console.debug` (dev only — never prod, to avoid
+ * leaking siteId/host/licenseStatus into production server logs as the prior
+ * TODO warned). This was an EMPTY no-op before: enforcement ran blind in prod.
  */
 export function logWidgetGate(info: {
   siteId: string;
@@ -111,6 +123,23 @@ export function logWidgetGate(info: {
   /** Which check produced the would-be denial (Phase 1.5). */
   reason: "domain" | "license" | "token" | "no-site";
 }): void {
-  // TODO(phase-3): forward to PostHog/Sentry as a structured event instead of
-  // a console.warn (which would leak siteId/host/licenseStatus to server logs).
+  if (!isProd) console.debug(`[widget-gate] ${info.reason}`, info);
+
+  // Sentry: group by reason so all sites' "domain" denials collapse into one
+  // issue with a count (funnel visibility, not per-site noise). Never throws.
+  if (env.SENTRY_DSN || env.SENTRY_DSN_PUBLIC) {
+    try {
+      Sentry.captureMessage(`widget-gate:${info.reason}`, {
+        level: "warning",
+        extra: { ...info },
+        fingerprint: ["widget-gate", info.reason],
+      });
+    } catch {
+      // Observability must never break the gate.
+    }
+  }
+
+  // PostHog: a product-funnel event (no-op without a key). `track` is itself
+  // wrapped to never throw; `distinctId` stitches to the site.
+  track("widget_gate_denied", { distinctId: info.siteId, ...info });
 }

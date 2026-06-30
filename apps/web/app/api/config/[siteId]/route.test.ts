@@ -22,6 +22,7 @@ const getSiteBundle = vi.fn();
 const readSiteBundle = vi.fn();
 const writeSiteBundle = vi.fn();
 const logWidgetGate = vi.fn();
+const checkRateLimit = vi.fn();
 
 // The route only passes this sentinel straight into the (mocked) data layer.
 vi.mock("@/lib/supabase/admin", () => ({
@@ -39,6 +40,10 @@ vi.mock("@/lib/config-cache", () => ({
 
 vi.mock("@/lib/observability", () => ({
   logWidgetGate: (...args: unknown[]) => logWidgetGate(...args),
+}));
+
+vi.mock("@/lib/rate-limit", () => ({
+  checkRateLimit: (...args: unknown[]) => checkRateLimit(...args),
 }));
 
 import { GET } from "./route";
@@ -99,6 +104,9 @@ beforeEach(() => {
   readSiteBundle.mockReset();
   writeSiteBundle.mockReset();
   logWidgetGate.mockReset();
+  checkRateLimit.mockReset();
+  // Default: not rate-limited (allow through).
+  checkRateLimit.mockResolvedValue(false);
   // Default: cache MISS → route uses the Postgres path. Write is a no-op spy.
   readSiteBundle.mockResolvedValue(null);
   writeSiteBundle.mockResolvedValue(undefined);
@@ -242,12 +250,34 @@ describe("GET /api/config/[siteId] — enforce mode verdicts", () => {
     expect(json.active).toBe(true);
   });
 
-  it("no Origin header → not blocked (host=null is lenient)", async () => {
+  it("no Origin header + non-empty allowlist → active:false (closes the no-Origin/curl bypass)", async () => {
     enforce(true);
     dbBundle(license());
 
     const json = (await (await call(undefined)).json()) as Record<string, unknown>;
+    expect(json.active).toBe(false);
+    expect(logWidgetGate).toHaveBeenCalledWith(
+      expect.objectContaining({ host: null, status: "active", enforced: true, reason: "domain" })
+    );
+  });
+
+  it("no Origin header + EMPTY allowlist → active:true (still lenient when unconfigured)", async () => {
+    enforce(true);
+    dbBundle(license({ allowedDomains: [] }));
+
+    const json = (await (await call(undefined)).json()) as Record<string, unknown>;
     expect(json.active).toBe(true);
+  });
+
+  it("monitor mode + no Origin + non-empty allowlist → active:true but denial logged", async () => {
+    enforce(false);
+    dbBundle(license());
+
+    const json = (await (await call(undefined)).json()) as Record<string, unknown>;
+    expect(json.active).toBe(true);
+    expect(logWidgetGate).toHaveBeenCalledWith(
+      expect.objectContaining({ host: null, enforced: false, reason: "domain" })
+    );
   });
 });
 
@@ -336,6 +366,35 @@ describe("GET /api/config/[siteId] — caching contract", () => {
     await call("https://shop.example");
 
     expect(writeSiteBundle).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /api/config/[siteId] — rate limiting", () => {
+  it("over the per-IP limit → 429 with active:true (widget fails open) and NO DB/cache work", async () => {
+    enforce(true);
+    checkRateLimit.mockResolvedValue(true); // over limit
+    dbBundle(license());
+
+    const res = await call("https://shop.example");
+    const json = (await res.json()) as Record<string, unknown>;
+
+    expect(res.status).toBe(429);
+    expect(json.active).toBe(true); // non-200 → fetchGatedConfig fails open → widget mounts
+    expect(res.headers.get("retry-after")).toBe("60");
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    // Throttled BEFORE any cache/DB work.
+    expect(readSiteBundle).not.toHaveBeenCalled();
+    expect(getSiteBundle).not.toHaveBeenCalled();
+  });
+
+  it("under the limit → normal flow proceeds", async () => {
+    enforce(true);
+    checkRateLimit.mockResolvedValue(false);
+    dbBundle(license());
+
+    const res = await call("https://shop.example");
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as Record<string, unknown>).active).toBe(true);
   });
 });
 

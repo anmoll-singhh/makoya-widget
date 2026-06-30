@@ -1,7 +1,8 @@
 import "server-only";
 import { getAdminSupabase } from "@/lib/supabase/admin";
-import type { Plan, RequestStatus } from "@/lib/admin-constants";
+import type { Plan, RequestStatus, LicenseStatus } from "@/lib/admin-constants";
 import { createSite } from "@/lib/sites";
+import { purgeSiteBundle } from "@/lib/config-cache";
 import { issueCountFromTotals } from "@/lib/issue-count-utils";
 import { captureError } from "@/lib/observability";
 
@@ -205,6 +206,42 @@ export async function getAdminSiteDetail(siteId: string): Promise<AdminSiteDetai
 export async function updateSitePlan(siteId: string, plan: Plan): Promise<void> {
   const { error } = await getAdminSupabase().from("sites").update({ plan }).eq("id", siteId);
   if (error) throw error;
+}
+
+/**
+ * Set a site's license_status — the kill-switch the licensing gate reads. Purges
+ * the config cache so the change is live within one Redis round-trip instead of
+ * waiting out the 300s TTL (the TTL is the backstop if the purge no-ops). This is
+ * how the founder suspends a bad actor or reactivates a paid site WITHOUT a manual
+ * Supabase edit. Throws on a DB error (the admin route surfaces it).
+ */
+export async function updateSiteLicenseStatus(
+  siteId: string,
+  licenseStatus: LicenseStatus
+): Promise<void> {
+  const { error } = await getAdminSupabase()
+    .from("sites")
+    .update({ license_status: licenseStatus })
+    .eq("id", siteId);
+  if (error) throw error;
+  await purgeSiteBundle(siteId);
+}
+
+/**
+ * Replace a site's allowed_domains allowlist (apex/www/staging). Same cache-purge
+ * discipline as updateSiteLicenseStatus so a domain change takes effect at once.
+ * The route normalizes + validates the hosts before calling this.
+ */
+export async function updateSiteAllowedDomains(
+  siteId: string,
+  allowedDomains: string[]
+): Promise<void> {
+  const { error } = await getAdminSupabase()
+    .from("sites")
+    .update({ allowed_domains: allowedDomains })
+    .eq("id", siteId);
+  if (error) throw error;
+  await purgeSiteBundle(siteId);
 }
 
 export async function listConsultationRequests(): Promise<AdminRequest[]> {
