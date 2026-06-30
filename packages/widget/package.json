@@ -12,9 +12,9 @@
     "test": "tsx src/fetch-config.test.ts && tsx src/core-autoinit.test.ts && tsx src/loader.test.ts && tsx src/core/state.test.ts && tsx src/core/telemetry.test.ts && tsx src/ui/dictionary.test.ts"
   },
   "devDependencies": {
-    "cross-env": "^7.0.3",
+    "cross-env": "^10.1.0",
     "tsx": "^4.19.2",
-    "typescript": "^5.9.3",
-    "vite": "^5.4.21"
+    "typescript": "^6.0.3",
+    "vite": "^8.1.2"
   }
 }
