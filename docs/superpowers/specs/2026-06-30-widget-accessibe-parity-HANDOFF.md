@@ -12,7 +12,11 @@ Code session pick up the accessiBe-parity widget build with zero loss.
 - **Spec (the source of truth for what to build):**
   `docs/superpowers/specs/2026-06-30-widget-accessibe-parity-design.md`
   (commit `fc315a5`).
-- **Next action:** start **Wave 0** (foundation). Nothing is built yet.
+- **Next action (founder directive):** do **NOT** start Wave 0 yet. **FIRST**
+  dispatch a specialist agent to review + critique this spec, then treat its
+  verdict as the build directive — apply its changes to the spec and go
+  **straight into building** (no further founder-approval gate). See
+  "STEP 0 — Spec critique" below.
 
 ## Locked founder decisions (do NOT re-ask)
 
@@ -24,6 +28,24 @@ Code session pick up the accessiBe-parity widget build with zero loss.
    abuse surface.
 5. **33 languages = NOT this round** (translation/content task). Keep en/es/fr/de.
 6. Delivery = **build → QA → deploy live** (`cd apps/web && vercel --prod`).
+
+## STEP 0 — Spec critique (do this BEFORE Wave 0)
+
+Founder directive: the build starts from an agent-reviewed spec, not founder
+sign-off. So:
+
+1. Dispatch a specialist agent to **critique the design spec**
+   (`2026-06-30-widget-accessibe-parity-design.md`). Recommended:
+   `ecc:architect` (system-design + feasibility + risk), and optionally
+   `ecc:a11y-architect` for the widget-invariant / accessibility angle. Ask it
+   for: blocking flaws, invariant violations, risky/underspecified areas,
+   sequencing problems, and concrete spec edits — a clear **verdict** (ship as-is
+   / ship with changes / rework) plus a prioritized change list.
+2. **Apply the verdict** directly: edit the spec to incorporate the agent's
+   accepted changes, commit it (`docs(spec): apply review verdict`).
+3. Then proceed **immediately** into Wave 0 → 4 with no further approval gate.
+   (Only pause for the founder if the agent flags something that contradicts a
+   locked decision above.)
 
 ## The build plan (waves — full detail in the spec §7)
 
@@ -92,5 +114,8 @@ npm ci                        # if node_modules missing
 
 Then tell the new session:
 > Read docs/superpowers/specs/2026-06-30-widget-accessibe-parity-HANDOFF.md and
-> the design spec beside it, then begin Wave 0. Decisions are locked — do not
-> re-ask. Build → QA → deploy live with specialist-agent review per the plan.
+> the design spec beside it. FIRST dispatch a specialist agent (ecc:architect)
+> to review and critique the spec; apply its verdict directly to the spec and
+> commit, then build straight through Wave 0 → 4 with no further approval gate.
+> Decisions are locked — do not re-ask. Build → QA → deploy live with
+> specialist-agent review per the plan.
