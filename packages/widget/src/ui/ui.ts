@@ -45,24 +45,37 @@ import { trackEvent } from "../core/telemetry";
  */
 function activeFeatureKeys(p: Prefs): Set<string> {
   const s = new Set<string>();
-  if (p.text !== 0) s.add("textSize");
-  if (p.spacing) s.add("lineSpacing");
+  if (p.contentScale !== 100) s.add("contentScale");
+  if (p.fontScale !== 100) s.add("textSize");
+  if (p.lineHeightPct !== 100) s.add("lineSpacing");
+  if (p.letterSpacingPct !== 0) s.add("letterSpacing");
   if (p.contrast !== "off") s.add("contrast");
   if (p.stopMotion) s.add("stopMotion");
   if (p.ruler) s.add("readingRuler");
   if (p.links) s.add("highlightLinks");
   if (p.cursor !== "off") s.add("bigCursor");
-  if (p.font) s.add("readableFont");
+  if (p.font !== "off") s.add("readableFont");
   if (p.images) s.add("hideImages");
   if (p.saturation !== "off") s.add("saturation");
   if (p.mask !== "off") s.add("readingMask");
   if (p.titles) s.add("highlightTitles");
-  if (p.align) s.add("textAlign");
+  if (p.textAlign !== "off") s.add("textAlign");
   if (p.mute) s.add("muteSounds");
   if (p.readAloud) s.add("readAloud");
   if (p.hoverHighlight) s.add("highlightHover");
   if (p.biggerTargets) s.add("biggerTargets");
   if (p.focusIndicator) s.add("focusIndicator");
+  if (p.textColor !== "") s.add("textColor");
+  if (p.titleColor !== "") s.add("titleColor");
+  if (p.bgColor !== "") s.add("bgColor");
+  if (p.magnifier) s.add("magnifier");
+  if (p.readMode) s.add("readMode");
+  if (p.usefulLinks) s.add("usefulLinks");
+  if (p.pageStructure) s.add("pageStructure");
+  if (p.keyboardNav) s.add("keyboardNav");
+  if (p.virtualKeyboard) s.add("virtualKeyboard");
+  if (p.voiceNav) s.add("voiceNav");
+  if (p.dictionary) s.add("dictionary");
   return s;
 }
 

@@ -22,7 +22,7 @@ import type { FeatureKey } from "@makoya/shared";
 import type { Prefs } from "../core/state";
 import type { Lang } from "./i18n";
 import { t } from "./i18n";
-import { makeSwitch, makeSeg, makeDiscreteStepper, makeColorPalette, row } from "./controls";
+import { makeSwitch, makeSeg, makeStepper, makeColorPalette, row } from "./controls";
 
 // ---------------------------------------------------------------------------
 // ICON map — decorative inline SVGs for all 15 FeatureKeys.
@@ -106,33 +106,37 @@ export function buildFeature(
   const icon = ICON[key] ?? "";
 
   switch (key) {
-    // ── Stepper ─────────────────────────────────────────────────────────────
+    // ── % steppers (continuous Content adjusters) ────────────────────────────
+    case "contentScale": {
+      const label = t(lang, "f_contentScale");
+      return row(icon, label, makeStepper(
+        lang, label, prefs.contentScale, 70, 150, 10,
+        (v) => { prefs.contentScale = v; }, onChange,
+      ));
+    }
+
     case "textSize": {
       const label = t(lang, "f_textSize");
-      // prefs.text is a discrete 0|1|2|3 index. The four levels and their
-      // display labels exactly match the scale factors applied by effects.ts:
-      //   0 → 100% (default, no scaling)
-      //   1 → 112%
-      //   2 → 125%
-      //   3 → 140%
-      // A discrete stepper is used here instead of a continuous one so the
-      // display ALWAYS shows the label for the level that is actually applied —
-      // there is no intermediate value that could diverge from the real effect.
-      const TEXT_LEVELS: { label: string }[] = [
-        { label: "100%" },
-        { label: "112%" },
-        { label: "125%" },
-        { label: "140%" },
-      ];
-      const stepper = makeDiscreteStepper(
-        lang,
-        label,
-        TEXT_LEVELS,
-        prefs.text,
-        (i) => { prefs.text = i as Prefs["text"]; },
-        onChange
-      );
-      return row(icon, label, stepper);
+      return row(icon, label, makeStepper(
+        lang, label, prefs.fontScale, 80, 200, 10,
+        (v) => { prefs.fontScale = v; }, onChange,
+      ));
+    }
+
+    case "lineSpacing": {
+      const label = t(lang, "f_lineSpacing");
+      return row(icon, label, makeStepper(
+        lang, label, prefs.lineHeightPct, 100, 250, 10,
+        (v) => { prefs.lineHeightPct = v; }, onChange,
+      ));
+    }
+
+    case "letterSpacing": {
+      const label = t(lang, "f_letterSpacing");
+      return row(icon, label, makeStepper(
+        lang, label, prefs.letterSpacingPct, 0, 50, 5,
+        (v) => { prefs.letterSpacingPct = v; }, onChange,
+      ));
     }
 
     // ── Segmented controls ───────────────────────────────────────────────────
@@ -141,12 +145,48 @@ export function buildFeature(
       const seg = makeSeg(
         label,
         [
-          { value: "off",  label: t(lang, "opt_off")  },
-          { value: "on",   label: t(lang, "opt_on")   },
-          { value: "dark", label: t(lang, "opt_dark") },
+          { value: "off",   label: t(lang, "opt_off")   },
+          { value: "on",    label: t(lang, "opt_on")    },
+          { value: "light", label: t(lang, "opt_light") },
+          { value: "dark",  label: t(lang, "opt_dark")  },
+          { value: "high",  label: t(lang, "opt_high")  },
         ],
         prefs.contrast,
         (v) => { prefs.contrast = v as Prefs["contrast"]; },
+        onChange
+      );
+      return row(icon, label, seg);
+    }
+
+    case "textAlign": {
+      const label = t(lang, "f_textAlign");
+      const seg = makeSeg(
+        label,
+        [
+          { value: "off",     label: t(lang, "opt_off")     },
+          { value: "left",    label: t(lang, "opt_left")    },
+          { value: "center",  label: t(lang, "opt_center")  },
+          { value: "right",   label: t(lang, "opt_right")   },
+          { value: "justify", label: t(lang, "opt_justify") },
+        ],
+        prefs.textAlign,
+        (v) => { prefs.textAlign = v as Prefs["textAlign"]; },
+        onChange
+      );
+      return row(icon, label, seg);
+    }
+
+    case "readableFont": {
+      const label = t(lang, "f_readableFont");
+      const seg = makeSeg(
+        label,
+        [
+          { value: "off",      label: t(lang, "opt_off")      },
+          { value: "readable", label: t(lang, "opt_readable") },
+          { value: "dyslexic", label: t(lang, "opt_dyslexic") },
+        ],
+        prefs.font,
+        (v) => { prefs.font = v as Prefs["font"]; },
         onChange
       );
       return row(icon, label, seg);
@@ -202,22 +242,10 @@ export function buildFeature(
     }
 
     // ── Switch controls ──────────────────────────────────────────────────────
-    case "lineSpacing": {
-      const label = t(lang, "f_lineSpacing");
-      return row(icon, label,
-        makeSwitch(label, prefs.spacing, (v) => { prefs.spacing = v; }, onChange));
-    }
-
     case "highlightLinks": {
       const label = t(lang, "f_highlightLinks");
       return row(icon, label,
         makeSwitch(label, prefs.links, (v) => { prefs.links = v; }, onChange));
-    }
-
-    case "readableFont": {
-      const label = t(lang, "f_readableFont");
-      return row(icon, label,
-        makeSwitch(label, prefs.font, (v) => { prefs.font = v; }, onChange));
     }
 
     case "hideImages": {
@@ -258,12 +286,6 @@ export function buildFeature(
       const label = t(lang, "f_highlightTitles");
       return row(icon, label,
         makeSwitch(label, prefs.titles, (v) => { prefs.titles = v; }, onChange));
-    }
-
-    case "textAlign": {
-      const label = t(lang, "f_textAlign");
-      return row(icon, label,
-        makeSwitch(label, prefs.align, (v) => { prefs.align = v; }, onChange));
     }
 
     case "muteSounds": {

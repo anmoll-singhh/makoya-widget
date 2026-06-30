@@ -27,23 +27,49 @@ const STYLE_ID = "makoya-effects";
 
 /** The single stylesheet we add to the host <head>, scoped by html[data-mky-*]. */
 const EFFECT_CSS = `
-/* Text size — scale the ROOT font-size so rem/em/%-based text all grow.
-   (Scaling body alone misses rem-based text, which is most modern sites.) */
-html[data-mky-text="1"] { font-size: 112.5% !important; }
-html[data-mky-text="2"] { font-size: 125% !important; }
-html[data-mky-text="3"] { font-size: 140% !important; }
+/* ── Continuous typography — per-property gated CSS custom properties.
+   Each rule is keyed off its OWN attribute (set by state.ts ONLY when the value
+   deviates from default), so an untouched site — including html{font-size:62.5%}
+   rem-reset sites — is never affected. The inline --mky-* var carries the value.
+   We deliberately do NOT route these through one shared gate (that would force
+   font-size:100% / line-height:1 / letter-spacing:0 onto every site the moment
+   the visitor nudges any single control). */
 
-html[data-mky-spacing="on"] body,
-html[data-mky-spacing="on"] body * {
-  line-height: 1.8 !important;
-  letter-spacing: 0.04em !important;
-  word-spacing: 0.12em !important;
-}
+/* Font size — scale the ROOT font-size so rem/em/%-based text all grow. */
+html[data-mky-fontscale] { font-size: calc(100% * var(--mky-font-scale, 1)) !important; }
 
-html[data-mky-font="on"] body,
-html[data-mky-font="on"] body * {
+/* Line height */
+html[data-mky-lh] body,
+html[data-mky-lh] body * { line-height: var(--mky-line-height, 1.5) !important; }
+
+/* Letter spacing */
+html[data-mky-ls] body,
+html[data-mky-ls] body * { letter-spacing: var(--mky-letter-spacing, 0) !important; }
+
+/* Content scaling — whole-page zoom on BODY (keeps the html-mounted widget safe).
+   zoom:1 is a no-op; gated so it only engages when the visitor changes it. */
+html[data-mky-zoom] body { zoom: var(--mky-zoom, 1) !important; }
+
+/* Readable / dyslexia font (segmented; old boolean "on" removed). */
+html[data-mky-font="readable"] body,
+html[data-mky-font="readable"] body * {
   font-family: Verdana, "Segoe UI", Tahoma, Arial, sans-serif !important;
 }
+html[data-mky-font="dyslexic"] body,
+html[data-mky-font="dyslexic"] body * {
+  /* OpenDyslexic when the embed (feat/a11y-font-embed) lands; safe stack until. */
+  font-family: "OpenDyslexic", "Comic Sans MS", "Segoe Print", Verdana, sans-serif !important;
+}
+
+/* Color overrides — curated swatches set inline vars; gated per property. The
+   widget host (mounted on <html>, Shadow DOM) is excluded belt-and-braces. */
+html[data-mky-textcolor] body *:not(#makoya-widget-root) { color: var(--mky-text-color) !important; }
+html[data-mky-titlecolor] body h1, html[data-mky-titlecolor] body h2,
+html[data-mky-titlecolor] body h3, html[data-mky-titlecolor] body h4,
+html[data-mky-titlecolor] body h5, html[data-mky-titlecolor] body h6 {
+  color: var(--mky-title-color) !important;
+}
+html[data-mky-bgcolor] body { background-color: var(--mky-bg-color) !important; }
 
 html[data-mky-images="off"] img,
 html[data-mky-images="off"] picture,
@@ -57,6 +83,10 @@ html[data-mky-images="off"] video {
    coexist on the single "filter" property — a property can only be set once. */
 body { filter: var(--mky-f-contrast,) var(--mky-f-sat,); }
 html[data-mky-contrast="on"]   { --mky-f-contrast: contrast(1.18); }
+/* High contrast — stronger boost, composes through the same body-filter var. */
+html[data-mky-contrast="high"] { --mky-f-contrast: contrast(1.5); }
+/* Light contrast — NOT a filter: force a light surface with dark text. */
+html[data-mky-contrast="light"] body { background: #ffffff !important; color: #1a1a1a !important; }
 html[data-mky-contrast="dark"] { --mky-f-contrast: invert(1) hue-rotate(180deg); }
 html[data-mky-contrast="dark"] { background: #000; }
 html[data-mky-contrast="dark"] body { background: #fff; }
@@ -95,8 +125,12 @@ html[data-mky-titles="on"] h5, html[data-mky-titles="on"] h6 {
   outline: 2px solid #facc15 !important; outline-offset: 2px;
 }
 
-/* Left-align — normalises centred/justified layouts for readability. */
-html[data-mky-align="on"] body, html[data-mky-align="on"] body * { text-align: left !important; }
+/* Text alignment — segmented (left/center/right/justify). Normalises a site's
+   layout to the visitor's preferred reading alignment. */
+html[data-mky-align="left"] body, html[data-mky-align="left"] body * { text-align: left !important; }
+html[data-mky-align="center"] body, html[data-mky-align="center"] body * { text-align: center !important; }
+html[data-mky-align="right"] body, html[data-mky-align="right"] body * { text-align: right !important; }
+html[data-mky-align="justify"] body, html[data-mky-align="justify"] body * { text-align: justify !important; }
 
 /* Bigger targets — increase minimum tap/click area on interactive elements.
    Adds symmetric padding so links/buttons are ≥44px tall and easier to hit
@@ -144,4 +178,16 @@ export function setHtmlAttr(name: string, value: string | null): void {
   const html = document.documentElement;
   if (value === null) html.removeAttribute(name);
   else html.setAttribute(name, value);
+}
+
+/**
+ * Set (or clear) an inline CSS custom property on <html>. Used for the
+ * continuous typography/zoom/color effects, whose values can't be enumerated as
+ * attributes. Passing null removes the property so the gated rule falls back to
+ * its `var(..., default)` and the page returns to its untouched state.
+ */
+export function setHtmlVar(name: string, value: string | null): void {
+  const html = document.documentElement;
+  if (value === null) html.style.removeProperty(name);
+  else html.style.setProperty(name, value);
 }

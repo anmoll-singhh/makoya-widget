@@ -29,28 +29,69 @@ export const LAUNCHER_ICONS: Record<LauncherIconKey, string> = {
   adjust: `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 7h11a3 3 0 0 1 6 0h1a1 1 0 0 1 0 2h-1a3 3 0 0 1-6 0H3a1 1 0 0 1 0-2zm6 8a3 3 0 0 1 6 0h6a1 1 0 0 1 0 2h-6a3 3 0 0 1-6 0H3a1 1 0 0 1 0-2h6z"/></svg>`,
 };
 
-/** Every toggle the widget can show. Keep this list in sync with the UI. */
+/** Every toggle the widget can show. Keep this list in sync with the UI.
+ *
+ * accessiBe-parity expansion (2026-06-30): the four original "Content" adjusters
+ * became full `%` steppers (`textSize`→fontScale, `lineSpacing`→lineHeightPct,
+ * plus new `contentScale` + `letterSpacing`), and a large set of color, nav, and
+ * chrome tools were added. The display order here is the canonical order that
+ * `DEFAULT_CONFIG.featuresEnabled` and `apps/web/lib/customizer/feature-meta.ts`
+ * MUST both match. */
 export type FeatureKey =
+  // ── Content adjusters (% steppers + segs) ────────────────────────────────
+  | "contentScale"
   | "textSize"
   | "lineSpacing"
-  | "contrast"
-  | "stopMotion"
-  | "readingRuler"
-  | "highlightLinks"
-  | "bigCursor"
+  | "letterSpacing"
   | "readableFont"
-  | "hideImages"
-  | "saturation"
-  | "readingMask"
-  | "highlightTitles"
   | "textAlign"
-  | "muteSounds"
-  | "readAloud"
+  | "highlightTitles"
+  | "highlightLinks"
+  | "hideImages"
+  | "stopMotion"
+  // ── Color / display ──────────────────────────────────────────────────────
+  | "contrast"
+  | "saturation"
+  | "textColor"
+  | "titleColor"
+  | "bgColor"
+  | "readingMask"
+  // ── Orientation / navigation ─────────────────────────────────────────────
+  | "readingRuler"
+  | "bigCursor"
   | "highlightHover"
   /** Enlarge the tap/click target area on links, buttons, and interactive elements. */
   | "biggerTargets"
   /** Enhance visible focus indicators on all keyboard-focusable elements. */
-  | "focusIndicator";
+  | "focusIndicator"
+  /** Pointer-driven magnifier lens overlay. */
+  | "magnifier"
+  /** Extract the main article into a distraction-free reading pane (our overlay). */
+  | "readMode"
+  /** Jump-menu of the page's links. */
+  | "usefulLinks"
+  /** Jump-menu of the page's headings / landmarks / forms. */
+  | "pageStructure"
+  /** Modifier-based quick-jump keyboard shortcuts + focus ring. */
+  | "keyboardNav"
+  /** On-screen virtual keyboard that types into the focused host input. */
+  | "virtualKeyboard"
+  /** Voice navigation via SpeechRecognition (feature-detected). */
+  | "voiceNav"
+  // ── Audio ────────────────────────────────────────────────────────────────
+  | "muteSounds"
+  | "readAloud"
+  // ── Chrome / tools ───────────────────────────────────────────────────────
+  /** Look up a selected word via dictionaryapi.dev (client-side, fail-silent). */
+  | "dictionary"
+  /** Visitor reports an accessibility issue → emails the site owner. */
+  | "feedbackForm"
+  /** Hide the launcher for the rest of the session. */
+  | "hideInterface"
+  /** In-panel help / user guide. */
+  | "userGuide"
+  /** AI text simplification (ships OFF per-site behind `aiSimplifyEnabled`). */
+  | "aiSimplify";
 
 export type WidgetLauncherSize = "sm" | "md" | "lg";
 export type WidgetLanguage = "en" | "es" | "fr" | "de";
@@ -60,7 +101,13 @@ export type WidgetProfileKey =
   /** Motor / tremor-friendly: big cursor, extra tap-target area, stop motion. */
   | "motorTremor"
   /** ESL / easy-reading: readable font, line spacing, reading ruler. */
-  | "eslReading";
+  | "eslReading"
+  /** Keyboard navigation: modifier shortcuts + enhanced focus + bigger targets. */
+  | "keyboardNav"
+  /** Clear reading: readable font + heading/link highlighting + structure aids.
+   *  (Completes accessiBe's 6th profile; named to avoid screen-reader compliance
+   *  framing — profile names are user-facing and fall under the copy guardrail.) */
+  | "clearReading";
 
 export interface WidgetConfig {
   /** Public site id (lives in the <script> snippet — NOT a secret). */
@@ -123,6 +170,14 @@ export interface WidgetConfig {
    * for top-edge positions: away from top). Clamped to ±200 px.
    */
   offsetY: number;
+  /**
+   * Enable the AI Text Simplification tool for this site. Ships OFF: it is the
+   * only recurring-cost / abuse-surface tool on a public widget, so the server
+   * route (`/api/widget-simplify`) refuses (404/403) unless this is true. The
+   * `aiSimplify` FeatureKey can be listed in `featuresEnabled` but the control
+   * stays inert until the founder enables it per plan.
+   */
+  aiSimplifyEnabled: boolean;
 }
 
 /** Safe defaults. The widget MUST render even if config never loads. */
@@ -132,11 +187,17 @@ export const DEFAULT_CONFIG: WidgetConfig = {
   position: "bottom-right",
   launcherIcon: "accessibility",
   launcherShape: "circle",
+  // Canonical display order — MUST match the FeatureKey union order above and
+  // apps/web/lib/customizer/feature-meta.ts. Grouped: content, color/display,
+  // orientation/nav, audio, chrome/tools.
   featuresEnabled: [
-    "textSize","lineSpacing","contrast","stopMotion","readingRuler",
-    "highlightLinks","bigCursor","readableFont","hideImages",
-    "saturation","readingMask","highlightTitles","textAlign","muteSounds","readAloud",
-    "highlightHover","biggerTargets","focusIndicator",
+    "contentScale","textSize","lineSpacing","letterSpacing","readableFont",
+    "textAlign","highlightTitles","highlightLinks","hideImages","stopMotion",
+    "contrast","saturation","textColor","titleColor","bgColor","readingMask",
+    "readingRuler","bigCursor","highlightHover","biggerTargets","focusIndicator",
+    "magnifier","readMode","usefulLinks","pageStructure","keyboardNav",
+    "virtualKeyboard","voiceNav","muteSounds","readAloud",
+    "dictionary","feedbackForm","hideInterface","userGuide","aiSimplify",
   ],
   hideBranding: false,
   brandingUrl: "https://makoya.example/scan",
@@ -151,6 +212,7 @@ export const DEFAULT_CONFIG: WidgetConfig = {
   mobileEnabled: true,
   offsetX: 0,
   offsetY: 0,
+  aiSimplifyEnabled: false,
 };
 
 /** Clamp a number to [min, max]. */

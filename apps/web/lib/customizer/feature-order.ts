@@ -7,7 +7,7 @@
  *
  * Design constraints:
  *  - All functions return NEW arrays; no mutation.
- *  - The canonical 17-key order is derived from FEATURE_META (which itself
+ *  - The canonical 35-key order is derived from FEATURE_META (which itself
  *    mirrors DEFAULT_CONFIG.featuresEnabled).
  *  - `buildFeatureRows` treats the incoming `enabled` list as the user's
  *    current preference: enabled keys come first (in the order given), then
@@ -26,17 +26,17 @@ export interface FeatureRow {
 /** Set of valid FeatureKey strings, derived from FEATURE_META at module load. */
 const VALID_KEYS = new Set<string>(FEATURE_META.map((m) => m.key));
 
-/** Canonical 17-key order (same as DEFAULT_CONFIG.featuresEnabled). */
+/** Canonical 35-key order (same as DEFAULT_CONFIG.featuresEnabled). */
 const CANONICAL_ORDER: FeatureKey[] = FEATURE_META.map((m) => m.key);
 
 /**
- * Build the full 17-row list from a user's current `enabled` preference.
+ * Build the full row list from a user's current `enabled` preference.
  *
  * - Filters `enabled` to valid keys only, dedupes (first occurrence wins).
  * - Places those rows first with `on: true`, in the order given.
  * - Appends remaining keys in canonical order with `on: false`.
  *
- * Always returns exactly 17 rows.
+ * Always returns exactly one row per FEATURE_META entry.
  */
 export function buildFeatureRows(enabled: FeatureKey[]): FeatureRow[] {
   // Dedupe and validate: keep only known keys, first occurrence wins.
@@ -64,7 +64,7 @@ export function buildFeatureRows(enabled: FeatureKey[]): FeatureRow[] {
 
 /**
  * Extract the keys of all on-rows in row order.
- * Round-trips correctly through buildFeatureRows when all 15 are enabled.
+ * Round-trips correctly through buildFeatureRows when all keys are enabled.
  */
 export function rowsToEnabled(rows: FeatureRow[]): FeatureKey[] {
   return rows.filter((r) => r.on).map((r) => r.key);
@@ -74,11 +74,7 @@ export function rowsToEnabled(rows: FeatureRow[]): FeatureKey[] {
  * Swap the row at `index` with its neighbor in direction `dir` (-1 = up, 1 = down).
  * No-ops when already at the array boundary. Returns a new array.
  */
-export function moveRow(
-  rows: FeatureRow[],
-  index: number,
-  dir: -1 | 1
-): FeatureRow[] {
+export function moveRow(rows: FeatureRow[], index: number, dir: -1 | 1): FeatureRow[] {
   const neighbor = index + dir;
   if (neighbor < 0 || neighbor >= rows.length) {
     // At boundary — return a shallow copy so callers always get a new array.

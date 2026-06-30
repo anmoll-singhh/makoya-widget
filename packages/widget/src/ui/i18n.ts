@@ -52,6 +52,8 @@ export type StringKey =
   | "profile_colorBlind"
   | "profile_motorTremor"
   | "profile_eslReading"
+  | "profile_keyboardNav"
+  | "profile_clearReading"
 
   // Section headers (5)
   | "sec_content"
@@ -60,9 +62,11 @@ export type StringKey =
   | "sec_audio"
   | "sec_about"
 
-  // Feature labels (18 — one per FeatureKey)
+  // Feature labels (one per rendered FeatureKey; more added in Wave 3)
+  | "f_contentScale"
   | "f_textSize"
   | "f_lineSpacing"
+  | "f_letterSpacing"
   | "f_contrast"
   | "f_stopMotion"
   | "f_readingRuler"
@@ -81,9 +85,10 @@ export type StringKey =
   | "f_focusIndicator"
   | "rulerColor"
 
-  // Segmented-control option labels (10)
+  // Segmented-control option labels
   | "opt_off"
   | "opt_on"
+  | "opt_light"
   | "opt_dark"
   | "opt_grayscale"
   | "opt_low"
@@ -92,6 +97,12 @@ export type StringKey =
   | "opt_tint"
   | "opt_black"
   | "opt_white"
+  | "opt_left"
+  | "opt_center"
+  | "opt_right"
+  | "opt_justify"
+  | "opt_readable"
+  | "opt_dyslexic"
 
   // Stepper button aria-labels
   | "decrease"
@@ -132,6 +143,8 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     profile_colorBlind: "Color blind",
     profile_motorTremor: "Motor / tremor",
     profile_eslReading: "Easy reading",
+    profile_keyboardNav: "Keyboard nav",
+    profile_clearReading: "Clear reading",
 
     sec_content: "Content",
     sec_color: "Color",
@@ -139,8 +152,10 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     sec_audio: "Audio",
     sec_about: "About",
 
+    f_contentScale: "Page zoom",
     f_textSize: "Text size",
     f_lineSpacing: "Line spacing",
+    f_letterSpacing: "Letter spacing",
     f_contrast: "Contrast",
     f_stopMotion: "Pause animations",
     f_readingRuler: "Reading ruler",
@@ -161,6 +176,7 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
 
     opt_off: "Off",
     opt_on: "On",
+    opt_light: "Light",
     opt_dark: "Dark",
     opt_grayscale: "Grayscale",
     opt_low: "Low",
@@ -169,6 +185,12 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     opt_tint: "Tint",
     opt_black: "Black",
     opt_white: "White",
+    opt_left: "Left",
+    opt_center: "Center",
+    opt_right: "Right",
+    opt_justify: "Justify",
+    opt_readable: "Readable",
+    opt_dyslexic: "Dyslexic",
 
     decrease: "Decrease",
     increase: "Increase",
@@ -201,6 +223,8 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     profile_colorBlind: "Daltonismo",
     profile_motorTremor: "Motor / temblor",
     profile_eslReading: "Lectura fácil",
+    profile_keyboardNav: "Navegación teclado",
+    profile_clearReading: "Lectura clara",
 
     sec_content: "Contenido",
     sec_color: "Color",
@@ -208,8 +232,10 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     sec_audio: "Audio",
     sec_about: "Acerca de",
 
+    f_contentScale: "Zoom de página",
     f_textSize: "Tamaño de texto",
     f_lineSpacing: "Interlineado",
+    f_letterSpacing: "Espaciado de letras",
     f_contrast: "Contraste",
     f_stopMotion: "Pausar animaciones",
     f_readingRuler: "Regla de lectura",
@@ -230,6 +256,7 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
 
     opt_off: "Apagado",
     opt_on: "Encendido",
+    opt_light: "Claro",
     opt_dark: "Oscuro",
     opt_grayscale: "Escala de grises",
     opt_low: "Bajo",
@@ -238,6 +265,12 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     opt_tint: "Tinte",
     opt_black: "Negro",
     opt_white: "Blanco",
+    opt_left: "Izquierda",
+    opt_center: "Centro",
+    opt_right: "Derecha",
+    opt_justify: "Justificado",
+    opt_readable: "Legible",
+    opt_dyslexic: "Disléxica",
 
     decrease: "Disminuir",
     increase: "Aumentar",
@@ -270,6 +303,8 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     profile_colorBlind: "Daltonisme",
     profile_motorTremor: "Moteur / tremblements",
     profile_eslReading: "Lecture facile",
+    profile_keyboardNav: "Navigation clavier",
+    profile_clearReading: "Lecture claire",
 
     sec_content: "Contenu",
     sec_color: "Couleur",
@@ -277,8 +312,10 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     sec_audio: "Audio",
     sec_about: "À propos",
 
+    f_contentScale: "Zoom de la page",
     f_textSize: "Taille du texte",
     f_lineSpacing: "Interligne",
+    f_letterSpacing: "Espacement des lettres",
     f_contrast: "Contraste",
     f_stopMotion: "Pause animations",
     f_readingRuler: "Règle de lecture",
@@ -299,6 +336,7 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
 
     opt_off: "Désactivé",
     opt_on: "Activé",
+    opt_light: "Clair",
     opt_dark: "Sombre",
     opt_grayscale: "Niveaux de gris",
     opt_low: "Faible",
@@ -307,6 +345,12 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     opt_tint: "Teinte",
     opt_black: "Noir",
     opt_white: "Blanc",
+    opt_left: "Gauche",
+    opt_center: "Centre",
+    opt_right: "Droite",
+    opt_justify: "Justifié",
+    opt_readable: "Lisible",
+    opt_dyslexic: "Dyslexique",
 
     decrease: "Diminuer",
     increase: "Augmenter",
@@ -339,6 +383,8 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     profile_colorBlind: "Farbenblindheit",
     profile_motorTremor: "Motorik / Zittern",
     profile_eslReading: "Einfaches Lesen",
+    profile_keyboardNav: "Tastaturnavigation",
+    profile_clearReading: "Klares Lesen",
 
     sec_content: "Inhalt",
     sec_color: "Farbe",
@@ -346,8 +392,10 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     sec_audio: "Audio",
     sec_about: "Über",
 
+    f_contentScale: "Seitenzoom",
     f_textSize: "Textgröße",
     f_lineSpacing: "Zeilenabstand",
+    f_letterSpacing: "Zeichenabstand",
     f_contrast: "Kontrast",
     f_stopMotion: "Animationen anhalten",
     f_readingRuler: "Leselineal",
@@ -368,6 +416,7 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
 
     opt_off: "Aus",
     opt_on: "An",
+    opt_light: "Hell",
     opt_dark: "Dunkel",
     opt_grayscale: "Graustufen",
     opt_low: "Niedrig",
@@ -376,6 +425,12 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     opt_tint: "Tönung",
     opt_black: "Schwarz",
     opt_white: "Weiß",
+    opt_left: "Links",
+    opt_center: "Zentriert",
+    opt_right: "Rechts",
+    opt_justify: "Blocksatz",
+    opt_readable: "Lesbar",
+    opt_dyslexic: "Legasthenie",
 
     decrease: "Verringern",
     increase: "Erhöhen",

@@ -56,7 +56,7 @@ export const PROFILES: Profile[] = [
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>`,
     apply: (p) => {
       p.contrast = "on";
-      p.text = 3;            // largest step
+      p.fontScale = 140;
       p.cursor = "black";
     },
   },
@@ -67,8 +67,9 @@ export const PROFILES: Profile[] = [
     labelKey: "profile_lowVision",
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5 5l1.4 1.4M17.6 17.6L19 19M19 5l-1.4 1.4M6.4 17.6L5 19"/></svg>`,
     apply: (p) => {
-      p.text = 2;            // large step
-      p.spacing = true;
+      p.fontScale = 130;
+      p.lineHeightPct = 180;
+      p.letterSpacingPct = 5;
       p.cursor = "black";
       p.links = true;
     },
@@ -80,9 +81,10 @@ export const PROFILES: Profile[] = [
     labelKey: "profile_dyslexia",
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>`,
     apply: (p) => {
-      p.font = true;
-      p.spacing = true;
-      p.text = 1;            // moderate size increase
+      p.font = "dyslexic";
+      p.lineHeightPct = 180;
+      p.letterSpacingPct = 5;
+      p.fontScale = 110;
     },
   },
 
@@ -93,7 +95,7 @@ export const PROFILES: Profile[] = [
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>`,
     apply: (p) => {
       p.stopMotion = true;
-      p.spacing = true;
+      p.lineHeightPct = 180;
       p.links = true;
     },
   },
@@ -114,10 +116,10 @@ export const PROFILES: Profile[] = [
     labelKey: "profile_senior",
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>`,
     apply: (p) => {
-      p.text = 2;
-      p.spacing = true;
+      p.fontScale = 130;
+      p.lineHeightPct = 180;
       p.cursor = "black";
-      p.font = true;
+      p.font = "readable";
     },
   },
 
@@ -128,7 +130,7 @@ export const PROFILES: Profile[] = [
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24A2.5 2.5 0 0 1 9.5 2z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24A2.5 2.5 0 0 0 14.5 2z"/></svg>`,
     apply: (p) => {
       p.mask = "dim";
-      p.spacing = true;
+      p.lineHeightPct = 180;
       p.images = true;
       p.stopMotion = true;
     },
@@ -167,9 +169,33 @@ export const PROFILES: Profile[] = [
     labelKey: "profile_eslReading",
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>`,
     apply: (p) => {
-      p.font = true;
-      p.spacing = true;
+      p.font = "readable";
+      p.lineHeightPct = 180;
       p.ruler = true;
+    },
+  },
+
+  // ── 11. Keyboard navigation (NEW — completes accessiBe's 6) ──────────────
+  {
+    key: "keyboardNav",
+    labelKey: "profile_keyboardNav",
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>`,
+    apply: (p) => {
+      p.keyboardNav = true;
+      p.focusIndicator = true;
+      p.biggerTargets = true;
+    },
+  },
+
+  // ── 12. Clear reading (NEW — completes accessiBe's 6; compliance-safe name)
+  {
+    key: "clearReading",
+    labelKey: "profile_clearReading",
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M9 7h7M9 11h5"/></svg>`,
+    apply: (p) => {
+      p.font = "readable";
+      p.titles = true;
+      p.links = true;
     },
   },
 ];

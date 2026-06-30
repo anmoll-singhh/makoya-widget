@@ -193,6 +193,9 @@ export function makeStepper(
 
   const val = document.createElement("span");
   val.className = "mky-stepval";
+  // Polite live region so AT announces the new value after each +/- press.
+  val.setAttribute("role", "status");
+  val.setAttribute("aria-live", "polite");
 
   const inc = document.createElement("button");
   inc.className = "mky-step";
@@ -273,6 +276,9 @@ export function makeDiscreteStepper(
 
   const val = document.createElement("span");
   val.className = "mky-stepval";
+  // Polite live region so AT announces the new value after each +/- press.
+  val.setAttribute("role", "status");
+  val.setAttribute("aria-live", "polite");
 
   const inc = document.createElement("button");
   inc.className = "mky-step";

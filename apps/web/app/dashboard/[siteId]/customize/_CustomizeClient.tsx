@@ -118,6 +118,68 @@ const FEATURE_META: Record<FeatureKey, { label: string; icon: string; desc: stri
     icon: "ti-focus-2",
     desc: "Bold, high-contrast keyboard focus ring",
   },
+  // ── accessiBe-parity expansion (2026-06-30) ──────────────────────────────
+  contentScale: {
+    label: "Page zoom",
+    icon: "ti-zoom-in-area",
+    desc: "Scale the whole page 70–150%",
+  },
+  letterSpacing: {
+    label: "Letter spacing",
+    icon: "ti-letter-spacing",
+    desc: "Widen spacing between letters",
+  },
+  textColor: { label: "Text colour", icon: "ti-palette", desc: "Override body text colour" },
+  titleColor: { label: "Title colour", icon: "ti-palette", desc: "Override heading colour" },
+  bgColor: {
+    label: "Background colour",
+    icon: "ti-color-picker",
+    desc: "Override page background colour",
+  },
+  magnifier: {
+    label: "Text magnifier",
+    icon: "ti-zoom-in",
+    desc: "Pointer-driven magnifying lens",
+  },
+  readMode: { label: "Reading mode", icon: "ti-book", desc: "Distraction-free reading pane" },
+  usefulLinks: { label: "Useful links", icon: "ti-link", desc: "Jump menu of the page's links" },
+  pageStructure: {
+    label: "Page structure",
+    icon: "ti-list-tree",
+    desc: "Jump menu of headings & landmarks",
+  },
+  keyboardNav: {
+    label: "Keyboard navigation",
+    icon: "ti-keyboard",
+    desc: "Modifier shortcuts + focus ring",
+  },
+  virtualKeyboard: {
+    label: "Virtual keyboard",
+    icon: "ti-keyboard-show",
+    desc: "On-screen keyboard for inputs",
+  },
+  voiceNav: {
+    label: "Voice navigation",
+    icon: "ti-microphone",
+    desc: "Navigate by voice commands",
+  },
+  dictionary: { label: "Dictionary", icon: "ti-book-2", desc: "Look up a selected word" },
+  feedbackForm: {
+    label: "Feedback form",
+    icon: "ti-message-report",
+    desc: "Let visitors report an issue",
+  },
+  hideInterface: {
+    label: "Hide interface",
+    icon: "ti-eye-off",
+    desc: "Hide the launcher for the session",
+  },
+  userGuide: { label: "User guide", icon: "ti-help", desc: "In-panel help for the tools" },
+  aiSimplify: {
+    label: "AI simplify",
+    icon: "ti-wand",
+    desc: "Simplify selected text (off unless enabled)",
+  },
 };
 const FEATURE_KEYS = Object.keys(FEATURE_META) as FeatureKey[];
 

@@ -18,26 +18,43 @@ describe("shared launcher icons", () => {
 });
 
 describe("expanded widget config", () => {
-  it("DEFAULT_CONFIG exposes all 18 feature keys", () => {
+  it("DEFAULT_CONFIG exposes all 35 feature keys in canonical order", () => {
     expect(DEFAULT_CONFIG.featuresEnabled).toEqual([
+      "contentScale",
       "textSize",
       "lineSpacing",
-      "contrast",
-      "stopMotion",
-      "readingRuler",
-      "highlightLinks",
-      "bigCursor",
+      "letterSpacing",
       "readableFont",
-      "hideImages",
-      "saturation",
-      "readingMask",
-      "highlightTitles",
       "textAlign",
-      "muteSounds",
-      "readAloud",
+      "highlightTitles",
+      "highlightLinks",
+      "hideImages",
+      "stopMotion",
+      "contrast",
+      "saturation",
+      "textColor",
+      "titleColor",
+      "bgColor",
+      "readingMask",
+      "readingRuler",
+      "bigCursor",
       "highlightHover",
       "biggerTargets",
       "focusIndicator",
+      "magnifier",
+      "readMode",
+      "usefulLinks",
+      "pageStructure",
+      "keyboardNav",
+      "virtualKeyboard",
+      "voiceNav",
+      "muteSounds",
+      "readAloud",
+      "dictionary",
+      "feedbackForm",
+      "hideInterface",
+      "userGuide",
+      "aiSimplify",
     ]);
   });
   it("DEFAULT_CONFIG has the new scalar fields with safe defaults", () => {
@@ -46,6 +63,7 @@ describe("expanded widget config", () => {
     expect(DEFAULT_CONFIG.accessibilityStatementUrl).toBe("");
     expect(DEFAULT_CONFIG.defaultLanguage).toBe("en");
     expect(DEFAULT_CONFIG.panelTitle).toBe("");
+    expect(DEFAULT_CONFIG.aiSimplifyEnabled).toBe(false);
   });
   it("resolveConfig fills new fields from defaults and keeps provided values", () => {
     expect(resolveConfig("s1", {}).launcherSize).toBe("md");
