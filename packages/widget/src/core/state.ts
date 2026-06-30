@@ -132,6 +132,8 @@ export interface Prefs {
   voiceNav: boolean;
   /** Dictionary lookup on text selection. LIVE. */
   dictionary: boolean;
+  /** AI text simplification on selection (server route, ships OFF per-site). LIVE. */
+  aiSimplify: boolean;
 }
 
 export const STORAGE_KEY = "makoya_prefs";
@@ -169,6 +171,7 @@ export const DEFAULT_PREFS: Prefs = {
   virtualKeyboard: false,
   voiceNav: false,
   dictionary: false,
+  aiSimplify: false,
 };
 
 /**

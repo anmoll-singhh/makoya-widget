@@ -40,3 +40,29 @@ export async function postFeedback(body: {
     return false;
   }
 }
+
+/**
+ * POST selected text to the AI-simplify route. Returns the simplified string on
+ * success, or null on ANY failure (route disabled/403, key missing/503, network,
+ * non-2xx). Never throws/rejects — the widget treats null as "not available".
+ */
+export async function postSimplify(body: {
+  siteId: string;
+  text: string;
+  lang?: string;
+}): Promise<string | null> {
+  try {
+    const origin = apiOrigin();
+    if (!origin || typeof fetch === "undefined") return null;
+    const res = await fetch(`${origin}/api/widget-simplify`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { ok?: boolean; text?: string };
+    return data?.ok && typeof data.text === "string" ? data.text : null;
+  } catch {
+    return null;
+  }
+}

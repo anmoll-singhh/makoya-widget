@@ -41,6 +41,7 @@ import { makeKeyboardNav } from "./keyboard-nav";
 import { makeVirtualKeyboard } from "./virtual-keyboard";
 import { makeVoiceNav } from "./voice-nav";
 import { makeDictionary, type DictState } from "./dictionary";
+import { makeSimplify } from "./simplify";
 import { makeJumpMenu, collectLinks, collectHeadings } from "./page-nav";
 import { postFeedback } from "./widget-net";
 import { trackEvent } from "../core/telemetry";
@@ -84,6 +85,7 @@ function activeFeatureKeys(p: Prefs): Set<string> {
   if (p.virtualKeyboard) s.add("virtualKeyboard");
   if (p.voiceNav) s.add("voiceNav");
   if (p.dictionary) s.add("dictionary");
+  if (p.aiSimplify) s.add("aiSimplify");
   return s;
 }
 
@@ -132,6 +134,7 @@ const FEATURE_SECTION: Record<string, "sec_content" | "sec_color" | "sec_nav" | 
   muteSounds:      "sec_audio",
   readAloud:       "sec_audio",
   dictionary:      "sec_tools",
+  aiSimplify:      "sec_tools",
   // feedbackForm, userGuide, hideInterface rendered separately (chrome).
 };
 
@@ -310,6 +313,18 @@ function _mount(config: WidgetConfig): void {
     }
   }
   const dictionary = makeDictionary({ getLang: () => lang, onResult: showDictResult });
+  // AI simplify: selecting text offers a "Simplify" button → POST to our route
+  // (flag-gated OFF per site; fails silent when disabled/unavailable).
+  const simplify = makeSimplify({
+    getLang: () => lang,
+    getSiteId: () => config.siteId,
+    getStrings: () => ({
+      action: t(lang, "as_action"),
+      loading: t(lang, "as_loading"),
+      failed: t(lang, "as_failed"),
+      close: t(lang, "close"),
+    }),
+  });
 
   // ─── Corner positioning + offsets ───────────────────────────────────────
   // offsetX/Y shift the button (and panel) away from the anchor corner.
@@ -401,6 +416,7 @@ function _mount(config: WidgetConfig): void {
       prefs.pageStructure   ? structureMenu.open()     : structureMenu.close();
       if (prefs.dictionary) dictionary.enable();
       else { dictionary.disable(); hideDictResult(); }
+      prefs.aiSimplify ? simplify.enable() : simplify.disable();
       savePrefs(prefs);
       // Telemetry (fire-and-forget, never affects the UI): emit feature_activated
       // for each feature that just transitioned off→on. The first apply only

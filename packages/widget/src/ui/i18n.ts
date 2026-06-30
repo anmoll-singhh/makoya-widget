@@ -115,6 +115,9 @@ export type StringKey =
   | "fb_sending"
   | "fb_sent"
   | "fb_failed"
+  | "as_action"
+  | "as_loading"
+  | "as_failed"
 
   // Segmented-control option labels
   | "opt_off"
@@ -263,6 +266,9 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     fb_sending: "Sending…",
     fb_sent: "Thanks — your feedback was sent.",
     fb_failed: "Couldn't send right now. Please try again later.",
+    as_action: "Simplify",
+    as_loading: "Simplifying…",
+    as_failed: "Couldn't simplify this text.",
   },
 
   // -------------------------------------------------------------------------
@@ -373,6 +379,9 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     fb_sending: "Enviando…",
     fb_sent: "Gracias — tus comentarios se enviaron.",
     fb_failed: "No se pudo enviar ahora. Inténtalo más tarde.",
+    as_action: "Simplificar",
+    as_loading: "Simplificando…",
+    as_failed: "No se pudo simplificar este texto.",
   },
 
   // -------------------------------------------------------------------------
@@ -483,6 +492,9 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     fb_sending: "Envoi…",
     fb_sent: "Merci — vos commentaires ont été envoyés.",
     fb_failed: "Envoi impossible pour le moment. Réessayez plus tard.",
+    as_action: "Simplifier",
+    as_loading: "Simplification…",
+    as_failed: "Impossible de simplifier ce texte.",
   },
 
   // -------------------------------------------------------------------------
@@ -593,6 +605,9 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     fb_sending: "Wird gesendet…",
     fb_sent: "Danke — Ihr Feedback wurde gesendet.",
     fb_failed: "Senden derzeit nicht möglich. Bitte später erneut versuchen.",
+    as_action: "Vereinfachen",
+    as_loading: "Wird vereinfacht…",
+    as_failed: "Dieser Text konnte nicht vereinfacht werden.",
   },
 };
 

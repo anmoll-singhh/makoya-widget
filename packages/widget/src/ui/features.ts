@@ -402,9 +402,14 @@ export function buildFeature(
       return row(icon, label,
         makeSwitch(label, prefs.dictionary, (v) => { prefs.dictionary = v; }, onChange));
     }
+    case "aiSimplify": {
+      const label = t(lang, "f_aiSimplify");
+      return row(icon, label,
+        makeSwitch(label, prefs.aiSimplify, (v) => { prefs.aiSimplify = v; }, onChange));
+    }
 
-    // feedbackForm, userGuide, hideInterface, aiSimplify are rendered by ui.ts
-    // (they need config / host context), so buildFeature intentionally skips them.
+    // feedbackForm, userGuide, hideInterface are rendered by ui.ts (they need
+    // config / host context), so buildFeature intentionally skips them.
     default:
       return null;
   }
