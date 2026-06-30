@@ -96,6 +96,13 @@ describe("POST /api/widget-simplify — gating", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("does NOT 500 when the site lookup throws (malformed siteId) → gated 403", async () => {
+    getSiteBundle.mockRejectedValue(new Error("invalid input syntax for type uuid"));
+    const res = await POST(makeReq(valid));
+    expect(res.status).toBe(403);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("blocks a disallowed origin with 403 when the allowlist is non-empty", async () => {
     getSiteBundle.mockResolvedValue({
       site: { allowedDomains: ["allowed.example"] },

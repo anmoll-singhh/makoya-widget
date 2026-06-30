@@ -115,6 +115,16 @@ describe("POST /api/widget-feedback", () => {
     expect(send).not.toHaveBeenCalled();
   });
 
+  it("does NOT 500 when the site lookup throws (malformed siteId) → accept-and-drop", async () => {
+    getSiteLicense.mockRejectedValue(new Error("invalid input syntax for type uuid"));
+    getSite.mockRejectedValue(new Error("invalid input syntax for type uuid"));
+    const res = await POST(makeReq(valid));
+    const json = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(200);
+    expect(json.emailed).toBe(false);
+    expect(send).not.toHaveBeenCalled();
+  });
+
   it("accepts the report but emailed:false when the owner has no email", async () => {
     getUserById.mockResolvedValue({ data: { user: { email: null } } });
     const res = await POST(makeReq(valid));

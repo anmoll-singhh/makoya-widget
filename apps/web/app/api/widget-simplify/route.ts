@@ -81,7 +81,15 @@ export async function POST(req: Request): Promise<NextResponse> {
 
   try {
     const admin = getAdminSupabase();
-    const { site, config } = await getSiteBundle(admin, siteId);
+    // A malformed siteId (e.g. non-UUID) makes the DB query throw — treat any
+    // lookup failure as "unknown site" so we return the gated 403, never a 500.
+    let site: Awaited<ReturnType<typeof getSiteBundle>>["site"] = null;
+    let config: Awaited<ReturnType<typeof getSiteBundle>>["config"] = null;
+    try {
+      ({ site, config } = await getSiteBundle(admin, siteId));
+    } catch {
+      /* unknown/invalid siteId → site/config stay null → 403 below */
+    }
 
     // Origin deterrence (lenient on empty/unknown — see widget-cors).
     if (!isAllowedOrigin(origin, site?.allowedDomains ?? [])) {

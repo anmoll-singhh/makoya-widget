@@ -94,13 +94,26 @@ export async function POST(req: Request): Promise<NextResponse> {
   try {
     const admin = getAdminSupabase();
 
+    // A malformed siteId (e.g. non-UUID) makes the DB query throw — treat any
+    // lookup failure as "unknown site" (accept-and-drop) rather than a 500.
+    let license: Awaited<ReturnType<typeof getSiteLicense>> = null;
+    let site: Awaited<ReturnType<typeof getSite>> = null;
+    try {
+      license = await getSiteLicense(admin, siteId);
+    } catch {
+      /* invalid/unknown siteId → treat allowlist as empty (lenient) below */
+    }
+
     // Origin deterrence against the site's allowlist (lenient — see widget-cors).
-    const license = await getSiteLicense(admin, siteId);
     if (!isAllowedOrigin(origin, license?.allowedDomains ?? [])) {
       return NextResponse.json({ error: "origin not allowed" }, { status: 403, headers: cors });
     }
 
-    const site = await getSite(admin, siteId);
+    try {
+      site = await getSite(admin, siteId);
+    } catch {
+      /* invalid/unknown siteId → fall through to accept-and-drop */
+    }
     if (!site) {
       // Unknown site — accept-and-drop (200) so the status code can't be used to
       // enumerate which siteIds exist. Identical shape to the no-owner path.
