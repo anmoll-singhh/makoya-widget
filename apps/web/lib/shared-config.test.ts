@@ -74,6 +74,30 @@ describe("expanded widget config", () => {
   });
 });
 
+describe("legacy featuresEnabled backfill (accessiBe-parity expansion)", () => {
+  it("surfaces the new features on a legacy-only list, keeping legacy on/off", () => {
+    const c = resolveConfig("s1", { featuresEnabled: ["textSize", "contrast", "saturation"] });
+    // new features appear...
+    expect(c.featuresEnabled).toContain("textColor");
+    expect(c.featuresEnabled).toContain("titleColor");
+    expect(c.featuresEnabled).toContain("bgColor");
+    expect(c.featuresEnabled).toContain("magnifier");
+    // ...the owner's enabled legacy features are kept...
+    expect(c.featuresEnabled).toContain("textSize");
+    expect(c.featuresEnabled).toContain("contrast");
+    // ...and a legacy feature the owner did NOT enable stays hidden.
+    expect(c.featuresEnabled).not.toContain("readAloud");
+  });
+  it("respects a list that already contains a new key (owner used new customizer)", () => {
+    const c = resolveConfig("s1", { featuresEnabled: ["textSize", "magnifier"] });
+    expect(c.featuresEnabled).toEqual(["textSize", "magnifier"]);
+  });
+  it("empty / absent featuresEnabled → the full default 35", () => {
+    expect(resolveConfig("s1", {}).featuresEnabled).toHaveLength(35);
+    expect(resolveConfig("s1", { featuresEnabled: [] }).featuresEnabled).toHaveLength(35);
+  });
+});
+
 describe("launcher shape + position offsets (Tasks 1 + 3)", () => {
   it("DEFAULT_CONFIG has launcherShape='circle' and offsets=0", () => {
     expect(DEFAULT_CONFIG.launcherShape).toBe("circle");

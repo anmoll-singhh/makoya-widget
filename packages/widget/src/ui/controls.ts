@@ -363,8 +363,8 @@ export function makeColorPalette(
   for (const swatch of swatches) {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "mky-swatch";
-    btn.style.background = swatch.value;
+    btn.className = swatch.value ? "mky-swatch" : "mky-swatch mky-swatch-off";
+    btn.style.background = swatch.value || "#ffffff";
     btn.dataset.swatchValue = swatch.value;
     btn.setAttribute("aria-label", `${groupLabel}: ${swatch.name}`);
     btn.setAttribute("aria-pressed", String(swatch.value === current));

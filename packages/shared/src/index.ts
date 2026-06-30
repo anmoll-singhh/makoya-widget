@@ -220,8 +220,39 @@ function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, v));
 }
 
+/**
+ * The feature set that existed BEFORE the accessiBe-parity expansion (2026-06-30).
+ * Used to detect a config saved before the new features existed, so the new tools
+ * can be surfaced on it (see `backfillFeatures`).
+ */
+const LEGACY_FEATURE_KEYS: ReadonlySet<FeatureKey> = new Set<FeatureKey>([
+  "textSize", "lineSpacing", "contrast", "stopMotion", "readingRuler",
+  "highlightLinks", "bigCursor", "readableFont", "hideImages", "saturation",
+  "readingMask", "highlightTitles", "textAlign", "muteSounds", "readAloud",
+  "highlightHover", "biggerTargets", "focusIndicator",
+]);
+
+/**
+ * Backward-compat: if a site's stored `featuresEnabled` contains ONLY pre-expansion
+ * keys, it was saved before the accessiBe-parity tools existed — so the visitor
+ * would never see colour pickers, magnifier, read mode, etc. We surface the NEW
+ * features (in canonical order) while preserving the owner's legacy on/off choices.
+ * Once ANY new key is present (the owner has used the new customizer), the list is
+ * respected exactly. This runs client-side in resolveConfig, so it fixes existing
+ * sites even when the served/cached config JSON is still the old shape.
+ */
+function backfillFeatures(enabled: FeatureKey[] | undefined): FeatureKey[] {
+  if (!Array.isArray(enabled) || enabled.length === 0) return [...DEFAULT_CONFIG.featuresEnabled];
+  const isLegacyOnly = enabled.every((k) => LEGACY_FEATURE_KEYS.has(k));
+  if (!isLegacyOnly) return enabled;
+  return DEFAULT_CONFIG.featuresEnabled.filter(
+    (k) => enabled.includes(k) || !LEGACY_FEATURE_KEYS.has(k)
+  );
+}
+
 /** Merge a partial config (from the network) over safe defaults.
- *  offsetX and offsetY are clamped to ±200 px for safety. */
+ *  offsetX and offsetY are clamped to ±200 px for safety; legacy feature lists
+ *  are backfilled with the new accessiBe-parity tools. */
 export function resolveConfig(
   siteId: string,
   partial: Partial<WidgetConfig> | null | undefined
@@ -230,5 +261,7 @@ export function resolveConfig(
   // Clamp offsets — avoids clients pushing the launcher off-screen.
   if (typeof merged.offsetX === "number") merged.offsetX = clamp(merged.offsetX, -200, 200);
   if (typeof merged.offsetY === "number") merged.offsetY = clamp(merged.offsetY, -200, 200);
+  // Surface new features on configs saved before they existed.
+  merged.featuresEnabled = backfillFeatures(merged.featuresEnabled);
   return merged;
 }

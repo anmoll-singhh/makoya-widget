@@ -222,6 +222,10 @@ function _mount(config: WidgetConfig): void {
   // prefs to defaults (deselect). "none" means no profile is active.
   let activeProfile: WidgetProfileKey = "none";
 
+  // Remembers which collapsible feature sections the user opened/closed this
+  // session, so a re-render (lang change, profile apply) doesn't reset them.
+  const sectionOpenState: Record<string, boolean> = {};
+
   // ─── Live controllers (constructed once) ────────────────────────────────
   const ruler     = makeRuler();
   const mask      = makeMask();
@@ -608,10 +612,16 @@ function _mount(config: WidgetConfig): void {
       const keys = sectionFeatures.get(secKey);
       if (!keys || keys.length === 0) continue; // skip empty sections
 
-      const sec = document.createElement("div");
+      // Collapsible section (native <details> — keyboard + screen-reader friendly).
+      // The two most-used groups start open; the rest collapse to cut clutter now
+      // that there are many tools. Open/closed state persists for the session.
+      const sec = document.createElement("details");
       sec.className = "mky-sec";
+      const persisted = sectionOpenState[secKey];
+      sec.open = persisted !== undefined ? persisted : (secKey === "sec_content" || secKey === "sec_color");
+      sec.addEventListener("toggle", () => { sectionOpenState[secKey] = sec.open; });
 
-      const secLabel = document.createElement("span");
+      const secLabel = document.createElement("summary");
       secLabel.className = "mky-sec-label";
       secLabel.textContent = t(lang, secKey);
       sec.appendChild(secLabel);
@@ -638,9 +648,11 @@ function _mount(config: WidgetConfig): void {
     const wantFeedback = config.featuresEnabled.includes("feedbackForm");
     const wantHide = config.featuresEnabled.includes("hideInterface");
     if (wantGuide || wantFeedback || wantHide) {
-      const sec = document.createElement("div");
+      const sec = document.createElement("details");
       sec.className = "mky-sec";
-      const secLabel = document.createElement("span");
+      sec.open = sectionOpenState["sec_about"] ?? false; // collapsed by default
+      sec.addEventListener("toggle", () => { sectionOpenState["sec_about"] = sec.open; });
+      const secLabel = document.createElement("summary");
       secLabel.className = "mky-sec-label";
       secLabel.textContent = t(lang, "sec_about");
       sec.appendChild(secLabel);

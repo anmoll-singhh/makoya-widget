@@ -327,6 +327,35 @@ export function PANEL_CSS(color: string, size: "sm" | "md" | "lg"): string {
   display: block;
 }
 
+/* Collapsible sections (<details>) — keep the panel uncluttered when there are
+   many tools. The label becomes a clickable disclosure with a rotating caret. */
+details.mky-sec > summary.mky-sec-label {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 36px;
+  margin: 2px 4px 4px;
+  padding: 6px 8px;
+  border-radius: 9px;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+details.mky-sec > summary.mky-sec-label::-webkit-details-marker { display: none; }
+details.mky-sec > summary.mky-sec-label::after {
+  content: "\\25B8"; /* ▸ */
+  font-size: 12px;
+  color: #94a3b8;
+  transition: transform .15s ease;
+}
+details.mky-sec[open] > summary.mky-sec-label::after { transform: rotate(90deg); }
+details.mky-sec > summary.mky-sec-label:hover { background: rgba(15,23,42,.045); }
+details.mky-sec > summary.mky-sec-label:focus-visible {
+  outline: 2px solid ${color};
+  outline-offset: 1px;
+}
+
 /* ─────────────────────────────────────────────────────────────────────────
    PROFILES (chip grid)
    ───────────────────────────────────────────────────────────────────────── */
@@ -413,6 +442,22 @@ export function PANEL_CSS(color: string, size: "sm" | "md" | "lg"): string {
 }
 .mky-swatch:hover {
   transform: scale(1.1);
+}
+/* "Off" swatch — a white circle with a diagonal slash so it reads as "none". */
+.mky-swatch-off {
+  position: relative;
+  background: #fff !important;
+}
+.mky-swatch-off::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 2px;
+  bottom: 2px;
+  width: 2px;
+  background: #ef4444;
+  transform: translateX(-50%) rotate(45deg);
+  border-radius: 2px;
 }
 .mky-swatch[aria-pressed="true"] {
   border-color: #0f172a;
