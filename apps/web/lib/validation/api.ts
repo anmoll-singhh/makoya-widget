@@ -150,8 +150,10 @@ export const widgetFeedbackBodySchema = z.object({
   message: z.string().min(1).max(2000),
   /** Optional reply-to email (visitors may report anonymously). */
   email: emailSchema.optional(),
-  /** Optional page URL where the issue was found (display-only label). */
-  url: httpUrlStringSchema.optional(),
+  /** Optional page URL where the issue was found. Uses the strict parsed schema
+   *  (asserts http/https via new URL()) so non-HTTP schemes and CRLF-bearing
+   *  hostnames can't reach the owner's email body. */
+  url: parsedHttpUrlSchema.optional(),
 });
 export type WidgetFeedbackBody = z.infer<typeof widgetFeedbackBodySchema>;
 

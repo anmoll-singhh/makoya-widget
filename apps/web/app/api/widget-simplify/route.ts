@@ -71,20 +71,24 @@ export async function POST(req: Request): Promise<NextResponse> {
   }
   const { siteId, text, lang } = parsed.data;
 
+  // Per-siteId cap (in ADDITION to per-IP) so the (Makoya-funded) model spend
+  // can't be amplified by rotating IPs against one opted-in site's public siteId.
+  if (await checkRateLimit(siteId, { name: "widget-simplify-site", limit: 200, windowMs: 3_600_000 })) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429, headers: cors });
+  }
+
   try {
     const admin = getAdminSupabase();
     const { site, config } = await getSiteBundle(admin, siteId);
 
-    // Gate 0: unknown site → 404 (generic).
-    if (!config) {
-      return NextResponse.json({ error: "not found" }, { status: 404, headers: cors });
-    }
-    // Origin deterrence.
+    // Origin deterrence (lenient on empty/unknown — see widget-cors).
     if (!isAllowedOrigin(origin, site?.allowedDomains ?? [])) {
       return NextResponse.json({ error: "origin not allowed" }, { status: 403, headers: cors });
     }
-    // Gate 1: per-site flag OFF (the default) → 403, BEFORE any model call.
-    if (!config.aiSimplifyEnabled) {
+    // Gate: unknown site OR per-site flag OFF (the default) → 403, BEFORE any
+    // model call. Collapsing both into the SAME response avoids leaking (via a
+    // distinct 404) whether a given siteId exists.
+    if (!config?.aiSimplifyEnabled) {
       return NextResponse.json({ error: "feature_disabled" }, { status: 403, headers: cors });
     }
     // Gate 2: no key configured → 503 (tool unavailable), BEFORE any model call.

@@ -11,7 +11,7 @@ const getUserById = vi.fn();
 const getSite = vi.fn();
 const getSiteLicense = vi.fn();
 const send = vi.fn();
-let rateLimited = false;
+const checkRateLimit = vi.fn();
 
 vi.mock("@/lib/supabase/admin", () => ({
   getAdminSupabase: () => ({
@@ -24,7 +24,7 @@ vi.mock("@/lib/sites", () => ({
 }));
 vi.mock("@/lib/email", () => ({ getEmailProvider: () => ({ name: "test", send }) }));
 vi.mock("@/lib/observability", () => ({ track: vi.fn(), captureError: vi.fn() }));
-vi.mock("@/lib/rate-limit", () => ({ checkRateLimit: () => Promise.resolve(rateLimited) }));
+vi.mock("@/lib/rate-limit", () => ({ checkRateLimit: (...a: unknown[]) => checkRateLimit(...a) }));
 
 import { POST, OPTIONS } from "./route";
 
@@ -39,7 +39,8 @@ function makeReq(body: unknown, origin = "https://shop.example"): Request {
 const valid = { siteId: "site_1", message: "The contrast on the header is too low." };
 
 beforeEach(() => {
-  rateLimited = false;
+  checkRateLimit.mockReset();
+  checkRateLimit.mockResolvedValue(false);
   getUserById.mockReset();
   getSite.mockReset();
   getSiteLicense.mockReset();
@@ -105,10 +106,13 @@ describe("POST /api/widget-feedback", () => {
     expect(send).not.toHaveBeenCalled();
   });
 
-  it("returns 404 for an unknown site", async () => {
+  it("accept-and-drops an unknown site with 200 (no 404 enumeration)", async () => {
     getSite.mockResolvedValue(null);
     const res = await POST(makeReq(valid));
-    expect(res.status).toBe(404);
+    const json = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(200);
+    expect(json.emailed).toBe(false);
+    expect(send).not.toHaveBeenCalled();
   });
 
   it("accepts the report but emailed:false when the owner has no email", async () => {
@@ -120,10 +124,19 @@ describe("POST /api/widget-feedback", () => {
     expect(send).not.toHaveBeenCalled();
   });
 
-  it("returns 429 when rate-limited", async () => {
-    rateLimited = true;
+  it("returns 429 when the per-IP limit is hit", async () => {
+    checkRateLimit.mockResolvedValue(true);
     const res = await POST(makeReq(valid));
     expect(res.status).toBe(429);
+  });
+
+  it("returns 429 when the per-siteId cap is hit (IP ok) — anti mail-bomb", async () => {
+    // IP bucket allows; the site bucket limits → still 429, no email sent.
+    checkRateLimit.mockImplementation((_key: string, opts: { name: string }) =>
+      Promise.resolve(opts.name === "widget-feedback-site"));
+    const res = await POST(makeReq(valid));
+    expect(res.status).toBe(429);
+    expect(send).not.toHaveBeenCalled();
   });
 
   it("reflects the caller origin in the CORS header", async () => {

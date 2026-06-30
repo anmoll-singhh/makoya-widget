@@ -35,13 +35,20 @@ function clientIp(req: Request): string {
   return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
 }
 
-/** Minimal HTML escape so a visitor's message can't inject markup into the email. */
+/** HTML-escape user text for element-content use in the email body. Escapes the
+ *  single-quote too so the helper stays safe if later reused in an attribute. */
 function esc(s: string): string {
   return s
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/** Strip CR/LF so a value can't fake extra lines in the plain-text email body. */
+function oneLine(s: string): string {
+  return s.replace(/[\r\n]+/g, " ");
 }
 
 export function OPTIONS(req: Request): NextResponse {
@@ -76,6 +83,12 @@ export async function POST(req: Request): Promise<NextResponse> {
   }
   const { siteId, message, email, url } = parsed.data;
 
+  // Per-siteId cap (in ADDITION to per-IP) so an attacker rotating IPs can't mail
+  // bomb a site owner with the public, non-secret siteId. 30 reports/hour/site.
+  if (await checkRateLimit(siteId, { name: "widget-feedback-site", limit: 30, windowMs: 3_600_000 })) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429, headers: cors });
+  }
+
   try {
     const admin = getAdminSupabase();
 
@@ -87,8 +100,9 @@ export async function POST(req: Request): Promise<NextResponse> {
 
     const site = await getSite(admin, siteId);
     if (!site) {
-      // Unknown site — generic 404 (don't reveal which ids exist).
-      return NextResponse.json({ error: "not found" }, { status: 404, headers: cors });
+      // Unknown site — accept-and-drop (200) so the status code can't be used to
+      // enumerate which siteIds exist. Identical shape to the no-owner path.
+      return NextResponse.json({ ok: true, emailed: false }, { headers: cors });
     }
 
     const { data: ownerData } = await admin.auth.admin.getUserById(site.ownerId);
@@ -99,7 +113,7 @@ export async function POST(req: Request): Promise<NextResponse> {
       return NextResponse.json({ ok: true, emailed: false }, { headers: cors });
     }
 
-    const where = url ? `\nPage: ${url}` : "";
+    const where = url ? `\nPage: ${oneLine(url)}` : "";
     const replyTo = email ? `\nReply-to: ${email}` : "\nReply-to: (anonymous)";
     const provider = getEmailProvider();
     const sent = await provider.send({

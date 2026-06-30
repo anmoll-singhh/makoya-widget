@@ -9,14 +9,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const getSiteBundle = vi.fn();
-let rateLimited = false;
+const checkRateLimit = vi.fn();
 let anthropicKey = "sk-ant-test";
 const fetchMock = vi.fn();
 
 vi.mock("@/lib/supabase/admin", () => ({ getAdminSupabase: () => ({ __fake: true }) }));
 vi.mock("@/lib/sites", () => ({ getSiteBundle: (...a: unknown[]) => getSiteBundle(...a) }));
 vi.mock("@/lib/observability", () => ({ track: vi.fn(), captureError: vi.fn() }));
-vi.mock("@/lib/rate-limit", () => ({ checkRateLimit: () => Promise.resolve(rateLimited) }));
+vi.mock("@/lib/rate-limit", () => ({ checkRateLimit: (...a: unknown[]) => checkRateLimit(...a) }));
 vi.mock("@/lib/env.server", () => ({
   env: {
     get ANTHROPIC_API_KEY() {
@@ -28,7 +28,8 @@ vi.mock("@/lib/env.server", () => ({
 import { POST, OPTIONS } from "./route";
 
 beforeEach(() => {
-  rateLimited = false;
+  checkRateLimit.mockReset();
+  checkRateLimit.mockResolvedValue(false);
   anthropicKey = "sk-ant-test";
   getSiteBundle.mockReset();
   fetchMock.mockReset();
@@ -88,10 +89,10 @@ describe("POST /api/widget-simplify — gating", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("returns 404 for an unknown site (config null)", async () => {
+  it("treats an unknown site as feature-disabled (403, no 404 enumeration)", async () => {
     getSiteBundle.mockResolvedValue({ site: null, config: null });
     const res = await POST(makeReq(valid));
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(403);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -129,10 +130,18 @@ describe("POST /api/widget-simplify — happy path + validation", () => {
     expect(res.status).toBe(502);
   });
 
-  it("returns 429 when rate-limited (before any DB/model work)", async () => {
-    rateLimited = true;
+  it("returns 429 when the per-IP limit is hit (before any DB/model work)", async () => {
+    checkRateLimit.mockResolvedValue(true);
     const res = await POST(makeReq(valid));
     expect(res.status).toBe(429);
     expect(getSiteBundle).not.toHaveBeenCalled();
+  });
+
+  it("returns 429 when the per-siteId cap is hit (IP ok) — anti cost-amplification", async () => {
+    checkRateLimit.mockImplementation((_key: string, opts: { name: string }) =>
+      Promise.resolve(opts.name === "widget-simplify-site"));
+    const res = await POST(makeReq(valid));
+    expect(res.status).toBe(429);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
