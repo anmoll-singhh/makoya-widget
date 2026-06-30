@@ -84,6 +84,32 @@ export const ICON: Partial<Record<FeatureKey, string>> = {
 };
 
 // ---------------------------------------------------------------------------
+// Curated color swatches. Text/title swatches are all DARK (readable on a light
+// background); background swatches are all LIGHT (keep default dark text legible)
+// — a baseline so the tools don't actively harm readability (a11y review P1-4).
+// Names are human-readable so makeColorPalette announces them, not hex (P2-14).
+// "" = off.
+// ---------------------------------------------------------------------------
+const TEXT_COLOR_SWATCHES: { value: string; name: string }[] = [
+  { value: "", name: "Off" },
+  { value: "#000000", name: "Black" },
+  { value: "#1f2937", name: "Dark gray" },
+  { value: "#1e3a8a", name: "Navy" },
+  { value: "#14532d", name: "Dark green" },
+  { value: "#7f1d1d", name: "Maroon" },
+  { value: "#581c87", name: "Purple" },
+];
+const BG_COLOR_SWATCHES: { value: string; name: string }[] = [
+  { value: "", name: "Off" },
+  { value: "#ffffff", name: "White" },
+  { value: "#fdf6e3", name: "Cream" },
+  { value: "#f1f5f9", name: "Light gray" },
+  { value: "#fefce8", name: "Pale yellow" },
+  { value: "#eff6ff", name: "Pale blue" },
+  { value: "#f0fdf4", name: "Pale green" },
+];
+
+// ---------------------------------------------------------------------------
 // buildFeature
 // ---------------------------------------------------------------------------
 
@@ -318,6 +344,67 @@ export function buildFeature(
         makeSwitch(label, prefs.focusIndicator, (v) => { prefs.focusIndicator = v; }, onChange));
     }
 
+    // ── Color palettes ───────────────────────────────────────────────────────
+    case "textColor": {
+      const label = t(lang, "f_textColor");
+      return makeColorPalette(label, prefs.textColor, TEXT_COLOR_SWATCHES,
+        (c) => { prefs.textColor = c; }, onChange);
+    }
+    case "titleColor": {
+      const label = t(lang, "f_titleColor");
+      return makeColorPalette(label, prefs.titleColor, TEXT_COLOR_SWATCHES,
+        (c) => { prefs.titleColor = c; }, onChange);
+    }
+    case "bgColor": {
+      const label = t(lang, "f_bgColor");
+      return makeColorPalette(label, prefs.bgColor, BG_COLOR_SWATCHES,
+        (c) => { prefs.bgColor = c; }, onChange);
+    }
+
+    // ── Live-controller toggles (the controller is wired in ui.ts apply()) ────
+    case "magnifier": {
+      const label = t(lang, "f_magnifier");
+      return row(icon, label,
+        makeSwitch(label, prefs.magnifier, (v) => { prefs.magnifier = v; }, onChange));
+    }
+    case "readMode": {
+      const label = t(lang, "f_readMode");
+      return row(icon, label,
+        makeSwitch(label, prefs.readMode, (v) => { prefs.readMode = v; }, onChange));
+    }
+    case "usefulLinks": {
+      const label = t(lang, "f_usefulLinks");
+      return row(icon, label,
+        makeSwitch(label, prefs.usefulLinks, (v) => { prefs.usefulLinks = v; }, onChange));
+    }
+    case "pageStructure": {
+      const label = t(lang, "f_pageStructure");
+      return row(icon, label,
+        makeSwitch(label, prefs.pageStructure, (v) => { prefs.pageStructure = v; }, onChange));
+    }
+    case "keyboardNav": {
+      const label = t(lang, "f_keyboardNav");
+      return row(icon, label,
+        makeSwitch(label, prefs.keyboardNav, (v) => { prefs.keyboardNav = v; }, onChange));
+    }
+    case "virtualKeyboard": {
+      const label = t(lang, "f_virtualKeyboard");
+      return row(icon, label,
+        makeSwitch(label, prefs.virtualKeyboard, (v) => { prefs.virtualKeyboard = v; }, onChange));
+    }
+    case "voiceNav": {
+      const label = t(lang, "f_voiceNav");
+      return row(icon, label,
+        makeSwitch(label, prefs.voiceNav, (v) => { prefs.voiceNav = v; }, onChange));
+    }
+    case "dictionary": {
+      const label = t(lang, "f_dictionary");
+      return row(icon, label,
+        makeSwitch(label, prefs.dictionary, (v) => { prefs.dictionary = v; }, onChange));
+    }
+
+    // feedbackForm, userGuide, hideInterface, aiSimplify are rendered by ui.ts
+    // (they need config / host context), so buildFeature intentionally skips them.
     default:
       return null;
   }

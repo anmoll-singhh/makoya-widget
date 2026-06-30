@@ -35,6 +35,14 @@ import { type Lang, LANG_LABELS, t } from "./i18n";
 import { buildFeature } from "./features";
 import { PROFILES, applyProfileByKey } from "./profiles";
 import { makeRuler, makeMask, makeReadAloud, makeMute, makeHoverHighlight } from "./live";
+import { makeMagnifier } from "./live-magnifier";
+import { makeReadMode } from "./live-readmode";
+import { makeKeyboardNav } from "./keyboard-nav";
+import { makeVirtualKeyboard } from "./virtual-keyboard";
+import { makeVoiceNav } from "./voice-nav";
+import { makeDictionary, type DictState } from "./dictionary";
+import { makeJumpMenu, collectLinks, collectHeadings } from "./page-nav";
+import { postFeedback } from "./widget-net";
 import { trackEvent } from "../core/telemetry";
 
 /**
@@ -92,9 +100,11 @@ const CLOSE_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" s
  * Controls which section each feature renders into.
  * Keys not listed here are silently skipped (forward-compat safety).
  */
-const FEATURE_SECTION: Record<string, "sec_content" | "sec_color" | "sec_nav" | "sec_audio"> = {
+const FEATURE_SECTION: Record<string, "sec_content" | "sec_color" | "sec_nav" | "sec_audio" | "sec_tools"> = {
+  contentScale:    "sec_content",
   textSize:        "sec_content",
   lineSpacing:     "sec_content",
+  letterSpacing:   "sec_content",
   readableFont:    "sec_content",
   textAlign:       "sec_content",
   highlightTitles: "sec_content",
@@ -103,18 +113,30 @@ const FEATURE_SECTION: Record<string, "sec_content" | "sec_color" | "sec_nav" | 
   stopMotion:      "sec_content",
   contrast:        "sec_color",
   saturation:      "sec_color",
+  textColor:       "sec_color",
+  titleColor:      "sec_color",
+  bgColor:         "sec_color",
+  readingMask:     "sec_color",
   readingRuler:    "sec_nav",
-  readingMask:     "sec_nav",
   bigCursor:       "sec_nav",
   highlightHover:  "sec_nav",
   biggerTargets:   "sec_nav",
   focusIndicator:  "sec_nav",
+  magnifier:       "sec_nav",
+  readMode:        "sec_nav",
+  usefulLinks:     "sec_nav",
+  pageStructure:   "sec_nav",
+  keyboardNav:     "sec_nav",
+  virtualKeyboard: "sec_nav",
+  voiceNav:        "sec_nav",
   muteSounds:      "sec_audio",
   readAloud:       "sec_audio",
+  dictionary:      "sec_tools",
+  // feedbackForm, userGuide, hideInterface rendered separately (chrome).
 };
 
 /** Display order of sections (only rendered when they have enabled features). */
-const SECTION_ORDER = ["sec_content", "sec_color", "sec_nav", "sec_audio"] as const;
+const SECTION_ORDER = ["sec_content", "sec_color", "sec_nav", "sec_audio", "sec_tools"] as const;
 type SectionKey = typeof SECTION_ORDER[number];
 
 // ---------------------------------------------------------------------------
@@ -159,6 +181,14 @@ export function mountUI(config: WidgetConfig): void {
 }
 
 function _mount(config: WidgetConfig): void {
+  // "Hide interface" persists for the browser SESSION (sessionStorage) — if the
+  // visitor hid the launcher, don't mount again on reload. It returns next session.
+  try {
+    if (sessionStorage.getItem("makoya_hidden") === "1") return;
+  } catch {
+    /* privacy mode — fall through and mount normally */
+  }
+
   // ─── Host + Shadow DOM ──────────────────────────────────────────────────
   const host = document.createElement("div");
   host.id = "makoya-widget-root"; // read-aloud controller's click-guard depends on this ID
@@ -195,6 +225,82 @@ function _mount(config: WidgetConfig): void {
   const readAloud = makeReadAloud(lang);
   const mute      = makeMute();
   const hover     = makeHoverHighlight();
+
+  // ─── accessiBe-parity live controllers ──────────────────────────────────
+  const magnifier       = makeMagnifier();
+  const keyboardNav     = makeKeyboardNav();
+  const virtualKeyboard = makeVirtualKeyboard();
+  const voiceNav        = makeVoiceNav({ getLang: () => lang });
+  // Modal tools: closing them (Esc/button) flips the pref back off + re-renders.
+  const readMode = makeReadMode({ onClose: () => { prefs.readMode = false; apply(); renderBody(); } });
+  const linksMenu = makeJumpMenu({
+    collect: collectLinks,
+    getTitle: () => t(lang, "f_usefulLinks"),
+    getCloseLabel: () => t(lang, "close"),
+    getEmptyLabel: () => t(lang, "nav_none"),
+    onClose: () => { prefs.usefulLinks = false; apply(); renderBody(); },
+  });
+  const structureMenu = makeJumpMenu({
+    collect: collectHeadings,
+    getTitle: () => t(lang, "f_pageStructure"),
+    getCloseLabel: () => t(lang, "close"),
+    getEmptyLabel: () => t(lang, "nav_none"),
+    onClose: () => { prefs.pageStructure = false; apply(); renderBody(); },
+  });
+
+  // Dictionary result popover — own Shadow DOM; role=status/aria-live so AT
+  // announces the definition. Text set via textContent only (no injection).
+  let dictHost: HTMLDivElement | null = null;
+  function hideDictResult(): void { dictHost?.remove(); dictHost = null; }
+  function showDictResult(state: DictState): void {
+    try {
+      if (!dictHost) {
+        dictHost = document.createElement("div");
+        dictHost.style.cssText =
+          "position:fixed;left:50%;bottom:84px;transform:translateX(-50%);z-index:2147483646;";
+        const sh = dictHost.attachShadow({ mode: "open" });
+        const st = document.createElement("style");
+        st.textContent =
+          ".box{position:relative;max-width:min(420px,92vw);background:#fff;color:#1a1a1a;" +
+          "border:2px solid #1e63ff;border-radius:12px;padding:14px 32px 14px 16px;" +
+          "box-shadow:0 8px 30px rgba(0,0,0,.25);font-family:system-ui,sans-serif;font-size:15px;line-height:1.5;}" +
+          ".w{font-weight:700;}.pos{color:#666;font-style:italic;margin-left:6px;}" +
+          ".x{position:absolute;top:6px;right:8px;border:0;background:transparent;font-size:18px;cursor:pointer;color:#666;}";
+        const box = document.createElement("div");
+        box.className = "box";
+        box.setAttribute("role", "status");
+        box.setAttribute("aria-live", "polite");
+        const x = document.createElement("button");
+        x.className = "x"; x.type = "button"; x.textContent = "×";
+        x.setAttribute("aria-label", t(lang, "close"));
+        x.addEventListener("click", hideDictResult);
+        const content = document.createElement("div");
+        content.className = "content";
+        box.append(x, content);
+        sh.append(st, box);
+        document.documentElement.appendChild(dictHost);
+      }
+      const content = dictHost.shadowRoot!.querySelector(".content") as HTMLElement;
+      content.innerHTML = "";
+      if (state.status === "loading") {
+        content.textContent = t(lang, "dict_loading");
+      } else if (state.status === "none") {
+        content.textContent = `“${state.word}” — ${t(lang, "dict_none")}`;
+      } else if (state.status === "ok") {
+        const w = document.createElement("span"); w.className = "w"; w.textContent = state.word;
+        content.appendChild(w);
+        if (state.partOfSpeech) {
+          const p = document.createElement("span"); p.className = "pos"; p.textContent = state.partOfSpeech;
+          content.appendChild(p);
+        }
+        const d = document.createElement("div"); d.textContent = state.definition;
+        content.appendChild(d);
+      }
+    } catch {
+      /* never throw */
+    }
+  }
+  const dictionary = makeDictionary({ getLang: () => lang, onResult: showDictResult });
 
   // ─── Corner positioning + offsets ───────────────────────────────────────
   // offsetX/Y shift the button (and panel) away from the anchor corner.
@@ -276,6 +382,16 @@ function _mount(config: WidgetConfig): void {
       readAloud.setLang(lang);
       prefs.mute      ? mute.enable()       : mute.disable();
       prefs.hoverHighlight ? hover.enable() : hover.disable();
+      // accessiBe-parity live controllers (open/enable are idempotent).
+      prefs.magnifier       ? magnifier.enable()       : magnifier.disable();
+      prefs.keyboardNav     ? keyboardNav.enable()     : keyboardNav.disable();
+      prefs.virtualKeyboard ? virtualKeyboard.enable() : virtualKeyboard.disable();
+      prefs.voiceNav        ? voiceNav.enable()        : voiceNav.disable();
+      prefs.readMode        ? readMode.open(lang)      : readMode.close();
+      prefs.usefulLinks     ? linksMenu.open()         : linksMenu.close();
+      prefs.pageStructure   ? structureMenu.open()     : structureMenu.close();
+      if (prefs.dictionary) dictionary.enable();
+      else { dictionary.disable(); hideDictResult(); }
       savePrefs(prefs);
       // Telemetry (fire-and-forget, never affects the UI): emit feature_activated
       // for each feature that just transitioned off→on. The first apply only
@@ -487,6 +603,93 @@ function _mount(config: WidgetConfig): void {
         hint.style.cssText = "margin: 4px 8px 8px; text-align: left;";
         hint.textContent = t(lang, "readAloudHint");
         sec.appendChild(hint);
+      }
+
+      body.appendChild(sec);
+    }
+
+    // ── Chrome: User guide, Feedback form, Hide interface ─────────────────
+    const wantGuide = config.featuresEnabled.includes("userGuide");
+    const wantFeedback = config.featuresEnabled.includes("feedbackForm");
+    const wantHide = config.featuresEnabled.includes("hideInterface");
+    if (wantGuide || wantFeedback || wantHide) {
+      const sec = document.createElement("div");
+      sec.className = "mky-sec";
+      const secLabel = document.createElement("span");
+      secLabel.className = "mky-sec-label";
+      secLabel.textContent = t(lang, "sec_about");
+      sec.appendChild(secLabel);
+
+      if (wantGuide) {
+        const d = document.createElement("details");
+        d.style.cssText = "margin:4px 8px;";
+        const s = document.createElement("summary");
+        s.textContent = t(lang, "f_userGuide");
+        s.style.cssText = "cursor:pointer;font-size:14px;padding:6px 0;";
+        const p = document.createElement("p");
+        p.textContent = t(lang, "guide_body");
+        p.style.cssText = "margin:6px 0;font-size:13px;line-height:1.5;";
+        d.append(s, p);
+        sec.appendChild(d);
+      }
+
+      if (wantFeedback) {
+        const inputCss =
+          "width:100%;box-sizing:border-box;margin:4px 0;padding:8px;font:inherit;border:1px solid #ccc;border-radius:6px;";
+        const d = document.createElement("details");
+        d.style.cssText = "margin:4px 8px;";
+        const s = document.createElement("summary");
+        s.textContent = t(lang, "fb_open");
+        s.style.cssText = "cursor:pointer;font-size:14px;padding:6px 0;";
+        const ta = document.createElement("textarea");
+        ta.setAttribute("aria-label", t(lang, "fb_msgLabel"));
+        ta.placeholder = t(lang, "fb_msgLabel");
+        ta.rows = 3;
+        ta.style.cssText = inputCss;
+        const email = document.createElement("input");
+        email.type = "email";
+        email.setAttribute("aria-label", t(lang, "fb_emailLabel"));
+        email.placeholder = t(lang, "fb_emailLabel");
+        email.style.cssText = inputCss;
+        const send = document.createElement("button");
+        send.type = "button";
+        send.className = "mky-reset";
+        send.textContent = t(lang, "fb_send");
+        const status = document.createElement("p");
+        status.setAttribute("role", "status");
+        status.setAttribute("aria-live", "polite");
+        status.style.cssText = "margin:6px 0;font-size:13px;";
+        send.addEventListener("click", () => {
+          const msg = ta.value.trim();
+          if (!msg) return;
+          send.disabled = true;
+          status.textContent = t(lang, "fb_sending");
+          void postFeedback({
+            siteId: config.siteId,
+            message: msg,
+            email: email.value.trim() || undefined,
+            url: location.href,
+          }).then((ok) => {
+            status.textContent = ok ? t(lang, "fb_sent") : t(lang, "fb_failed");
+            send.disabled = false;
+            if (ok) ta.value = "";
+          });
+        });
+        d.append(s, ta, email, send, status);
+        sec.appendChild(d);
+      }
+
+      if (wantHide) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "mky-reset";
+        b.style.cssText = "margin:8px;";
+        b.textContent = t(lang, "f_hideInterface");
+        b.addEventListener("click", () => {
+          try { sessionStorage.setItem("makoya_hidden", "1"); } catch { /* privacy mode */ }
+          host.style.display = "none";
+        });
+        sec.appendChild(b);
       }
 
       body.appendChild(sec);

@@ -76,6 +76,138 @@ export function collectHeadings(): NavItem[] {
   return out;
 }
 
+/**
+ * An accessible overlay jump-menu (its OWN Shadow DOM) listing the items from a
+ * `collect` function as <button>s. Used by Useful Links + Page Structure. On
+ * open, focus moves to the close button; Tab is trapped within the menu; Esc or
+ * the close button close it and invoke `onClose` (so the caller can flip the
+ * pref off) and restore focus to the trigger. Activating an item jumps to it.
+ */
+export function makeJumpMenu(opts: {
+  collect: () => NavItem[];
+  /** Getters so labels stay correct if the panel language changes. */
+  getTitle: () => string;
+  getCloseLabel: () => string;
+  getEmptyLabel: () => string;
+  onClose: () => void;
+}): { open(): void; close(): void } {
+  let host: HTMLDivElement | null = null;
+  let prevFocus: HTMLElement | null = null;
+  let keyHandler: ((e: KeyboardEvent) => void) | null = null;
+
+  function focusables(shadow: ShadowRoot): HTMLElement[] {
+    return Array.from(shadow.querySelectorAll<HTMLElement>("button"));
+  }
+
+  function teardown(cb: boolean): void {
+    if (keyHandler) { document.removeEventListener("keydown", keyHandler, true); keyHandler = null; }
+    host?.remove();
+    host = null;
+    try { (prevFocus && document.contains(prevFocus) ? prevFocus : document.body)?.focus?.(); } catch { /* */ }
+    prevFocus = null;
+    if (cb) { try { opts.onClose(); } catch { /* never throw */ } }
+  }
+
+  return {
+    open() {
+      if (host) return;
+      try {
+        prevFocus = (document.activeElement as HTMLElement | null) ?? null;
+        const items = opts.collect();
+        const title = opts.getTitle();
+        const closeLabel = opts.getCloseLabel();
+        const emptyLabel = opts.getEmptyLabel();
+
+        host = document.createElement("div");
+        host.style.cssText = "position:fixed;inset:0;z-index:2147483646;";
+        const shadow = host.attachShadow({ mode: "open" });
+        const style = document.createElement("style");
+        style.textContent = `
+          .scrim{position:fixed;inset:0;background:rgba(0,0,0,.35);}
+          .panel{position:fixed;top:0;right:0;height:100%;width:min(360px,90vw);background:#fff;color:#1a1a1a;
+            box-shadow:-8px 0 30px rgba(0,0,0,.25);display:flex;flex-direction:column;font-family:system-ui,sans-serif;}
+          .hd{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid #eee;}
+          .hd h2{margin:0;font-size:17px;}
+          .x{border:2px solid #1a1a1a;background:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;font:inherit;}
+          .x:focus-visible{outline:3px solid #1e63ff;outline-offset:2px;}
+          ul{list-style:none;margin:0;padding:8px;overflow:auto;flex:1;}
+          li button{display:block;width:100%;text-align:left;border:0;background:transparent;padding:10px 12px;
+            border-radius:8px;cursor:pointer;font:inherit;font-size:15px;color:#1a1a1a;}
+          li button:hover{background:#f1f3f6;}
+          li button:focus-visible{outline:3px solid #1e63ff;outline-offset:-2px;}
+          .empty{padding:24px 16px;color:#666;}
+        `;
+        shadow.appendChild(style);
+
+        const scrim = document.createElement("div");
+        scrim.className = "scrim";
+        scrim.addEventListener("click", () => teardown(true));
+
+        const panel = document.createElement("div");
+        panel.className = "panel";
+        panel.setAttribute("role", "dialog");
+        panel.setAttribute("aria-modal", "true");
+        panel.setAttribute("aria-label", title);
+
+        const hd = document.createElement("div");
+        hd.className = "hd";
+        const h = document.createElement("h2");
+        h.textContent = title;
+        const x = document.createElement("button");
+        x.className = "x";
+        x.type = "button";
+        x.textContent = closeLabel;
+        x.addEventListener("click", () => teardown(true));
+        hd.append(h, x);
+
+        const list = document.createElement("ul");
+        if (items.length === 0) {
+          const empty = document.createElement("li");
+          empty.className = "empty";
+          empty.textContent = emptyLabel;
+          list.appendChild(empty);
+        } else {
+          for (const it of items) {
+            const li = document.createElement("li");
+            const b = document.createElement("button");
+            b.type = "button";
+            b.textContent = it.level ? `${"— ".repeat(Math.max(0, it.level - 1))}${it.label}` : it.label;
+            b.addEventListener("click", () => { jumpTo(it.el); teardown(true); });
+            li.appendChild(b);
+            list.appendChild(li);
+          }
+        }
+
+        panel.append(hd, list);
+        shadow.append(scrim, panel);
+        document.documentElement.appendChild(host);
+
+        requestAnimationFrame(() => x.focus());
+
+        keyHandler = (e: KeyboardEvent) => {
+          if (!host) return;
+          if (e.key === "Escape") { e.preventDefault(); teardown(true); return; }
+          if (e.key === "Tab") {
+            const f = focusables(shadow);
+            if (f.length === 0) return;
+            const first = f[0], last = f[f.length - 1];
+            const active = shadow.activeElement as HTMLElement | null;
+            if (e.shiftKey && active === first) { e.preventDefault(); last.focus(); }
+            else if (!e.shiftKey && active === last) { e.preventDefault(); first.focus(); }
+          }
+        };
+        document.addEventListener("keydown", keyHandler, true);
+      } catch {
+        teardown(false);
+      }
+    },
+    close() {
+      if (!host) return;
+      teardown(false);
+    },
+  };
+}
+
 /** Scroll the target into view and move focus to it (announces to AT).
  *  If the target isn't natively focusable we add a TEMPORARY tabindex and strip
  *  it again on blur, so the host DOM is left exactly as we found it (honouring

@@ -87,6 +87,35 @@ export type StringKey =
   | "readModeEmpty"
   | "rulerColor"
 
+  // accessiBe-parity new feature labels + chrome strings (Wave 3)
+  | "f_textColor"
+  | "f_titleColor"
+  | "f_bgColor"
+  | "f_magnifier"
+  | "f_usefulLinks"
+  | "f_pageStructure"
+  | "f_keyboardNav"
+  | "f_virtualKeyboard"
+  | "f_voiceNav"
+  | "f_dictionary"
+  | "f_feedbackForm"
+  | "f_hideInterface"
+  | "f_userGuide"
+  | "f_aiSimplify"
+  | "sec_tools"
+  | "dict_loading"
+  | "dict_none"
+  | "nav_none"
+  | "kn_hint"
+  | "guide_body"
+  | "fb_open"
+  | "fb_msgLabel"
+  | "fb_emailLabel"
+  | "fb_send"
+  | "fb_sending"
+  | "fb_sent"
+  | "fb_failed"
+
   // Segmented-control option labels
   | "opt_off"
   | "opt_on"
@@ -206,6 +235,34 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     language: "Language",
     close: "Close",
     readAloudHint: "Click any text on the page to hear it read aloud.",
+
+    f_textColor: "Text color",
+    f_titleColor: "Title color",
+    f_bgColor: "Background color",
+    f_magnifier: "Text magnifier",
+    f_usefulLinks: "Useful links",
+    f_pageStructure: "Page structure",
+    f_keyboardNav: "Keyboard navigation",
+    f_virtualKeyboard: "Virtual keyboard",
+    f_voiceNav: "Voice navigation",
+    f_dictionary: "Dictionary",
+    f_feedbackForm: "Feedback",
+    f_hideInterface: "Hide interface",
+    f_userGuide: "User guide",
+    f_aiSimplify: "Simplify text",
+    sec_tools: "Tools",
+    dict_loading: "Looking up…",
+    dict_none: "No definition found.",
+    nav_none: "Nothing found on this page.",
+    kn_hint: "Use Alt + M / H / F / B / G to jump between regions.",
+    guide_body: "Pick a quick profile, or turn on individual tools. Changes affect only your view of this page and are saved on your device. Press Esc to close any tool.",
+    fb_open: "Report an issue",
+    fb_msgLabel: "What's the problem?",
+    fb_emailLabel: "Your email (optional)",
+    fb_send: "Send",
+    fb_sending: "Sending…",
+    fb_sent: "Thanks — your feedback was sent.",
+    fb_failed: "Couldn't send right now. Please try again later.",
   },
 
   // -------------------------------------------------------------------------
@@ -288,6 +345,34 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     language: "Idioma",
     close: "Cerrar",
     readAloudHint: "Haz clic en cualquier texto de la página para escucharlo.",
+
+    f_textColor: "Color del texto",
+    f_titleColor: "Color de títulos",
+    f_bgColor: "Color de fondo",
+    f_magnifier: "Lupa de texto",
+    f_usefulLinks: "Enlaces útiles",
+    f_pageStructure: "Estructura de la página",
+    f_keyboardNav: "Navegación por teclado",
+    f_virtualKeyboard: "Teclado virtual",
+    f_voiceNav: "Navegación por voz",
+    f_dictionary: "Diccionario",
+    f_feedbackForm: "Comentarios",
+    f_hideInterface: "Ocultar interfaz",
+    f_userGuide: "Guía de uso",
+    f_aiSimplify: "Simplificar texto",
+    sec_tools: "Herramientas",
+    dict_loading: "Buscando…",
+    dict_none: "No se encontró definición.",
+    nav_none: "No se encontró nada en esta página.",
+    kn_hint: "Usa Alt + M / H / F / B / G para saltar entre regiones.",
+    guide_body: "Elige un perfil rápido o activa herramientas individuales. Los cambios solo afectan a tu vista de esta página y se guardan en tu dispositivo. Pulsa Esc para cerrar cualquier herramienta.",
+    fb_open: "Informar de un problema",
+    fb_msgLabel: "¿Cuál es el problema?",
+    fb_emailLabel: "Tu correo (opcional)",
+    fb_send: "Enviar",
+    fb_sending: "Enviando…",
+    fb_sent: "Gracias — tus comentarios se enviaron.",
+    fb_failed: "No se pudo enviar ahora. Inténtalo más tarde.",
   },
 
   // -------------------------------------------------------------------------
@@ -370,6 +455,34 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     language: "Langue",
     close: "Fermer",
     readAloudHint: "Cliquez sur n'importe quel texte de la page pour l'entendre.",
+
+    f_textColor: "Couleur du texte",
+    f_titleColor: "Couleur des titres",
+    f_bgColor: "Couleur de fond",
+    f_magnifier: "Loupe de texte",
+    f_usefulLinks: "Liens utiles",
+    f_pageStructure: "Structure de la page",
+    f_keyboardNav: "Navigation au clavier",
+    f_virtualKeyboard: "Clavier virtuel",
+    f_voiceNav: "Navigation vocale",
+    f_dictionary: "Dictionnaire",
+    f_feedbackForm: "Commentaires",
+    f_hideInterface: "Masquer l'interface",
+    f_userGuide: "Guide d'utilisation",
+    f_aiSimplify: "Simplifier le texte",
+    sec_tools: "Outils",
+    dict_loading: "Recherche…",
+    dict_none: "Aucune définition trouvée.",
+    nav_none: "Rien trouvé sur cette page.",
+    kn_hint: "Utilisez Alt + M / H / F / B / G pour passer d'une zone à l'autre.",
+    guide_body: "Choisissez un profil rapide ou activez des outils individuels. Les changements n'affectent que votre affichage de cette page et sont enregistrés sur votre appareil. Appuyez sur Échap pour fermer un outil.",
+    fb_open: "Signaler un problème",
+    fb_msgLabel: "Quel est le problème ?",
+    fb_emailLabel: "Votre e-mail (facultatif)",
+    fb_send: "Envoyer",
+    fb_sending: "Envoi…",
+    fb_sent: "Merci — vos commentaires ont été envoyés.",
+    fb_failed: "Envoi impossible pour le moment. Réessayez plus tard.",
   },
 
   // -------------------------------------------------------------------------
@@ -452,6 +565,34 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     language: "Sprache",
     close: "Schließen",
     readAloudHint: "Klicken Sie auf beliebigen Text auf der Seite, um ihn vorlesen zu lassen.",
+
+    f_textColor: "Textfarbe",
+    f_titleColor: "Titelfarbe",
+    f_bgColor: "Hintergrundfarbe",
+    f_magnifier: "Textlupe",
+    f_usefulLinks: "Nützliche Links",
+    f_pageStructure: "Seitenstruktur",
+    f_keyboardNav: "Tastaturnavigation",
+    f_virtualKeyboard: "Bildschirmtastatur",
+    f_voiceNav: "Sprachnavigation",
+    f_dictionary: "Wörterbuch",
+    f_feedbackForm: "Feedback",
+    f_hideInterface: "Oberfläche ausblenden",
+    f_userGuide: "Anleitung",
+    f_aiSimplify: "Text vereinfachen",
+    sec_tools: "Werkzeuge",
+    dict_loading: "Wird gesucht…",
+    dict_none: "Keine Definition gefunden.",
+    nav_none: "Auf dieser Seite nichts gefunden.",
+    kn_hint: "Mit Alt + M / H / F / B / G zwischen Bereichen springen.",
+    guide_body: "Wählen Sie ein Schnellprofil oder aktivieren Sie einzelne Werkzeuge. Änderungen betreffen nur Ihre Ansicht dieser Seite und werden auf Ihrem Gerät gespeichert. Drücken Sie Esc, um ein Werkzeug zu schließen.",
+    fb_open: "Problem melden",
+    fb_msgLabel: "Was ist das Problem?",
+    fb_emailLabel: "Ihre E-Mail (optional)",
+    fb_send: "Senden",
+    fb_sending: "Wird gesendet…",
+    fb_sent: "Danke — Ihr Feedback wurde gesendet.",
+    fb_failed: "Senden derzeit nicht möglich. Bitte später erneut versuchen.",
   },
 };
 
