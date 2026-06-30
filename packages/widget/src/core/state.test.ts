@@ -194,6 +194,14 @@ test("applyPrefs suppresses color overrides while contrast='dark' (invert flip)"
   assert.equal(_attrs["data-mky-textcolor"], null);
 });
 
+test("applyPrefs coerces a non-numeric fontScale (corrupt storage) → no broken effect", () => {
+  // Externally-corrupted localStorage could yield a string; the guard must
+  // fall back to the default and NOT set a NaN var + dangling attribute.
+  applyPrefs({ ...DEFAULT_PREFS, fontScale: "large" as unknown as number });
+  assert.equal(_attrs["data-mky-fontscale"], null);
+  assert.equal(_vars["--mky-font-scale"], undefined);
+});
+
 // -- savePrefs round-trip -----------------------------------------------------
 test("savePrefs + loadPrefs round-trips the new fields", () => {
   const saved = {

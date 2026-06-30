@@ -42,9 +42,14 @@ html[data-mky-fontscale] { font-size: calc(100% * var(--mky-font-scale, 1)) !imp
 html[data-mky-lh] body,
 html[data-mky-lh] body * { line-height: var(--mky-line-height, 1.5) !important; }
 
-/* Letter spacing */
+/* Letter spacing — also widens word-spacing proportionally (~3×) so this control
+   covers both inter-character and inter-word spacing, preserving the bundled
+   behaviour of the old spacing toggle (which set letter + word spacing together). */
 html[data-mky-ls] body,
-html[data-mky-ls] body * { letter-spacing: var(--mky-letter-spacing, 0) !important; }
+html[data-mky-ls] body * {
+  letter-spacing: var(--mky-letter-spacing, 0) !important;
+  word-spacing: calc(var(--mky-letter-spacing, 0) * 3) !important;
+}
 
 /* Content scaling — whole-page zoom on BODY (keeps the html-mounted widget safe).
    zoom:1 is a no-op; gated so it only engages when the visitor changes it. */

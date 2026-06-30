@@ -248,46 +248,59 @@ export function savePrefs(prefs: Prefs): void {
  * Push the current prefs onto the page. Called on load, on every change,
  * and after SPA route changes.
  *
- * Attribute mapping:
- *   data-mky-text      → 1/2/3 or absent
- *   data-mky-spacing   → "on" or absent
- *   data-mky-contrast  → "on"/"dark" or absent
- *   data-mky-motion    → "off" or absent (stops animations)
- *   data-mky-links     → "on" or absent
- *   data-mky-cursor    → "black"/"white" or absent  (WS1: was boolean "on")
- *   data-mky-font      → "on" or absent
- *   data-mky-images    → "off" or absent
- *   data-mky-sat       → "grayscale"/"low"/"high" or absent  (WS1 new)
- *   data-mky-titles    → "on" or absent  (WS1 new)
- *   data-mky-align     → "on" or absent  (WS1 new)
- *   data-mky-targets   → "on" or absent  (Block 27: biggerTargets)
- *   data-mky-focus     → "on" or absent  (Block 27: focusIndicator)
+ * Continuous typography is driven by per-property inline CSS custom properties
+ * on <html>, each gated by its own attribute (present ONLY when the value
+ * deviates from default):
+ *   data-mky-zoom/--mky-zoom              (contentScale, body zoom)
+ *   data-mky-fontscale/--mky-font-scale   (fontScale, root font-size)
+ *   data-mky-lh/--mky-line-height         (lineHeightPct)
+ *   data-mky-ls/--mky-letter-spacing      (letterSpacingPct + word-spacing)
  *
- * NOT set here (LIVE controllers in ui/live.ts manage these):
- *   mask, mute, readAloud — these require JS, not just CSS attributes.
- * Reading ruler is also a live element, handled separately in ui.ts.
+ * Enumerated attribute effects:
+ *   data-mky-contrast  → "on"/"light"/"dark"/"high" or absent
+ *   data-mky-sat       → "grayscale"/"low"/"high" or absent
+ *   data-mky-font      → "readable"/"dyslexic" or absent
+ *   data-mky-align     → "left"/"center"/"right"/"justify" or absent
+ *   data-mky-cursor    → "black"/"white" or absent
+ *   data-mky-motion/links/images/titles/targets/focus → "on"/"off" or absent
+ *   data-mky-textcolor/titlecolor/bgcolor + matching --mky-*-color vars
+ *     (suppressed while contrast is "dark"/"light" — invert would flip them)
+ *
+ * NOT set here (LIVE controllers manage these): mask, mute, readAloud, ruler,
+ * magnifier, readMode, usefulLinks, pageStructure, keyboardNav, virtualKeyboard,
+ * voiceNav, dictionary — they need JS, not just CSS attributes.
  */
 export function applyPrefs(prefs: Prefs): void {
   ensureEffectStyles();
+
+  // Coerce numeric fields defensively: localStorage can be edited externally to
+  // a non-number, which would make `value / 100` NaN and silently break the
+  // effect while still setting the gating attribute. Fall back to the default.
+  const num = (v: unknown, def: number): number =>
+    typeof v === "number" && Number.isFinite(v) ? v : def;
+  const contentScale = num(prefs.contentScale, 100);
+  const fontScale = num(prefs.fontScale, 100);
+  const lineHeightPct = num(prefs.lineHeightPct, 100);
+  const letterSpacingPct = num(prefs.letterSpacingPct, 0);
 
   // ── Continuous typography — per-property gated CSS vars. Each property is
   //    emitted ONLY when it deviates from default, so a site the visitor never
   //    touched (incl. html{font-size:62.5%} rem-reset sites) is left untouched.
   //    The gating attribute presence activates the rule; the var carries value.
-  const zoom = prefs.contentScale !== 100;
-  setHtmlVar("--mky-zoom", zoom ? String(prefs.contentScale / 100) : null);
+  const zoom = contentScale !== 100;
+  setHtmlVar("--mky-zoom", zoom ? String(contentScale / 100) : null);
   setHtmlAttr("data-mky-zoom", zoom ? "on" : null);
 
-  const fscale = prefs.fontScale !== 100;
-  setHtmlVar("--mky-font-scale", fscale ? String(prefs.fontScale / 100) : null);
+  const fscale = fontScale !== 100;
+  setHtmlVar("--mky-font-scale", fscale ? String(fontScale / 100) : null);
   setHtmlAttr("data-mky-fontscale", fscale ? "on" : null);
 
-  const lh = prefs.lineHeightPct !== 100;
-  setHtmlVar("--mky-line-height", lh ? String(prefs.lineHeightPct / 100) : null);
+  const lh = lineHeightPct !== 100;
+  setHtmlVar("--mky-line-height", lh ? String(lineHeightPct / 100) : null);
   setHtmlAttr("data-mky-lh", lh ? "on" : null);
 
-  const ls = prefs.letterSpacingPct !== 0;
-  setHtmlVar("--mky-letter-spacing", ls ? `${prefs.letterSpacingPct * 0.01}em` : null);
+  const ls = letterSpacingPct !== 0;
+  setHtmlVar("--mky-letter-spacing", ls ? `${letterSpacingPct * 0.01}em` : null);
   setHtmlAttr("data-mky-ls", ls ? "on" : null);
 
   // ── Color / display ──────────────────────────────────────────────────────

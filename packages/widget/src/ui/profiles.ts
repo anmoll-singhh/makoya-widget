@@ -96,6 +96,7 @@ export const PROFILES: Profile[] = [
     apply: (p) => {
       p.stopMotion = true;
       p.lineHeightPct = 180;
+      p.letterSpacingPct = 5;
       p.links = true;
     },
   },
@@ -118,6 +119,7 @@ export const PROFILES: Profile[] = [
     apply: (p) => {
       p.fontScale = 130;
       p.lineHeightPct = 180;
+      p.letterSpacingPct = 5;
       p.cursor = "black";
       p.font = "readable";
     },
@@ -131,6 +133,7 @@ export const PROFILES: Profile[] = [
     apply: (p) => {
       p.mask = "dim";
       p.lineHeightPct = 180;
+      p.letterSpacingPct = 5;
       p.images = true;
       p.stopMotion = true;
     },
@@ -171,6 +174,7 @@ export const PROFILES: Profile[] = [
     apply: (p) => {
       p.font = "readable";
       p.lineHeightPct = 180;
+      p.letterSpacingPct = 5;
       p.ruler = true;
     },
   },

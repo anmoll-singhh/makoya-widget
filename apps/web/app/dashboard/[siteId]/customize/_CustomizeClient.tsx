@@ -7,7 +7,7 @@
  *   PATCH /api/sites/[siteId]/config → persist changes on Publish
  *
  * All v3.1 config fields surfaced, grouped into three tabs:
- *   Features   → featuresEnabled toggles (all 15 FeatureKey values)
+ *   Features   → featuresEnabled toggles (all 35 FeatureKey values)
  *   Appearance → primaryColor, position, launcherIcon, launcherSize, defaultLanguage,
  *                panelTitle, accessibilityStatementUrl, hideBranding
  *   Mobile     → mobileEnabled, customTriggerSelector, domObserverEnabled, inheritFonts
@@ -60,9 +60,11 @@ import type {
 } from "@makoya/shared";
 import type { SiteConfig } from "@/lib/sites-mappers";
 import { contrastRatio } from "@/lib/contrast";
+import { FEATURE_META as CANONICAL_FEATURE_META } from "@/lib/customizer/feature-meta";
 import { LoadingButton } from "../../_components";
 
-/* ── Feature metadata (matches packages/shared FeatureKey list — all 17 keys) ── */
+/* ── Feature display metadata (label/icon/desc per key — all 35 FeatureKeys).
+   Render ORDER comes from CANONICAL_FEATURE_META, not this literal's order. ── */
 const FEATURE_META: Record<FeatureKey, { label: string; icon: string; desc: string }> = {
   textSize: {
     label: "Bigger text",
@@ -181,7 +183,11 @@ const FEATURE_META: Record<FeatureKey, { label: string; icon: string; desc: stri
     desc: "Simplify selected text (off unless enabled)",
   },
 };
-const FEATURE_KEYS = Object.keys(FEATURE_META) as FeatureKey[];
+// Render order is the CANONICAL order (== DEFAULT_CONFIG.featuresEnabled ==
+// the widget panel), derived from lib/customizer/feature-meta.ts — NOT this
+// local record's insertion order, so the customer sees toggles in the same
+// order the widget shows them.
+const FEATURE_KEYS = CANONICAL_FEATURE_META.map((m) => m.key);
 
 /* ── Small helpers ───────────────────────────────────────────────────────────── */
 type Tab = "features" | "appearance" | "mobile";
