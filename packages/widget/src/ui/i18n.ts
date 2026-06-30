@@ -83,6 +83,8 @@ export type StringKey =
   | "f_highlightHover"
   | "f_biggerTargets"
   | "f_focusIndicator"
+  | "f_readMode"
+  | "readModeEmpty"
   | "rulerColor"
 
   // Segmented-control option labels
@@ -172,6 +174,8 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     f_highlightHover: "Highlight on hover",
     f_biggerTargets: "Bigger tap targets",
     f_focusIndicator: "Enhanced focus",
+    f_readMode: "Reading mode",
+    readModeEmpty: "We couldn't build a reading view for this page.",
     rulerColor: "Ruler color",
 
     opt_off: "Off",
@@ -252,6 +256,8 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     f_highlightHover: "Resaltar al pasar el cursor",
     f_biggerTargets: "Áreas táctiles más grandes",
     f_focusIndicator: "Foco mejorado",
+    f_readMode: "Modo lectura",
+    readModeEmpty: "No pudimos crear una vista de lectura para esta página.",
     rulerColor: "Color de la regla",
 
     opt_off: "Apagado",
@@ -332,6 +338,8 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     f_highlightHover: "Surligner au survol",
     f_biggerTargets: "Zones tactiles agrandies",
     f_focusIndicator: "Focus amélioré",
+    f_readMode: "Mode lecture",
+    readModeEmpty: "Nous n'avons pas pu créer une vue de lecture pour cette page.",
     rulerColor: "Couleur de la règle",
 
     opt_off: "Désactivé",
@@ -412,6 +420,8 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     f_highlightHover: "Beim Überfahren hervorheben",
     f_biggerTargets: "Größere Tippziele",
     f_focusIndicator: "Verbesserter Fokus",
+    f_readMode: "Lesemodus",
+    readModeEmpty: "Für diese Seite konnte keine Leseansicht erstellt werden.",
     rulerColor: "Linealfarbe",
 
     opt_off: "Aus",

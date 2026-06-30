@@ -9,7 +9,7 @@
     "build": "npm run build:core && npm run build:loader",
     "dev": "vite",
     "typecheck": "tsc --noEmit",
-    "test": "tsx src/fetch-config.test.ts && tsx src/core-autoinit.test.ts && tsx src/loader.test.ts && tsx src/core/state.test.ts && tsx src/core/telemetry.test.ts"
+    "test": "tsx src/fetch-config.test.ts && tsx src/core-autoinit.test.ts && tsx src/loader.test.ts && tsx src/core/state.test.ts && tsx src/core/telemetry.test.ts && tsx src/ui/dictionary.test.ts"
   },
   "devDependencies": {
     "cross-env": "^7.0.3",
