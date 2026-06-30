@@ -67,8 +67,10 @@ html[data-mky-font="dyslexic"] body * {
 }
 
 /* Color overrides — curated swatches set inline vars; gated per property. The
-   widget host (mounted on <html>, Shadow DOM) is excluded belt-and-braces. */
-html[data-mky-textcolor] body *:not(#makoya-widget-root) { color: var(--mky-text-color) !important; }
+   widget host is mounted on html (outside body) and is Shadow-DOM isolated,
+   so 'body *' can't reach it — no #id guard is needed (and an id inside :not()
+   would out-specify the title-color rule, masking title colour when both are on). */
+html[data-mky-textcolor] body * { color: var(--mky-text-color) !important; }
 html[data-mky-titlecolor] body h1, html[data-mky-titlecolor] body h2,
 html[data-mky-titlecolor] body h3, html[data-mky-titlecolor] body h4,
 html[data-mky-titlecolor] body h5, html[data-mky-titlecolor] body h6 {

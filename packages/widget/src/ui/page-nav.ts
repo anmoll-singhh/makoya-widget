@@ -112,8 +112,12 @@ export function makeJumpMenu(opts: {
     host = null;
     if (restoreFocus) {
       try {
-        const ret = opts.getReturnFocus?.() ?? prevFocus;
-        (ret && document.contains(ret) ? ret : document.body)?.focus?.();
+        // Focus the getReturnFocus() element directly — it lives in a Shadow DOM
+        // and document.contains() can't see into shadow roots (only the prevFocus
+        // fallback uses the contains check).
+        const ret = opts.getReturnFocus?.();
+        if (ret) ret.focus?.();
+        else (prevFocus && document.contains(prevFocus) ? prevFocus : document.body)?.focus?.();
       } catch { /* */ }
     }
     prevFocus = null;
@@ -131,7 +135,8 @@ export function makeJumpMenu(opts: {
         const emptyLabel = opts.getEmptyLabel();
 
         host = document.createElement("div");
-        host.style.cssText = "position:fixed;inset:0;z-index:2147483646;";
+        // Max z-index so the menu (modal) sits above the settings panel.
+        host.style.cssText = "position:fixed;inset:0;z-index:2147483647;";
         const shadow = host.attachShadow({ mode: "open" });
         const style = document.createElement("style");
         style.textContent = `

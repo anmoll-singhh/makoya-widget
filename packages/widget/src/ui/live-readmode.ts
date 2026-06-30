@@ -87,11 +87,14 @@ export function makeReadMode(opts: {
     }
     host?.remove();
     host = null;
-    // Return focus to a stable panel element (the close button) — prevFocus is
-    // the non-focusable shadow host, so it can't receive focus.
+    // Return focus to a stable panel element (the close button). NOTE: it lives
+    // in a Shadow DOM, and document.contains() does NOT see into shadow roots, so
+    // we focus the getReturnFocus() element DIRECTLY (it's always valid while the
+    // panel is mounted); only the prevFocus FALLBACK uses the contains check.
     try {
-      const ret = opts.getReturnFocus?.() ?? prevFocus;
-      (ret && document.contains(ret) ? ret : document.body)?.focus?.();
+      const ret = opts.getReturnFocus?.();
+      if (ret) ret.focus?.();
+      else (prevFocus && document.contains(prevFocus) ? prevFocus : document.body)?.focus?.();
     } catch {
       /* ignore */
     }
@@ -108,7 +111,10 @@ export function makeReadMode(opts: {
         prevFocus = (document.activeElement as HTMLElement | null) ?? null;
 
         host = document.createElement("div");
-        host.style.cssText = "position:fixed;inset:0;z-index:2147483646;";
+        // Max z-index so the full-screen reading pane sits ABOVE the settings
+        // panel (which is also at the max but earlier in DOM order, so this
+        // later sibling wins the tie and is fully visible).
+        host.style.cssText = "position:fixed;inset:0;z-index:2147483647;";
         const shadow = host.attachShadow({ mode: "open" });
 
         const { title, blocks, chars } = extractArticle();
