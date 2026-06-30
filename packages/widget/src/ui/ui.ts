@@ -618,7 +618,9 @@ function _mount(config: WidgetConfig): void {
       const sec = document.createElement("details");
       sec.className = "mky-sec";
       const persisted = sectionOpenState[secKey];
-      sec.open = persisted !== undefined ? persisted : (secKey === "sec_content" || secKey === "sec_color");
+      // Calm first paint: only the first section (Content) is open by default;
+      // everything else folds away until the user expands it.
+      sec.open = persisted !== undefined ? persisted : secKey === "sec_content";
       sec.addEventListener("toggle", () => { sectionOpenState[secKey] = sec.open; });
 
       const secLabel = document.createElement("summary");

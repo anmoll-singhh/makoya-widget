@@ -381,3 +381,148 @@ export function makeColorPalette(
 
   return palette;
 }
+
+// ---------------------------------------------------------------------------
+// makeSelect
+// ---------------------------------------------------------------------------
+
+/**
+ * A native <select> styled to look minimal/modern. Replaces makeSeg for
+ * single-choice enum features (contrast, saturation, text-align, …). Native
+ * gives full keyboard (type-ahead, arrows, Home/End, Esc), correct screen-reader
+ * announcement, and the OS mobile picker — for free, and it can't break inside
+ * Shadow DOM. We only style the CLOSED control (all the user ever sees).
+ *
+ * CSS class contract: `.mky-select`.
+ */
+export function makeSelect(
+  groupLabel: string,
+  opts: { value: string; label: string }[],
+  current: string,
+  set: (v: string) => void,
+  onChange: () => void
+): HTMLElement {
+  const sel = document.createElement("select");
+  sel.className = "mky-select";
+  sel.setAttribute("aria-label", groupLabel);
+
+  for (const opt of opts) {
+    const o = document.createElement("option");
+    o.value = opt.value;
+    o.textContent = opt.label;
+    if (opt.value === current) o.selected = true;
+    sel.appendChild(o);
+  }
+
+  sel.addEventListener("change", () => {
+    set(sel.value);
+    onChange();
+  });
+
+  return sel;
+}
+
+// ---------------------------------------------------------------------------
+// makeColorInput
+// ---------------------------------------------------------------------------
+
+const CLEAR_ICON =
+  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>`;
+
+/**
+ * Color control: a styled native `<input type="color">` swatch (the native
+ * picker INCLUDES an eyedropper on Chromium/Firefox/Safari-iOS, for free) +
+ * a hex text field for manual entry/paste + a clear button for the "off" state.
+ * Three real native inputs — no ARIA gymnastics, fully accessible.
+ *
+ * value contract: "" = off (no override), otherwise "#RRGGBB".
+ *
+ * CSS class contract: `.mky-color` (group), `.mky-swatch-wrap`,
+ * `.mky-color-input`, `.mky-hex`, `.mky-color-clear`; off state via the group's
+ * `data-off="true"`.
+ */
+export function makeColorInput(
+  label: string,
+  current: string,
+  set: (v: string) => void,
+  onChange: () => void,
+  clearLabel: string
+): HTMLElement {
+  const FALLBACK = "#000000";
+  const HEX_RE = /^#?[0-9a-fA-F]{6}$/;
+  const norm = (v: string) => (v[0] === "#" ? v : "#" + v).toUpperCase();
+
+  const group = document.createElement("div");
+  group.className = "mky-color";
+  group.setAttribute("role", "group");
+  group.setAttribute("aria-label", label);
+  group.dataset.off = String(!current);
+
+  const swatchWrap = document.createElement("span");
+  swatchWrap.className = "mky-swatch-wrap";
+
+  const swatch = document.createElement("input");
+  swatch.type = "color";
+  swatch.className = "mky-color-input";
+  swatch.value = current || FALLBACK;
+  swatch.setAttribute("aria-label", label);
+  swatchWrap.appendChild(swatch);
+
+  const hex = document.createElement("input");
+  hex.type = "text";
+  hex.className = "mky-hex";
+  hex.maxLength = 7;
+  hex.spellcheck = false;
+  hex.autocapitalize = "none";
+  hex.placeholder = "#000000";
+  hex.value = current ? current.toUpperCase() : "";
+  hex.setAttribute("aria-label", `${label} hex`);
+
+  const clear = document.createElement("button");
+  clear.type = "button";
+  clear.className = "mky-color-clear";
+  clear.setAttribute("aria-label", clearLabel);
+  clear.innerHTML = CLEAR_ICON;
+
+  const commit = (v: string) => { group.dataset.off = "false"; set(v); onChange(); };
+  const off = () => { group.dataset.off = "true"; swatch.value = FALLBACK; set(""); onChange(); };
+
+  // Native picker / drag / eyedropper → fires "input".
+  swatch.addEventListener("input", () => {
+    const v = swatch.value.toUpperCase();
+    hex.value = v;
+    hex.classList.remove("mky-hex-bad");
+    commit(v);
+  });
+
+  // Typed/pasted hex — commit live only when valid.
+  hex.addEventListener("input", () => {
+    const raw = hex.value.trim();
+    if (raw === "") return; // resolved on blur
+    if (HEX_RE.test(raw)) {
+      const v = norm(raw);
+      swatch.value = v;
+      hex.classList.remove("mky-hex-bad");
+      commit(v);
+    } else {
+      hex.classList.add("mky-hex-bad");
+    }
+  });
+
+  // Blur resolves edge cases: empty → off; invalid → revert.
+  hex.addEventListener("blur", () => {
+    const raw = hex.value.trim();
+    if (raw === "") {
+      hex.value = "";
+      off();
+    } else if (!HEX_RE.test(raw)) {
+      hex.classList.remove("mky-hex-bad");
+      hex.value = group.dataset.off === "true" ? "" : swatch.value.toUpperCase();
+    }
+  });
+
+  clear.addEventListener("click", () => { hex.value = ""; off(); });
+
+  group.append(swatchWrap, hex, clear);
+  return group;
+}

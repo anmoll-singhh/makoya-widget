@@ -469,12 +469,97 @@ details.mky-sec > summary.mky-sec-label:focus-visible {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
+   DROPDOWN — native <select> styled minimal (replaces segmented buttons)
+   ───────────────────────────────────────────────────────────────────────── */
+.mky-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  min-width: 116px;
+  max-width: 168px;
+  min-height: 36px;
+  border: 1px solid rgba(15,23,42,.12);
+  border-radius: 10px;
+  background-color: rgba(255,255,255,.9);
+  color: #1e293b;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 32px 7px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2364748b' stroke-width='1.5' stroke-linecap='round' fill='none'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+  transition: border-color .15s, background-color .15s;
+}
+.mky-select:hover { border-color: ${color}; background-color: #fff; }
+.mky-select:focus-visible { outline: 2px solid ${color}; outline-offset: 1px; border-color: ${color}; }
+.mky-select option { color: #1e293b; background: #fff; }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   COLOR CONTROL — native <input type=color> swatch + hex + clear
+   ───────────────────────────────────────────────────────────────────────── */
+.mky-color { display: inline-flex; align-items: center; gap: 8px; }
+.mky-swatch-wrap { position: relative; width: 30px; height: 30px; flex: none; }
+.mky-color-input {
+  width: 30px; height: 30px; padding: 0;
+  border: 2px solid rgba(15,23,42,.15);
+  border-radius: 50%;
+  background: none; cursor: pointer;
+  -webkit-appearance: none; appearance: none;
+  transition: transform .15s, border-color .15s;
+}
+.mky-color-input::-webkit-color-swatch-wrapper { padding: 0; }
+.mky-color-input::-webkit-color-swatch { border: none; border-radius: 50%; }
+.mky-color-input::-moz-color-swatch { border: none; border-radius: 50%; }
+.mky-color-input:hover { transform: scale(1.08); }
+.mky-color-input:focus-visible { outline: 2px solid ${color}; outline-offset: 2px; }
+.mky-hex {
+  width: 84px; min-height: 30px;
+  border: 1px solid rgba(15,23,42,.12);
+  border-radius: 9px;
+  background: rgba(255,255,255,.9);
+  color: #1e293b;
+  font: inherit; font-size: 13px; font-weight: 600;
+  font-variant-numeric: tabular-nums; letter-spacing: .02em;
+  text-transform: uppercase;
+  padding: 6px 9px;
+  transition: border-color .15s;
+}
+.mky-hex::placeholder { color: #94a3b8; font-weight: 500; text-transform: none; }
+.mky-hex:hover { border-color: ${color}; }
+.mky-hex:focus-visible { outline: 2px solid ${color}; outline-offset: 1px; border-color: ${color}; }
+.mky-hex-bad { border-color: #ef4444 !important; }
+.mky-color-clear {
+  width: 30px; height: 30px; flex: none;
+  border: 1px solid rgba(15,23,42,.12);
+  border-radius: 9px;
+  background: rgba(255,255,255,.9);
+  color: #64748b; cursor: pointer;
+  display: grid; place-items: center;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.mky-color-clear:hover { color: #0f172a; border-color: ${color}; background: #fff; }
+.mky-color-clear:focus-visible { outline: 2px solid ${color}; outline-offset: 1px; }
+.mky-color-clear svg { width: 14px; height: 14px; pointer-events: none; }
+/* OFF state — white swatch + red slash so it reads as "no override" */
+.mky-color[data-off="true"] .mky-color-input::-webkit-color-swatch { background: #fff !important; }
+.mky-color[data-off="true"] .mky-color-input::-moz-color-swatch { background: #fff !important; }
+.mky-color[data-off="true"] .mky-swatch-wrap::after {
+  content: ""; position: absolute; left: 50%; top: 3px; bottom: 3px; width: 2px;
+  background: #ef4444; transform: translateX(-50%) rotate(45deg);
+  border-radius: 2px; pointer-events: none;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
    DIVIDER
    ───────────────────────────────────────────────────────────────────────── */
 .mky-divider {
   height: 1px;
   background: rgba(15,23,42,.07);
-  margin: 14px 4px 6px;
+  margin: 10px 4px 4px;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -485,13 +570,13 @@ details.mky-sec > summary.mky-sec-label:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 9px 8px;
+  padding: 8px 10px;
   border-radius: 12px;
   transition: background .15s;
-  min-height: 40px;
+  min-height: 44px;
 }
 .mky-row:hover {
-  background: rgba(15,23,42,.04);
+  background: rgba(15,23,42,.035);
 }
 .mky-label {
   display: flex;
@@ -723,6 +808,12 @@ details.mky-sec > summary.mky-sec-label:focus-visible {
    Safe-area insets prevent content hiding behind home-indicator / notch.
    ───────────────────────────────────────────────────────────────────────── */
 @media (max-width: 480px) {
+  /* Bump the new controls to 44px touch targets on mobile. */
+  .mky-select { min-height: 44px; }
+  .mky-swatch-wrap, .mky-color-input { width: 36px; height: 36px; }
+  .mky-hex, .mky-color-clear { min-height: 44px; }
+  .mky-color-clear { width: 44px; }
+
   .mky-panel {
     /* Override any inline corner positioning set by JS */
     left: 0 !important;

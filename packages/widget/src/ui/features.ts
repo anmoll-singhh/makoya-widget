@@ -22,7 +22,7 @@ import type { FeatureKey } from "@makoya/shared";
 import type { Prefs } from "../core/state";
 import type { Lang } from "./i18n";
 import { t } from "./i18n";
-import { makeSwitch, makeSeg, makeStepper, makeColorPalette, row } from "./controls";
+import { makeSwitch, makeSelect, makeStepper, makeColorInput, row } from "./controls";
 
 // ---------------------------------------------------------------------------
 // ICON map — decorative inline SVGs for all 15 FeatureKeys.
@@ -84,32 +84,6 @@ export const ICON: Partial<Record<FeatureKey, string>> = {
 };
 
 // ---------------------------------------------------------------------------
-// Curated color swatches. Text/title swatches are all DARK (readable on a light
-// background); background swatches are all LIGHT (keep default dark text legible)
-// — a baseline so the tools don't actively harm readability (a11y review P1-4).
-// Names are human-readable so makeColorPalette announces them, not hex (P2-14).
-// "" = off.
-// ---------------------------------------------------------------------------
-const TEXT_COLOR_SWATCHES: { value: string; name: string }[] = [
-  { value: "", name: "Off" },
-  { value: "#000000", name: "Black" },
-  { value: "#1f2937", name: "Dark gray" },
-  { value: "#1e3a8a", name: "Navy" },
-  { value: "#14532d", name: "Dark green" },
-  { value: "#7f1d1d", name: "Maroon" },
-  { value: "#581c87", name: "Purple" },
-];
-const BG_COLOR_SWATCHES: { value: string; name: string }[] = [
-  { value: "", name: "Off" },
-  { value: "#ffffff", name: "White" },
-  { value: "#fdf6e3", name: "Cream" },
-  { value: "#f1f5f9", name: "Light gray" },
-  { value: "#fefce8", name: "Pale yellow" },
-  { value: "#eff6ff", name: "Pale blue" },
-  { value: "#f0fdf4", name: "Pale green" },
-];
-
-// ---------------------------------------------------------------------------
 // buildFeature
 // ---------------------------------------------------------------------------
 
@@ -168,7 +142,7 @@ export function buildFeature(
     // ── Segmented controls ───────────────────────────────────────────────────
     case "contrast": {
       const label = t(lang, "f_contrast");
-      const seg = makeSeg(
+      const seg = makeSelect(
         label,
         [
           { value: "off",   label: t(lang, "opt_off")   },
@@ -186,7 +160,7 @@ export function buildFeature(
 
     case "textAlign": {
       const label = t(lang, "f_textAlign");
-      const seg = makeSeg(
+      const seg = makeSelect(
         label,
         [
           { value: "off",     label: t(lang, "opt_off")     },
@@ -204,7 +178,7 @@ export function buildFeature(
 
     case "readableFont": {
       const label = t(lang, "f_readableFont");
-      const seg = makeSeg(
+      const seg = makeSelect(
         label,
         [
           { value: "off",      label: t(lang, "opt_off")      },
@@ -220,7 +194,7 @@ export function buildFeature(
 
     case "saturation": {
       const label = t(lang, "f_saturation");
-      const seg = makeSeg(
+      const seg = makeSelect(
         label,
         [
           { value: "off",       label: t(lang, "opt_off")       },
@@ -237,7 +211,7 @@ export function buildFeature(
 
     case "bigCursor": {
       const label = t(lang, "f_bigCursor");
-      const seg = makeSeg(
+      const seg = makeSelect(
         label,
         [
           { value: "off",   label: t(lang, "opt_off")   },
@@ -253,7 +227,7 @@ export function buildFeature(
 
     case "readingMask": {
       const label = t(lang, "f_readingMask");
-      const seg = makeSeg(
+      const seg = makeSelect(
         label,
         [
           { value: "off",  label: t(lang, "opt_off")  },
@@ -290,21 +264,11 @@ export function buildFeature(
       const label = t(lang, "f_readingRuler");
       const switchRow = row(icon, label,
         makeSwitch(label, prefs.ruler, (v) => { prefs.ruler = v; }, onChange));
-      const palette = makeColorPalette(
-        t(lang, "rulerColor"),
-        prefs.rulerColor,
-        [
-          { value: "#ffd400", name: "Yellow" },
-          { value: "#22c55e", name: "Green" },
-          { value: "#3b82f6", name: "Blue" },
-          { value: "#ec4899", name: "Pink" },
-          { value: "#111827", name: "Black" },
-        ],
-        (c) => { prefs.rulerColor = c; },
-        onChange
-      );
+      const colorRow = row("", t(lang, "rulerColor"),
+        makeColorInput(t(lang, "rulerColor"), prefs.rulerColor,
+          (c) => { prefs.rulerColor = c; }, onChange, t(lang, "clear")));
       const wrapper = document.createElement("div");
-      wrapper.append(switchRow, palette);
+      wrapper.append(switchRow, colorRow);
       return wrapper;
     }
 
@@ -344,21 +308,21 @@ export function buildFeature(
         makeSwitch(label, prefs.focusIndicator, (v) => { prefs.focusIndicator = v; }, onChange));
     }
 
-    // ── Color palettes ───────────────────────────────────────────────────────
+    // ── Color pickers (native <input type=color> + hex + clear) ───────────────
     case "textColor": {
       const label = t(lang, "f_textColor");
-      return makeColorPalette(label, prefs.textColor, TEXT_COLOR_SWATCHES,
-        (c) => { prefs.textColor = c; }, onChange);
+      return row(icon, label, makeColorInput(label, prefs.textColor,
+        (c) => { prefs.textColor = c; }, onChange, t(lang, "clear")));
     }
     case "titleColor": {
       const label = t(lang, "f_titleColor");
-      return makeColorPalette(label, prefs.titleColor, TEXT_COLOR_SWATCHES,
-        (c) => { prefs.titleColor = c; }, onChange);
+      return row(icon, label, makeColorInput(label, prefs.titleColor,
+        (c) => { prefs.titleColor = c; }, onChange, t(lang, "clear")));
     }
     case "bgColor": {
       const label = t(lang, "f_bgColor");
-      return makeColorPalette(label, prefs.bgColor, BG_COLOR_SWATCHES,
-        (c) => { prefs.bgColor = c; }, onChange);
+      return row(icon, label, makeColorInput(label, prefs.bgColor,
+        (c) => { prefs.bgColor = c; }, onChange, t(lang, "clear")));
     }
 
     // ── Live-controller toggles (the controller is wired in ui.ts apply()) ────

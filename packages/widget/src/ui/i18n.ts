@@ -118,6 +118,7 @@ export type StringKey =
   | "as_action"
   | "as_loading"
   | "as_failed"
+  | "clear"
 
   // Segmented-control option labels
   | "opt_off"
@@ -269,6 +270,7 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     as_action: "Simplify",
     as_loading: "Simplifying…",
     as_failed: "Couldn't simplify this text.",
+    clear: "Clear color",
   },
 
   // -------------------------------------------------------------------------
@@ -382,6 +384,7 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     as_action: "Simplificar",
     as_loading: "Simplificando…",
     as_failed: "No se pudo simplificar este texto.",
+    clear: "Quitar color",
   },
 
   // -------------------------------------------------------------------------
@@ -495,6 +498,7 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     as_action: "Simplifier",
     as_loading: "Simplification…",
     as_failed: "Impossible de simplifier ce texte.",
+    clear: "Effacer la couleur",
   },
 
   // -------------------------------------------------------------------------
@@ -608,6 +612,7 @@ export const STRINGS: Record<Lang, Record<StringKey, string>> = {
     as_action: "Vereinfachen",
     as_loading: "Wird vereinfacht…",
     as_failed: "Dieser Text konnte nicht vereinfacht werden.",
+    clear: "Farbe entfernen",
   },
 };
 
