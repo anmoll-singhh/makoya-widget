@@ -176,3 +176,34 @@ Continuation after v7 went live (block 24). Founder-driven, iterative.
 **Doc changes:** STATUS.md — refreshed "Last updated" (block 28), the at-a-glance Current-phase + Canonical-branch cells (main≠prod, 18 features), the agent board (3 live worktrees + stale-worktree note), and added a new **§⚙️ Config drift** table. SESSION.md — this entry. No CLAUDE.md edit yet (the "15 features" line is the one stale spot there — left for a deliberate edit, noted in the drift table).
 
 **Next (founder-gated, unchanged from block 27):** deploy `main` to prod; decide cron cadence (daily vs Vercel Pro per-minute) + commit `vercel.json`; resolve the other 2 uncommitted `main` files; prune the 14 `worktree-agent-*` worktrees; then Stripe + Supabase Pro.
+
+---
+
+## Block 30 — Widget licensing hardening (2026-06-30)
+
+**Why:** Founder pointed at `Makoya-Complete-Guide.pdf` (the merged guide), which contains a self-critique of the licensing system, and asked to "remove all the critiques and make the system solid — as hard as we can," after getting the options reviewed by a specialist agent.
+
+**Method:** Read the whole licensing system (`lib/licensing/token.ts`, the `/api/config/[siteId]` gate, `loader.ts`/`fetch-config.ts`/`core/index.ts`, `env.server.ts`, the Phase-1 + Phase-1.5 plans, STATUS). Dispatched the **security-reviewer agent** to verify the threat model, rate each gap real-vs-theatre, and recommend the maximum *genuinely-effective* hardening. Implemented its verdict.
+
+**Key finding — the PDF is partly stale:** "watch-first mode" critique is wrong (enforcement is ON in prod per STATUS block 25); token wall + direct-`core.js` bypass close are already LIVE (Phase 1.5). The review then surfaced **5 real gaps not in the PDF**, one critical.
+
+**Shipped (all preserve never-500 / fail-open / never-break-the-host-page):**
+1. **`logWidgetGate` was an EMPTY no-op** (`lib/observability.ts`) — enforcement ran blind in prod. Now forwards to Sentry (warning, fingerprint by `reason`) + PostHog `widget_gate_denied` funnel event + dev-only console; never throws; no prod-console leak (honors the prior privacy note).
+2. **No-Origin bypass closed** (`app/api/config/[siteId]/route.ts` `isAllowedDomain`) — non-empty allowlist + missing `Origin` now returns false (blocks in enforce). A real browser always sends Origin on the cross-origin config fetch; a `curl …?t=TOKEN` omitting it was passing the domain check.
+3. **Per-IP rate limit on `/api/config`** (120/min, name `widget-config`) before any cache/DB work; on limit → 429 (widget treats non-200 as fail-open → mounts on defaults). Stops DB-DoS / bill-running via random-siteId floods (the endpoint is `no-store`/uncached).
+4. **Admin license kill-switch** — `PATCH /api/admin/sites/[id]` now accepts `licenseStatus` + `allowedDomains` (validated; `normalizeDomains` rejects schemes/paths) and purges the config cache (`updateSiteLicenseStatus`/`updateSiteAllowedDomains` in `lib/admin.ts`, `LICENSE_STATUSES` in `admin-constants.ts`). Was a manual Supabase edit + 5-min stale window.
+5. **`data-demo` gated out of the shipped bundle** — new `__MAKOYA_ALLOW_DEMO__` vite define (false unless `MAKOYA_ALLOW_DEMO=true`), gated in `core/index.ts` via `demoAllowed()` (fail-closed under the tsx test runner). Verified dead in `apps/web/public/widget/core.js` (`function ft(){return!1}`). Closes the free-widget bypass where anyone could embed `core.js` with `data-demo`.
+
+**Deliberately NOT done (review verdict — real security vs theatre):**
+- **Expiring/rotating tokens** — do NOT close proxy-replay (a proxy just refetches); `license_status='suspended'` already gives instant revocation. Pure complexity.
+- **DNS/file domain-ownership verification** — `allowed_domains` is already owner-authenticated, so an attacker can't tamper with it. Belt-and-suspenders only.
+- **Token → `x-makoya-token` header** (review's Step 6) — REJECTED: a custom header triggers a CORS preflight the endpoint doesn't handle → preflight fails → fail-open → would silently disable the gate for every real install. Token is already public, so zero security loss skipping it.
+- **Proxy-replay (spoofed Origin)** — architecturally unclosable for a paste-once client widget; documented/accepted (matches Phase-1 §6.5 / Phase-1.5 A0).
+
+**Tests:** `route.test.ts` — flipped the old "no Origin → not blocked" case, added empty-allowlist-lenient + monitor-logged + rate-limit (429 / under-limit) cases, mocked `checkRateLimit`. `core-autoinit.test.ts` — data-demo with flag ON (no fetch) + data-demo with flag OFF (ignored → gated fetch, the prod-safety guarantee).
+
+**QA:** `npm run ci` green on the branch AND on `main` post-merge — **643 web tests + widget tests, typecheck clean**. `build:widget:deploy` rebuilt + copied bundles.
+
+**Git:** 2 commits on `chore/claude-security-review-and-skills` (`896d434` hardening, `169a3db` PDF brief→Complete-Guide). Branch pushed; **ff-merged to `main` (`8641e81`→`169a3db`); `main` pushed**. Working tree clean.
+
+**PENDING founder actions:** **deploy** (`cd apps/web && vercel --prod --yes` — Vercel CLI not installed in this session, and `git push origin main` does NOT auto-deploy here); **confirm** `WIDGET_ENFORCE` + `WIDGET_SIGNING_SECRET` are still set in Vercel (the gate decisions are now visible via `logWidgetGate` once deployed). The **9 open GitHub PRs are all Dependabot** dependency bumps (4 GH-Actions + 5 npm incl. Next 16.2.9, zod 4.4.3, chromium) — unrelated to this work, safe to review/merge separately.
