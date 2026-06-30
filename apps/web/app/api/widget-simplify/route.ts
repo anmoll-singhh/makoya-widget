@@ -73,7 +73,9 @@ export async function POST(req: Request): Promise<NextResponse> {
 
   // Per-siteId cap (in ADDITION to per-IP) so the (Makoya-funded) model spend
   // can't be amplified by rotating IPs against one opted-in site's public siteId.
-  if (await checkRateLimit(siteId, { name: "widget-simplify-site", limit: 200, windowMs: 3_600_000 })) {
+  if (
+    await checkRateLimit(siteId, { name: "widget-simplify-site", limit: 200, windowMs: 3_600_000 })
+  ) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429, headers: cors });
   }
 

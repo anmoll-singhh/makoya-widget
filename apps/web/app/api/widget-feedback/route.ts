@@ -85,7 +85,9 @@ export async function POST(req: Request): Promise<NextResponse> {
 
   // Per-siteId cap (in ADDITION to per-IP) so an attacker rotating IPs can't mail
   // bomb a site owner with the public, non-secret siteId. 30 reports/hour/site.
-  if (await checkRateLimit(siteId, { name: "widget-feedback-site", limit: 30, windowMs: 3_600_000 })) {
+  if (
+    await checkRateLimit(siteId, { name: "widget-feedback-site", limit: 30, windowMs: 3_600_000 })
+  ) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429, headers: cors });
   }
 

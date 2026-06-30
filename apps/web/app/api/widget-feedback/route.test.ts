@@ -133,7 +133,8 @@ describe("POST /api/widget-feedback", () => {
   it("returns 429 when the per-siteId cap is hit (IP ok) — anti mail-bomb", async () => {
     // IP bucket allows; the site bucket limits → still 429, no email sent.
     checkRateLimit.mockImplementation((_key: string, opts: { name: string }) =>
-      Promise.resolve(opts.name === "widget-feedback-site"));
+      Promise.resolve(opts.name === "widget-feedback-site")
+    );
     const res = await POST(makeReq(valid));
     expect(res.status).toBe(429);
     expect(send).not.toHaveBeenCalled();

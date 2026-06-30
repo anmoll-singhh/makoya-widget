@@ -90,6 +90,9 @@ export function makeJumpMenu(opts: {
   getCloseLabel: () => string;
   getEmptyLabel: () => string;
   onClose: () => void;
+  /** Stable panel element to return focus to on Esc/button close (the trigger
+   *  lives in a Shadow DOM so document.activeElement is the non-focusable host). */
+  getReturnFocus?: () => HTMLElement | null;
 }): { open(): void; close(): void } {
   let host: HTMLDivElement | null = null;
   let prevFocus: HTMLElement | null = null;
@@ -99,11 +102,20 @@ export function makeJumpMenu(opts: {
     return Array.from(shadow.querySelectorAll<HTMLElement>("button"));
   }
 
-  function teardown(cb: boolean): void {
+  // restoreFocus=false is used when activating a nav item: we are intentionally
+  // moving focus to the jumped-to target, so we must NOT pull it back to the
+  // trigger. (Re-entrancy via onClose→apply→close is guarded by close()'s own
+  // `if (!host) return`, so this never double-fires.)
+  function teardown(cb: boolean, restoreFocus = true): void {
     if (keyHandler) { document.removeEventListener("keydown", keyHandler, true); keyHandler = null; }
     host?.remove();
     host = null;
-    try { (prevFocus && document.contains(prevFocus) ? prevFocus : document.body)?.focus?.(); } catch { /* */ }
+    if (restoreFocus) {
+      try {
+        const ret = opts.getReturnFocus?.() ?? prevFocus;
+        (ret && document.contains(ret) ? ret : document.body)?.focus?.();
+      } catch { /* */ }
+    }
     prevFocus = null;
     if (cb) { try { opts.onClose(); } catch { /* never throw */ } }
   }
@@ -172,7 +184,10 @@ export function makeJumpMenu(opts: {
             const b = document.createElement("button");
             b.type = "button";
             b.textContent = it.level ? `${"— ".repeat(Math.max(0, it.level - 1))}${it.label}` : it.label;
-            b.addEventListener("click", () => { jumpTo(it.el); teardown(true); });
+            // Close the menu WITHOUT restoring focus to the trigger, THEN jump —
+            // so focus lands on the target (BUG-1: the old order let teardown's
+            // focus-restore override the jump).
+            b.addEventListener("click", () => { teardown(true, false); jumpTo(it.el); });
             li.appendChild(b);
             list.appendChild(li);
           }

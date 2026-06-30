@@ -139,7 +139,8 @@ describe("POST /api/widget-simplify — happy path + validation", () => {
 
   it("returns 429 when the per-siteId cap is hit (IP ok) — anti cost-amplification", async () => {
     checkRateLimit.mockImplementation((_key: string, opts: { name: string }) =>
-      Promise.resolve(opts.name === "widget-simplify-site"));
+      Promise.resolve(opts.name === "widget-simplify-site")
+    );
     const res = await POST(makeReq(valid));
     expect(res.status).toBe(429);
     expect(fetchMock).not.toHaveBeenCalled();

@@ -232,13 +232,19 @@ function _mount(config: WidgetConfig): void {
   const virtualKeyboard = makeVirtualKeyboard();
   const voiceNav        = makeVoiceNav({ getLang: () => lang });
   // Modal tools: closing them (Esc/button) flips the pref back off + re-renders.
-  const readMode = makeReadMode({ onClose: () => { prefs.readMode = false; apply(); renderBody(); } });
+  // getReturnFocus points at closeBtn (panel header, survives renderBody) so
+  // closing a modal tool re-anchors focus inside the panel instead of <body>.
+  const readMode = makeReadMode({
+    onClose: () => { prefs.readMode = false; apply(); renderBody(); },
+    getReturnFocus: () => closeBtn,
+  });
   const linksMenu = makeJumpMenu({
     collect: collectLinks,
     getTitle: () => t(lang, "f_usefulLinks"),
     getCloseLabel: () => t(lang, "close"),
     getEmptyLabel: () => t(lang, "nav_none"),
     onClose: () => { prefs.usefulLinks = false; apply(); renderBody(); },
+    getReturnFocus: () => closeBtn,
   });
   const structureMenu = makeJumpMenu({
     collect: collectHeadings,
@@ -246,6 +252,7 @@ function _mount(config: WidgetConfig): void {
     getCloseLabel: () => t(lang, "close"),
     getEmptyLabel: () => t(lang, "nav_none"),
     onClose: () => { prefs.pageStructure = false; apply(); renderBody(); },
+    getReturnFocus: () => closeBtn,
   });
 
   // Dictionary result popover — own Shadow DOM; role=status/aria-live so AT
@@ -265,7 +272,8 @@ function _mount(config: WidgetConfig): void {
           "border:2px solid #1e63ff;border-radius:12px;padding:14px 32px 14px 16px;" +
           "box-shadow:0 8px 30px rgba(0,0,0,.25);font-family:system-ui,sans-serif;font-size:15px;line-height:1.5;}" +
           ".w{font-weight:700;}.pos{color:#666;font-style:italic;margin-left:6px;}" +
-          ".x{position:absolute;top:6px;right:8px;border:0;background:transparent;font-size:18px;cursor:pointer;color:#666;}";
+          ".x{position:absolute;top:6px;right:8px;border:0;background:transparent;font-size:18px;cursor:pointer;color:#666;}" +
+          ".x:focus-visible{outline:3px solid #1e63ff;outline-offset:2px;}";
         const box = document.createElement("div");
         box.className = "box";
         box.setAttribute("role", "status");
@@ -280,7 +288,8 @@ function _mount(config: WidgetConfig): void {
         sh.append(st, box);
         document.documentElement.appendChild(dictHost);
       }
-      const content = dictHost.shadowRoot!.querySelector(".content") as HTMLElement;
+      const content = dictHost.shadowRoot!.querySelector<HTMLElement>(".content");
+      if (!content) return;
       content.innerHTML = "";
       if (state.status === "loading") {
         content.textContent = t(lang, "dict_loading");

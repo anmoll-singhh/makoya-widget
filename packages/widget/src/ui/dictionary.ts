@@ -97,6 +97,9 @@ export function makeDictionary(opts: {
     disable() {
       if (!enabled) return;
       enabled = false;
+      // Bump seq so any in-flight lookup's callback is dropped even if the tool
+      // is re-enabled before that promise resolves (mySeq !== seq).
+      seq++;
       document.removeEventListener("mouseup", onMouseUp);
     },
   };

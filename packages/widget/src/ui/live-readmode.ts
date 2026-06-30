@@ -65,7 +65,14 @@ function extractArticle(): Extracted {
   return { title, blocks, chars };
 }
 
-export function makeReadMode(opts: { onClose: () => void }): {
+export function makeReadMode(opts: {
+  onClose: () => void;
+  /** A STABLE panel element to return focus to on close. Needed because the
+   *  pane's trigger lives in a Shadow DOM, so document.activeElement at open
+   *  time is the (non-focusable) shadow host — focusing it would be a no-op and
+   *  focus would drift to <body>. */
+  getReturnFocus?: () => HTMLElement | null;
+}): {
   open(lang: Lang): void;
   close(): void;
 } {
@@ -80,9 +87,11 @@ export function makeReadMode(opts: { onClose: () => void }): {
     }
     host?.remove();
     host = null;
-    // Restore focus to the trigger (or body if it's gone).
+    // Return focus to a stable panel element (the close button) — prevFocus is
+    // the non-focusable shadow host, so it can't receive focus.
     try {
-      (prevFocus && document.contains(prevFocus) ? prevFocus : document.body)?.focus?.();
+      const ret = opts.getReturnFocus?.() ?? prevFocus;
+      (ret && document.contains(ret) ? ret : document.body)?.focus?.();
     } catch {
       /* ignore */
     }
