@@ -18,7 +18,7 @@ There is a **central memory system**. Use it so parallel agents don't re-confuse
 
 A 3-part product for selling and running an embeddable web-accessibility widget:
 
-1. **Widget** (`packages/widget`) — a `<script>` clients drop on any site. Renders a launcher button + settings panel; applies **15** accessibility preferences (text size, spacing, contrast, stop-motion, reading ruler/mask, highlight links/titles, big cursor, readable font, hide images, saturation, text align, mute sounds, read-aloud) to the host page. Ships with 9 quick-profiles and 4 UI languages (en/es/fr/de).
+1. **Widget** (`packages/widget`) — a `<script>` clients drop on any site. Renders a launcher button + settings panel; applies **18** accessibility preferences (text size, spacing, contrast, stop-motion, reading ruler/mask, highlight links/titles, big cursor, readable font, hide images, saturation, text align, mute sounds, read-aloud, highlight-on-hover, bigger click targets, focus indicator) to the host page. Ships with 9 quick-profiles and 4 UI languages (en/es/fr/de).
 2. **Dashboard** (`apps/web`) — Next.js 15 app with **real Supabase auth + RLS**. Clients land in a customizer-first widget editor with live preview, view their scan report, and re-scan. A separate **admin CRM** (`/admin`, gated by `ADMIN_EMAILS`) lists customers worst-score-first, manages plans, and tracks leads/consultations.
 3. **Scanner** (`apps/web/lib/scanner`, `/api/scan`) — a REAL WCAG 2.0/2.1/2.2 engine (Playwright + axe-core + 6 custom DOM checks) that scores a site and returns plain-language issues. It is both the product core and the top of the funnel. `scanner-integration/` + `/api/scan-ingest` are the email→lead capture path (Phase 1, not yet wired).
 

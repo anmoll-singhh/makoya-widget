@@ -151,3 +151,28 @@ Continuation after v7 went live (block 24). Founder-driven, iterative.
 - Set Vercel **Root Directory = apps/web**; verify NEXT_PUBLIC_* env in Vercel (all envs); enable **Vercel Pro** (every-minute scan-dispatch cron); decide **scan-cadence tiering** (the real cost wall at scale — architect's top flag).
 - **Leaked-password protection** is a Supabase **Pro-tier** feature → unavailable on free tier (that's why it couldn't be found).
 - Recommended next: load-test the config endpoint AFTER deploy to prove the cache holds; wire observability (queue depth/DLQ/cache hit-rate) to PostHog/Sentry; Stripe webhook must `purgeSiteBundle` on license change when billing is built.
+
+---
+
+## Block 28 — Doc/state audit + reconciliation (2026-06-29)
+
+**Why:** Founder asked to verify that `STATUS.md` / `SESSION.md` match reality, walk the whole repo, bring the docs to the latest config, and (because the founder runs 2–3 Claude sessions at once) make sure concurrent work is actually logged. Read-only audit + doc edits only — **no code changed.**
+
+**Method:** `git log/status/branch`, `git worktree list`, `git rev-list --count` (push state), `ls supabase/migrations`, route-dir checks, and read `packages/shared` mirror — cross-checked each against the doc claims.
+
+**Confirmed accurate (block 27 ground truth holds):**
+- `main` = `1714ae8`, fully in sync with `origin/main` (`0 0` ahead/behind). Block-27 merge `598176d` is on origin.
+- 4 block-27 migrations present (`20260629120000/130000/140000/150000`), **26** total `.sql` migrations on disk.
+- Scanner-decouple routes exist as documented: `app/api/cron/{rescan,scan-dispatch,recompute-reports}` + `app/api/internal/scan-worker` (the "internal/" path the docs claim is correct — verified).
+
+**Drift found + logged in STATUS.md §⚙️ Config drift:**
+1. **Widget features 15→18.** `DEFAULT_CONFIG.featuresEnabled` (canonical `packages/shared` + generated mirror `apps/web/lib/shared/index.ts`) now lists 18 — batch-2 added `highlightHover`, `biggerTargets`, `focusIndicator`. CLAUDE.md + the STATUS "Live in prod" table still say 15. Code is truth; prod still serves the older bundle (un-deployed).
+2. **scan-dispatch cron changed every-minute→daily.** `apps/web/vercel.json` working tree has `0 4 * * *` (was `* * * * *` in the block-27 narrative) — **uncommitted**. Almost certainly the Vercel Hobby/free-tier limit (per-minute crons need Pro). The block-27 dispatcher design assumed per-minute; needs a decide-and-commit.
+3. **`main` working tree not clean.** 3 uncommitted files: `vercel.json` (cron), `env.public.ts` (whitespace-only reformat, no logic change), `.gitignore` (adds `.claude/settings.local.json`). Left them untouched — a parallel session likely owns them; flagged for the founder rather than committed/reverted.
+4. **`main` ≠ prod.** Prod is still block-25 `b537147` / `makoya-2da2afnji`; blocks 26 (motion/mobile + i18n + batch-2 widget) and 27 (scalability) are merged but **un-deployed**. (The block-26 header's "DEPLOYED LIVE" line is superseded by block-27's explicit "nothing live yet" — treated block 27 as authoritative.)
+
+**Multi-session reality (the founder's concern) — captured on the agent board:** `git worktree list` shows the `main` checkout + **3 active sibling worktrees with live uncommitted WIP** — `makoya-a11y` (`feat/a11y-feature-wave`), `makoya-a11y-2` (`feat/a11y-font-embed`, new OpenDyslexic embed), `makoya-mike-pricing` (`feat/mike-pricing-entitlements`) — plus **14 stale `.claude/worktrees/agent-*`** worktrees from block 26/27 multi-agent runs pointing at old commits. The board previously listed only `makoya-a11y`; now refreshed to all three + a prune note for the 14.
+
+**Doc changes:** STATUS.md — refreshed "Last updated" (block 28), the at-a-glance Current-phase + Canonical-branch cells (main≠prod, 18 features), the agent board (3 live worktrees + stale-worktree note), and added a new **§⚙️ Config drift** table. SESSION.md — this entry. No CLAUDE.md edit yet (the "15 features" line is the one stale spot there — left for a deliberate edit, noted in the drift table).
+
+**Next (founder-gated, unchanged from block 27):** deploy `main` to prod; decide cron cadence (daily vs Vercel Pro per-minute) + commit `vercel.json`; resolve the other 2 uncommitted `main` files; prune the 14 `worktree-agent-*` worktrees; then Stripe + Supabase Pro.
