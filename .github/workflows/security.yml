@@ -7,10 +7,20 @@ name: Security
 #   - Semgrep   : SAST over JS/TS/React rule packs (OSS, no token required)
 #   - CodeQL    : GitHub's deep SAST for javascript-typescript
 #
-# None of these require a paid plan or a secret to be configured:
+# The first three require no paid plan or secret to be configured:
 #   - gitleaks-action runs without GITLEAKS_LICENSE for public/OSS-tier scanning.
 #   - `semgrep ci` falls back to local OSS rules when SEMGREP_APP_TOKEN is unset.
 #   - CodeQL uses the built-in GITHUB_TOKEN (Actions: read, security-events: write).
+#
+# A fourth, AI-based reviewer runs on pull requests only:
+#   - Claude Code Security Review (anthropics/claude-code-security-review) — does a
+#     SEMANTIC, diff-aware review of the PR and posts contextual findings as PR
+#     comments. It catches logic-level issues the pattern scanners above miss
+#     (e.g. RLS/tenant-isolation bugs, auth gaps, unsafe webhook handling). It is
+#     the only job here that needs a secret: CLAUDE_API_KEY (a key enabled for both
+#     the Claude API and Claude Code). The job is written to SKIP cleanly when that
+#     secret is absent, so this workflow is safe to merge before the key is set —
+#     it activates automatically once CLAUDE_API_KEY is added to repo secrets.
 
 on:
   push:
@@ -83,3 +93,35 @@ jobs:
         uses: github/codeql-action/analyze@v3
         with:
           category: "/language:${{ matrix.language }}"
+
+  # ---------------------------------------------------------------------------
+  # Claude Code Security Review — AI/semantic SAST on the PR diff.
+  # Complements (does not replace) the pattern scanners above: it reasons about
+  # intent, so it's well-suited to this app's risk surface (Supabase RLS / tenant
+  # isolation, auth gating, the service-role-only `leads` table, Stripe webhook
+  # verification). PR-only, since it reviews the diff and comments on the PR.
+  #
+  # Gated on CLAUDE_API_KEY: the env is hoisted to job level, and the step's `if`
+  # skips the action entirely when the secret is empty. => No noisy red X on PRs
+  # (or from forks) before the key is configured; flips on automatically after.
+  # ---------------------------------------------------------------------------
+  claude-review:
+    name: Claude Code Security Review (AI)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      pull-requests: write # post review findings as PR comments
+      contents: read
+    env:
+      CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 2 # diff the PR head against its base
+      - name: Claude security review
+        if: env.CLAUDE_API_KEY != ''
+        uses: anthropics/claude-code-security-review@main
+        with:
+          comment-pr: true
+          claude-api-key: ${{ secrets.CLAUDE_API_KEY }}
