@@ -80,8 +80,16 @@ sign-off. So:
 
 `FeatureKey` (packages/shared) → `Prefs` field + migration + `applyPrefs`
 (state.ts) → effect (effects.ts CSS-var / live.ts controller) → panel control
-(ui/features.ts + ui/controls.ts) → i18n ×4 (ui/i18n.ts) → `FEATURE_META`
-(_CustomizeClient.tsx) → `npm run sync:shared` → vitest.
+(ui/features.ts + ui/controls.ts) → section + `apply()` + `activeFeatureKeys`
+wiring (ui/ui.ts) → i18n ×4 (ui/i18n.ts) → `FEATURE_META`
+(apps/web/lib/customizer/feature-meta.ts + feature-order.ts) →
+`npm run sync:shared` → vitest.
+
+> **Spec critique applied (2026-06-30):** both `ecc:architect` and
+> `ecc:a11y-architect` returned *ship with changes*; all P0/P1/P2 findings are
+> folded into the design spec (see its new §0). Execution model changed: Wave 0
+> now locks the ENTIRE surface single-threaded, Wave 2 authors new modules only,
+> Wave 3 is the single-threaded integrator. Building straight through now.
 
 ## Hard invariants (spec §5 — never violate)
 
