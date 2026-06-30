@@ -15,6 +15,7 @@ describe("sites mappers", () => {
       customTriggerSelector: "", domObserverEnabled: true,
       inheritFonts: false, mobileEnabled: true,
       launcherShape: "circle", offsetX: 0, offsetY: 0,
+      aiSimplifyEnabled: false,
     });
   });
   it("configToRow only includes provided fields, snake_cased", () => {

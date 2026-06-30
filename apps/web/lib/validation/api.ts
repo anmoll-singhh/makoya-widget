@@ -141,6 +141,30 @@ export const consultationBodySchema = z.object({
 });
 export type ConsultationBody = z.infer<typeof consultationBodySchema>;
 
+// ── Widget public POST routes (accessiBe-parity) ─────────────────────────────
+
+/** Body for `/api/widget-feedback` — a visitor reporting an a11y issue. */
+export const widgetFeedbackBodySchema = z.object({
+  siteId: z.string().min(1).max(128),
+  /** The visitor's report. Length-capped for DoS hygiene. */
+  message: z.string().min(1).max(2000),
+  /** Optional reply-to email (visitors may report anonymously). */
+  email: emailSchema.optional(),
+  /** Optional page URL where the issue was found (display-only label). */
+  url: httpUrlStringSchema.optional(),
+});
+export type WidgetFeedbackBody = z.infer<typeof widgetFeedbackBodySchema>;
+
+/** Body for `/api/widget-simplify` — selected text to simplify (opt-in tool). */
+export const widgetSimplifyBodySchema = z.object({
+  siteId: z.string().min(1).max(128),
+  /** The selected paragraph. Length-capped (cost + abuse hygiene). */
+  text: z.string().min(1).max(2000),
+  /** Target language for the simplification; defaults to English. */
+  lang: z.enum(["en", "es", "fr", "de"]).optional(),
+});
+export type WidgetSimplifyBody = z.infer<typeof widgetSimplifyBodySchema>;
+
 // ── Helper: total, safe parse ────────────────────────────────────────────────
 
 export type ParseResult<T> = { ok: true; data: T } | { ok: false };

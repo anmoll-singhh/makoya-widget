@@ -24,6 +24,10 @@ export const env = {
   RESEND_API_KEY: process.env.RESEND_API_KEY ?? "",
   EMAIL_FROM: process.env.EMAIL_FROM ?? "Makoya <reports@mailer.jewlx.ai>",
 
+  // Anthropic (Claude Haiku) for the OPT-IN /api/widget-simplify tool. Empty =
+  // the route refuses (the tool ships OFF and is per-site flag-gated anyway).
+  ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY ?? "",
+
   // Widget signed-token secret (Phase 1.5). Empty = token verification is
   // a no-op in lib/licensing/token.ts. Must never reach the client bundle.
   WIDGET_SIGNING_SECRET: process.env.WIDGET_SIGNING_SECRET ?? "",
