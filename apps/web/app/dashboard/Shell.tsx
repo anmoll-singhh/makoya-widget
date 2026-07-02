@@ -55,6 +55,7 @@ const COMPLIANCE_ITEMS: Array<{ href: string; labelKey: DashboardStringKey }> = 
 
 const INSIGHTS_ITEMS: Array<{ href: string; labelKey: DashboardStringKey }> = [
   { href: "/reports", labelKey: "nav_reports" },
+  { href: "/audit", labelKey: "nav_audit" },
   { href: "/analytics", labelKey: "nav_analytics" },
 ];
 
@@ -121,7 +122,10 @@ export function Shell({ sites, user, children }: ShellProps) {
     () => pathname.includes("/statement") || pathname.includes("/proof")
   );
   const [insightsOpen, setInsightsOpen] = useState(
-    () => pathname.includes("/reports") || pathname.includes("/analytics")
+    () =>
+      pathname.includes("/reports") ||
+      pathname.includes("/audit") ||
+      pathname.includes("/analytics")
   );
 
   // Close switcher on Esc or outside click

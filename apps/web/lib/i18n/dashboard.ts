@@ -55,6 +55,7 @@ export type DashboardStringKey =
   | "nav_proof"
   | "nav_insights"
   | "nav_reports"
+  | "nav_audit"
   | "nav_analytics"
   | "nav_agent_settings"
   | "nav_account"
@@ -132,6 +133,7 @@ export const DASHBOARD_STRINGS: Record<Lang, Record<DashboardStringKey, string>>
     nav_proof: "Proof of effort",
     nav_insights: "Insights",
     nav_reports: "Reports",
+    nav_audit: "Full audit",
     nav_analytics: "Analytics",
     nav_agent_settings: "Agent settings",
     nav_account: "Account",
@@ -193,6 +195,7 @@ export const DASHBOARD_STRINGS: Record<Lang, Record<DashboardStringKey, string>>
     nav_proof: "Prueba de esfuerzo",
     nav_insights: "Análisis",
     nav_reports: "Informes",
+    nav_audit: "Auditoría completa",
     nav_analytics: "Estadísticas",
     nav_agent_settings: "Ajustes del agente",
     nav_account: "Cuenta",
@@ -254,6 +257,7 @@ export const DASHBOARD_STRINGS: Record<Lang, Record<DashboardStringKey, string>>
     nav_proof: "Preuve d’effort",
     nav_insights: "Analyses",
     nav_reports: "Rapports",
+    nav_audit: "Audit complet",
     nav_analytics: "Statistiques",
     nav_agent_settings: "Paramètres de l’agent",
     nav_account: "Compte",
@@ -315,6 +319,7 @@ export const DASHBOARD_STRINGS: Record<Lang, Record<DashboardStringKey, string>>
     nav_proof: "Nachweisdokumentation",
     nav_insights: "Analysen",
     nav_reports: "Berichte",
+    nav_audit: "Vollständige Prüfung",
     nav_analytics: "Statistiken",
     nav_agent_settings: "Agenteneinstellungen",
     nav_account: "Konto",

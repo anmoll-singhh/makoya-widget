@@ -6,6 +6,14 @@
  * them external leaves them as runtime require() from node_modules — the only safe
  * approach for the scanner engine (locally and on Vercel Lambda).
  *
+ * @react-pdf/renderer is externalised for the SAME reason: it (via @react-pdf/pdfkit
+ * + fontkit) loads the standard-14 PDF font metrics (Helvetica/Courier AFM data)
+ * from files inside its own package at render time. When webpack/turbopack bundles
+ * it, those asset paths no longer resolve, so renderToBuffer() still returns a valid
+ * %PDF but every text run measures to nothing — the result is a structurally-correct
+ * yet visually BLANK PDF (the exact symptom of the report-download bug). Keeping it
+ * external preserves those runtime file lookups. See lib/pdf/render-report.ts.
+ *
  * Security headers: a conservative, embedding-safe baseline applied to every
  * response. We deliberately DO NOT set X-Frame-Options / CSP frame-ancestors or
  * a content CSP here — the widget bundle (`/widget/core.js`) and the public
@@ -40,6 +48,9 @@ const nextConfig = {
     "@sparticuz/chromium",
     "@axe-core/playwright",
     "axe-core",
+    // Keep the PDF renderer un-bundled so its font-metric assets resolve at
+    // runtime (prevents the blank-report-PDF bug). See header note above.
+    "@react-pdf/renderer",
   ],
 
   webpack: (config, { isServer }) => {

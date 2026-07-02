@@ -48,7 +48,14 @@ import { runSecondEngine } from "./second-engine";
 import { crossValidate } from "./cross-validate";
 import { SCORING_MODEL_VERSION } from "@/lib/utils/score";
 import type { EngineMeta, SeverityLevel } from "@/types";
-import type { ResolvedScanOptions, RawAxeViolation, RawAxeNode, RawScanResult } from "./types";
+import type {
+  ResolvedScanOptions,
+  RawAxeViolation,
+  RawAxeNode,
+  RawScanResult,
+  RuleAuditResult,
+  AuditNodeSample,
+} from "./types";
 
 /**
  * Engine pipeline version. Bump whenever the scan PIPELINE changes in a way
@@ -76,6 +83,26 @@ const CUSTOM_CHECK_IDS = [
 
 /** Max DOM nodes displayed per issue (true count lives in `totalInstances`). */
 const MAX_DISPLAY_NODES = 10;
+
+/**
+ * Max element snapshots stored per rule in a DEEP AUDIT (true count lives in
+ * `RuleAuditResult.count`). Caps the JSONB blob: a clean page can have hundreds
+ * of passing nodes per rule, and we must not serialise them all. Matches the
+ * ~10-per-rule density accessScan itself shows.
+ */
+const MAX_AUDIT_SAMPLE_NODES = 10;
+
+/**
+ * axe result buckets requested in DEEP-AUDIT mode. The normal scan asks only
+ * for "violations" (see buildAxe) to stay fast; a deep audit needs every bucket
+ * so it can render each rule's outcome (pass / fail / needs-review / n-a).
+ */
+const DEEP_AUDIT_RESULT_TYPES = [
+  "violations",
+  "passes",
+  "incomplete",
+  "inapplicable",
+] as const;
 
 // ---------------------------------------------------------------------------
 // Custom DOM checks — supplement axe-core with rules it doesn't cover
@@ -445,6 +472,15 @@ const NETWORK_IDLE_TIMEOUT_MS = 2_500;
  */
 const AXE_ANALYSIS_TIMEOUT_MS = 18_000;
 
+/**
+ * Analysis budget for a DEEP AUDIT. Longer than the normal pass because axe
+ * serialises every pass/incomplete/inapplicable node over the CDP bridge (10–100×
+ * more data than violations alone). Kept within the 60 s Vercel ceiling because
+ * deep audits skip the screenshot and never run the second engine.
+ * Budget: ~2 (launch) + 18 (nav) + 2.5 (idle) + 5 (settle) + 28 (axe) + 2 (cleanup) ≈ 57.5 s.
+ */
+const DEEP_AUDIT_AXE_TIMEOUT_MS = 28_000;
+
 // ---------------------------------------------------------------------------
 // HTML truncation
 // ---------------------------------------------------------------------------
@@ -652,6 +688,65 @@ async function normaliseViolations(
 }
 
 // ---------------------------------------------------------------------------
+// Deep-audit rule mapping (accessScan-parity)
+// ---------------------------------------------------------------------------
+
+/**
+ * Maps axe's four result buckets into a flat `RuleAuditResult[]` for the Full
+ * Audit report. Each rule appears exactly once with the outcome axe assigned it:
+ *   violations → "fail"   passes → "pass"   incomplete → "review"   inapplicable → "not-applicable"
+ *
+ * `count` is the TRUE node count for that outcome; `sample` is capped to
+ * MAX_AUDIT_SAMPLE_NODES and HTML-truncated. Pure + defensive: any missing
+ * field degrades to a safe default rather than throwing (this runs on the live
+ * scan choke-point). Passing/incomplete nodes are NOT re-verified against the
+ * live DOM the way violations are — they are shown as sampled evidence, not an
+ * authoritative pass certificate (see report honesty rules).
+ */
+function buildRuleAudit(axeResults: {
+  violations?: unknown[];
+  passes?: unknown[];
+  incomplete?: unknown[];
+  inapplicable?: unknown[];
+}): RuleAuditResult[] {
+  const out: RuleAuditResult[] = [];
+
+  const take = (bucket: unknown[] | undefined, outcome: RuleAuditResult["outcome"]) => {
+    for (const r of bucket ?? []) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rule = (r ?? {}) as any;
+      const nodes: unknown[] = Array.isArray(rule.nodes) ? rule.nodes : [];
+      const sample: AuditNodeSample[] = nodes.slice(0, MAX_AUDIT_SAMPLE_NODES).map((n) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const node = (n ?? {}) as any;
+        return {
+          target: Array.isArray(node.target) ? node.target.map(String) : [],
+          html: truncateHtml(typeof node.html === "string" ? node.html : ""),
+        };
+      });
+      out.push({
+        id: typeof rule.id === "string" ? rule.id : "",
+        description: typeof rule.description === "string" ? rule.description : "",
+        help: typeof rule.help === "string" ? rule.help : "",
+        helpUrl: typeof rule.helpUrl === "string" ? rule.helpUrl : "",
+        impact: normaliseImpact(rule.impact),
+        tags: Array.isArray(rule.tags) ? rule.tags.filter((t: unknown): t is string => typeof t === "string") : [],
+        outcome,
+        // not-applicable rules match zero elements by definition.
+        count: outcome === "not-applicable" ? 0 : nodes.length,
+        sample,
+      });
+    }
+  };
+
+  take(axeResults.violations, "fail");
+  take(axeResults.passes, "pass");
+  take(axeResults.incomplete, "review");
+  take(axeResults.inapplicable, "not-applicable");
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Public entry point
 // ---------------------------------------------------------------------------
 
@@ -725,16 +820,19 @@ export async function runScan(
 
     // ── Screenshot ──────────────────────────────────────────────────────────
     // Taken after the page renders, before axe runs. Best-effort only.
+    // Skipped in deep-audit mode to reclaim time/memory for the heavier axe pass.
     let screenshot: string | undefined;
-    try {
-      const buf = await page.screenshot({
-        type: "jpeg",
-        quality: 60,
-        clip: { x: 0, y: 0, width: 1280, height: 720 },
-      });
-      screenshot = `data:image/jpeg;base64,${buf.toString("base64")}`;
-    } catch {
-      // Non-fatal — preview is decorative.
+    if (!options.deepAudit) {
+      try {
+        const buf = await page.screenshot({
+          type: "jpeg",
+          quality: 60,
+          clip: { x: 0, y: 0, width: 1280, height: 720 },
+        });
+        screenshot = `data:image/jpeg;base64,${buf.toString("base64")}`;
+      } catch {
+        // Non-fatal — preview is decorative.
+      }
     }
 
     // ── Run axe-core ─────────────────────────────────────────────────────────
@@ -793,10 +891,14 @@ export async function runScan(
         .exclude("iframe[src*='cookiebot']")
         .exclude("iframe[src*='onetrust']")
         .exclude("iframe[src*='cookiepro']")
-        // Only collect violations — we discard passes/incomplete anyway, and
-        // skipping their serialisation shaves analysis time WITHOUT changing
-        // which violations are found (so results stay deterministic).
-        .options({ resultTypes: ["violations"] });
+        // Normal scan: only serialise violations (passes/incomplete are
+        // discarded, which shaves CDP-bridge transfer time WITHOUT changing
+        // which violations are found — results stay deterministic).
+        // Deep audit: serialise ALL four buckets so the Full Audit report can
+        // show each rule's outcome + code snapshots. Heavier, hence owner-only.
+        .options({
+          resultTypes: options.deepAudit ? [...DEEP_AUDIT_RESULT_TYPES] : ["violations"],
+        });
 
     const makeTimeout = (ms: number) =>
       new Promise<never>((_, reject) =>
@@ -810,9 +912,17 @@ export async function runScan(
       // to a reduced ruleset, because a reduced ruleset finds fewer violations
       // and would make the SAME site score differently between runs. Returning
       // "no score" is honest; returning a "different score" is not.
+      // Deep audit serialises far more nodes, so it gets a longer analysis
+      // budget. It is owner-triggered + rare, and the screenshot + second
+      // engine are skipped below to reclaim the extra seconds within the 60 s
+      // Vercel ceiling. Timeout still FAILS HONESTLY (SCAN_TIMEOUT) — we never
+      // degrade the ruleset.
+      const axeTimeoutMs = options.deepAudit
+        ? DEEP_AUDIT_AXE_TIMEOUT_MS
+        : AXE_ANALYSIS_TIMEOUT_MS;
       axeResults = await Promise.race([
         buildAxe(AXE_TAGS).analyze(),
-        makeTimeout(AXE_ANALYSIS_TIMEOUT_MS),
+        makeTimeout(axeTimeoutMs),
       ]);
     } catch (axeErr) {
       const msg = axeErr instanceof Error ? axeErr.message : String(axeErr);
@@ -861,7 +971,9 @@ export async function runScan(
     // agreed issues become "high confidence" and second-engine-only findings
     // widen coverage. Best-effort: any failure leaves the axe+custom list as-is.
     let secondEngineMeta: RawScanResult["secondEngineMeta"];
-    if (options.useSecondEngine) {
+    // Never run the second engine during a deep audit — it adds cost with no
+    // deep-audit benefit (HTML_CodeSniffer has no notion of a "passing" node).
+    if (options.useSecondEngine && !options.deepAudit) {
       try {
         const { loaded, findings } = await runSecondEngine(page);
         if (loaded && findings.length > 0) {
@@ -901,6 +1013,12 @@ export async function runScan(
       contentHash,
     };
 
+    // ── Deep-audit rule mapping (owner-triggered only) ────────────────────────
+    // Built from the FULL axe result (all four buckets). Absent on funnel scans.
+    const ruleAudit: RuleAuditResult[] | undefined = options.deepAudit
+      ? buildRuleAudit(axeResults)
+      : undefined;
+
     const durationMs = Date.now() - startTime;
 
     return {
@@ -914,6 +1032,7 @@ export async function runScan(
       screenshot,
       engineMeta,
       secondEngineMeta,
+      ruleAudit,
     };
   } catch (err) {
     if (err instanceof AppError) throw err;
